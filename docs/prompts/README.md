@@ -6,4 +6,4 @@ Các file `.txt` giữ nguyên byte của nội dung người dùng cung cấp, 
 - [Prompt 2 — Java/Spring Boot](02-backend.txt)
 - [Prompt 3 — Python/AI/Data](03-ai-data.txt)
 
-Các câu “hãy xây dựng hoàn chỉnh” mô tả đích triển khai. Chúng không thay thế yêu cầu hiện tại “đọc, tạo repo và chuẩn bị markdown trước”. Yêu cầu bổ sung trong conversation được tổng hợp tại [scope](../scope.md), [UI reference](../ui-reference.md), [data sources](../data-sources.md), [future extensions](../future-extensions.md). SQL Import trong bản nguồn không còn là DoD chính theo điều chỉnh mới nhất của người dùng.
+Các câu “hãy xây dựng hoàn chỉnh” mô tả đích triển khai; lệnh thực hiện đến từ user task hiện hành. Yêu cầu bổ sung và thay đổi scope được ghi tại [scope](../scope.md), [current review](../current-review.md), [UI reference](../ui-reference.md), [data sources](../data-sources.md). Quyết định SQL Import optional ban đầu đã được người dùng cập nhật thành mandatory module có validation/preview; xem shared API/security contract. Không sửa prompt archive để che thay đổi lịch sử.

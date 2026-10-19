@@ -1,56 +1,125 @@
 # Natural Language Analytics Warehouse
 
-Nền tảng Text-to-SQL đa warehouse, đa domain: đặt câu hỏi tiếng Việt/Anh, nhận dữ liệu, biểu đồ, SQL, giải thích và thông tin thực thi.
+Nền tảng Text-to-SQL đa warehouse, đa domain: đặt câu hỏi bằng tiếng Việt/Anh, nhận dữ liệu, biểu đồ, SQL, giải thích và thông tin thực thi.
 
-**Trạng thái: đã chuẩn bị tài liệu, chưa triển khai ứng dụng.** Không có lệnh chạy app ở thời điểm này. Các API, mô hình và kiểm thử dưới đây là đặc tả mục tiêu, chưa phải tính năng đã chạy. Ngày lập baseline: 2026-10-19.
+Repository hiện có frontend React, backend Spring Boot, Python AI service, quy trình nạp Chinook và adapter thực thi cho PostgreSQL, MySQL, SQL Server. Đây là trạng thái đang phát triển, chưa nghiệm thu toàn bộ target. SQL Import trong app, hoàn thiện cấu hình login OIDC, cùng các lỗi UI/data-loading trong [current review](docs/current-review.md) vẫn là scope bắt buộc cần hoàn tất. Import sẽ validate/preview một subset SQL có kiểm soát; app không chạy tùy ý file SQL.
 
 ```text
-React → Java Spring Boot → Python AI Service → LLM API
+React → Java Spring Boot → Python AI Service / provider API
                 ↓
-       PostgreSQL / MySQL / SQL Server
+   PostgreSQL / MySQL / SQL Server adapters
+                ↓
+     Registered read-only warehouses
 ```
 
-React chỉ gọi Java. Java là security boundary và nơi thực thi SQL. Python chỉ trả candidate SQL; không nhận credential warehouse, không truy cập warehouse production.
+React chỉ gọi Java. Java xác thực người dùng, kiểm tra SQL và thực thi truy vấn; Python tạo candidate SQL nhưng không nhận credential hay truy cập warehouse.
 
-## Bắt đầu một conversation mới
+## Hướng dẫn khởi chạy (Quick Start)
 
-1. Đọc [AGENTS.md](AGENTS.md), [phạm vi và ưu tiên](docs/scope.md), [kiến trúc](docs/architecture.md).
-2. Đọc [domain contract](docs/contracts/domain.md), [public API](docs/contracts/public-api.md), [Java ↔ Python](docs/contracts/java-python.md), [semantic model](docs/contracts/semantic-model.md).
-3. Đọc hướng dẫn theo vai trò: [FE](docs/roles/fe.md), [BE](docs/roles/be.md), [AI/Data](docs/roles/ai-data.md), rồi prompt gốc tương ứng trong [docs/prompts](docs/prompts/README.md).
-4. Đọc [kế hoạch phối hợp](docs/development-plan.md) và [ma trận nghiệm thu](docs/acceptance.md). Chỉ triển khai khi được giao task triển khai.
+### Yêu cầu
 
-Mẫu giao việc:
+- Docker Desktop hoặc Docker Engine + Compose plugin.
+- Java 21, Maven 3.9+, Python 3.11+, Node.js 20+ và npm.
+- Khoảng 5 GB RAM còn trống cho ba database; SQL Server container hiện dùng image `linux/amd64`.
 
-> Đọc AGENTS.md, docs/roles/be.md và các contract liên quan. Thực hiện task BE được giao theo contract chung; báo thay đổi contract trước khi phụ thuộc vào nó. Không triển khai thay phần FE/AI.
+### 1. Tạo và khởi động database Chinook
 
-Tương tự thay `be.md` bằng `fe.md` hoặc `ai-data.md`. `AGENTS.md` trong từng thư mục tự bổ sung quy tắc cho phần đó.
+Từ thư mục gốc repository:
 
-## Nguyên tắc đã thống nhất
+```bash
+python3 data/scripts/docker_chinook.py init
+python3 data/scripts/docker_chinook.py up
+python3 data/scripts/docker_chinook.py status
+python3 data/scripts/docker_chinook.py provision
+```
 
-- Chốt `Warehouse`, `Dataset`, `Query` và Java → Python trước khi tách việc; không cầm ba prompt rồi tự thiết kế ba hệ thống riêng.
-- Sau gate contract, React, Java và Python bắt đầu song song từ cùng baseline. Test doubles có thể cô lập dependency khi cần, không là implementation sản phẩm. Java bắt đầu từ ngày đầu.
-- Tuân thủ [quy tắc triển khai hoàn chỉnh](docs/implementation-rules.md): không chia version, không skeleton/placeholder, không hoãn validation/error handling/security/test hoặc tích hợp; không giảm target để chạy demo.
-- Target cuối bao gồm cả PostgreSQL, MySQL, SQL Server; các mốc tích hợp không phải cách trì hoãn engine hay chia phiên bản sản phẩm.
-- UI tuân theo style của ảnh mock ngay từ bước dựng đầu; sidebar cố định trên desktop và thống nhất trên mọi route. Ảnh mock không yêu cầu dữ liệu giả: dữ liệu/domain lấy từ API thật, có empty/error states đúng thực tế.
-- AI ưu tiên gọi provider API; deterministic mode phục vụ CI/demo; local inference/training là hướng mở rộng.
-- App kết nối warehouse đã tồn tại. SQL Import là mở rộng tùy nhu cầu, không là điều kiện hoàn thành phạm vi chính.
+`provision` tải đúng release Chinook đã pin, xác minh SHA-256 rồi mới nạp script native vào ba database cô lập. Database tên `nla_chinook`; thông tin quản trị và runtime được tạo riêng trong `.local/`, không commit lên Git. Các port chỉ bind loopback: PostgreSQL `127.0.0.1:55432`, MySQL `127.0.0.1:53306`, SQL Server `127.0.0.1:51433`. Dữ liệu Chinook có 11 bảng; provisioning xác minh số dòng và tài khoản đọc không thể ghi.
 
-## Bản đồ tài liệu
+Provisioning đồng thời tạo metadata store PostgreSQL `nla_metadata` cùng vai trò runtime; pipeline staging/mart được quản trị trong từng engine. Các giá trị đăng nhập không dùng giá trị mẫu cố định như `postgrespassword`; xem file runtime cục bộ nếu cần tích hợp công cụ ngoài repo và không chia sẻ file đó.
+
+Lệnh `up` có thể dùng lại để khởi động lại các container đã provision. Để dừng container mà giữ dữ liệu:
+
+```bash
+docker compose --env-file .local/compose.env -f infra/compose.databases.yml stop
+```
+
+Không dùng `down -v` nếu muốn giữ database volumes.
+
+### 2. Khởi chạy Python AI service
+
+```bash
+python3 -m venv ai-service/.venv
+ai-service/.venv/bin/pip install -r ai-service/requirements.txt
+python3 infra/local/run.py ai
+```
+
+AI service chạy tại `http://127.0.0.1:8000`. Deterministic mode dùng được ngay cho ví dụ semantic đã đăng ký; muốn dùng model API cần cấu hình provider URL/model/key trong môi trường local. Key không đưa vào Git hoặc log.
+
+### 3. Khởi chạy Backend (Spring Boot)
+
+Trong terminal riêng:
+
+```bash
+python3 infra/local/run.py backend
+```
+
+Lệnh này chạy Maven/Spring Boot với Java 21 và nạp cấu hình `.local/docker.env` vào tiến trình mà không in secrets. Backend chạy ở `http://localhost:8080`; API chính là `POST http://localhost:8080/api/v1/query`. Local profile cung cấp quyền đọc ẩn danh cho demo; thao tác quản trị cần local API token mà script đã tạo và có thể nhập trong Settings của UI.
+
+### 4. Khởi chạy Frontend
+
+```bash
+cd frontend
+npm ci
+cd ..
+python3 infra/local/run.py frontend
+```
+
+Frontend chạy tại `http://localhost:5173`. Chọn một trong ba warehouse đã đăng ký; ví dụ câu hỏi `How many tracks are in the catalog?` trả về 3.503 track từ Chinook.
+
+## Dữ liệu và nguồn
+
+Chinook là bộ dữ liệu kiểm chứng tích hợp đầu tiên, không được mô tả như star-schema warehouse. Nguồn, release, commit, license, checksum, schema counts và quy trình tái tạo được ghi tại [data/chinook](data/chinook/README.md) và [data-sources](docs/data-sources.md). Các nguồn còn lại do người dùng cung cấp (AdventureWorksDW, TPC-DS, Pagila, Northwind PostgreSQL, Olist) vẫn được ghi trong danh mục; chúng chưa được nạp vào runtime này.
+
+## Quy tắc làm việc và conversation mới
+
+Đọc [AGENTS.md](AGENTS.md), [implementation rules](docs/implementation-rules.md), [scope](docs/scope.md), [architecture](docs/architecture.md), contract liên quan và hướng dẫn role tương ứng trước khi nhận task. FE đọc [fe.md](docs/roles/fe.md), backend đọc [be.md](docs/roles/be.md), Python/data đọc [ai-data.md](docs/roles/ai-data.md). Các prompt nguồn được lưu trong [docs/prompts](docs/prompts/README.md).
+
+Các quy tắc chính: chốt chung `Warehouse`, `Dataset`, `Query` và Java ↔ Python contract; cả ba engine là target bắt buộc; code hoàn chỉnh trong phần đã nhận, gồm validation, lỗi, security và tests; không chia version, để placeholder hoặc gọi mock/stub là tính năng hoàn thành. UI theo style 14 ảnh tham chiếu, còn dữ liệu hiển thị phải lấy từ API thật và có empty/error states.
+
+Sau mỗi commit/push, cập nhật [work log](docs/work-log.md) để người tiếp nối biết conversation/role, phạm vi, trạng thái, checks và việc còn lại. Không commit `.local/`, credentials, key, hay database dump.
+
+## Kiểm tra
+
+```bash
+cd frontend && npm test && npm run build
+cd ../backend && mvn test
+cd .. && ai-service/.venv/bin/python -m pytest ai-service
+```
+
+Test adapter bằng database Docker thật đã cấu hình local:
+
+```bash
+python3 infra/local/test_backend.py
+python3 infra/local/smoke.py
+npm exec --prefix frontend -- playwright test --config frontend/playwright.live.config.ts
+```
+
+Các test tích hợp cần Docker và database provisioned; test browser live cần cả ba app services đang chạy.
+
+## Tài liệu
 
 | Tài liệu | Nội dung |
 |---|---|
-| [Scope](docs/scope.md) | Yêu cầu hiệu lực, xử lý mâu thuẫn prompt |
-| [Implementation rules](docs/implementation-rules.md) | Quy tắc hoàn chỉnh ngay trong lần triển khai, không chia version/placeholder |
+| [Scope](docs/scope.md) | Yêu cầu hiệu lực và xử lý mâu thuẫn prompt |
+| [Implementation rules](docs/implementation-rules.md) | Không chia version, skeleton hoặc trì hoãn phần bắt buộc |
 | [Architecture](docs/architecture.md) | Ranh giới, module, ownership |
-| [Contracts](docs/contracts/README.md) | Model, API, lỗi, fixtures dùng chung |
-| [UI reference](docs/ui-reference.md) | 14 ảnh, route, thứ tự ưu tiên, tiêu chí thị giác |
-| [Data sources](docs/data-sources.md) | Đủ 6 nguồn người dùng cung cấp và cách sử dụng |
+| [Contracts](docs/contracts/README.md) | Domain, API, errors, Java ↔ Python, semantic model |
+| [UI reference](docs/ui-reference.md) | 14 ảnh, routes và tiêu chí thị giác |
+| [Data sources](docs/data-sources.md) | Nguồn do người dùng cung cấp và cách sử dụng |
 | [Security](docs/security.md) | SQL, credential, auth, giới hạn thực thi |
-| [Development plan](docs/development-plan.md) | Gate và task song song |
-| [Acceptance](docs/acceptance.md) | Bằng chứng hoàn thành từng phần và E2E |
-| [Future extensions](docs/future-extensions.md) | SQL Import có kiểm soát, local AI/training |
-| [Decision log](docs/decisions/README.md) | Quyết định baseline và điều kiện thay đổi |
-| [Task template](docs/task-template.md) | Giao task cho conversation mới |
-| [Contributing](CONTRIBUTING.md) | Quy trình thay đổi và PR |
+| [Acceptance](docs/acceptance.md) | Bằng chứng kiểm chứng |
+| [Current review gaps](docs/current-review.md) | Login, import, UI, source dữ liệu và acceptance đang mở |
+| [Future extensions](docs/future-extensions.md) | Local AI/training và nâng quy mô ngoài scope hiện tại |
+| [Work log](docs/work-log.md) | Nhật ký commit/push và handoff |
 
-Thư mục dự kiến: `frontend/`, `backend/`, `ai-service/`, `data/`, `infra/`. Hiện chỉ chứa hướng dẫn; chưa tạo scaffold ứng dụng. Ảnh gốc đã được người dùng cho phép đưa lên GitHub, lưu trong [images](images/README.md). Không kèm bộ dữ liệu bên thứ ba hoặc secrets. Repository chưa chọn giấy phép phát hành mã nguồn.
+Ảnh gốc được phép đưa lên GitHub lưu tại [images](images/README.md). Mã nguồn repository chưa chọn giấy phép phát hành; license của dataset bên thứ ba được ghi riêng.

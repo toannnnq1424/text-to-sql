@@ -1,0 +1,27 @@
+server:
+  address: ${SERVER_ADDRESS:127.0.0.1}
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: never
+    include-stacktrace: never
+spring:
+  application:
+    name: natural-language-analytics
+  datasource:
+    url: ${METADATA_JDBC_URL:jdbc:postgresql://127.0.0.1:5432/nla_metadata}
+    username: ${METADATA_USERNAME:nla_app}
+    password: ${METADATA_PASSWORD}
+    hikari:
+      maximum-pool-size: 5
+      connection-timeout: 5000
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+  flyway:
+    enabled: true
+nla:
+  local: false
+  warehouse-tls: true
+  allowed-hosts: ${WAREHOUSE_ALLOWED_HOSTS:127.0.0.1,localhost}
+  python-url: ${PYTHON_AI_URL:}
+  python-token: ${PYTHON_AI_TOKEN:}

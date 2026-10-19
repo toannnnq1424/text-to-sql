@@ -33,3 +33,7 @@ infra/volumes/
 # Test artifacts
 playwright-report/
 test-results/
+
+# Local database credentials, process state and reports
+.local/
+*.tsbuildinfo

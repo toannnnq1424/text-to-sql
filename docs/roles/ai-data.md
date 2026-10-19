@@ -21,7 +21,7 @@ Bắt buộc đọc và áp dụng [implementation-rules.md](../implementation-r
 
 Đọc đủ nguồn được lưu trong data-sources.md. Thiết kế canonical demo schema + datatype/grain/PK/FK + metric/dimension definitions với BE trước seed. Generator deterministic cùng seed, fixed reference time, mappings rõ cả ba engine. Dùng ít nhất hai domain (ví dụ commerce và market-price) để chứng minh core không hard-code. Synthetic market-price không được trình bày như giá thị trường thật.
 
-Dữ liệu ngoài repo chỉ tải khi task triển khai được giao, ghi nguồn/version/license/checksum và không commit bulk data hoặc PII mặc định. Provisioning SQL tin cậy do quản trị chạy riêng, rồi app register/test/discover/validate dataset. Pipeline raw→staging→warehouse→mart có idempotency, rejected rows, schema/data-quality checks và run metrics Java nhận; không tự thêm HTTP SQL executor.
+Dữ liệu ngoài repo chỉ tải khi task triển khai được giao, ghi nguồn/version/license/checksum và không commit bulk data hoặc PII mặc định. SQL Import trong ứng dụng là mandatory nhưng chỉ hỗ trợ subset parse/validate/preview đã chốt; không execute SQL tùy ý. Pipeline in-app raw→staging→warehouse→mart là mandatory với source registry, idempotency, rejected rows, schema/data-quality checks và run metrics Java nhận. Phối hợp BE cho parser/canonical schema/type mapping, writer isolation và API contracts. Phân biệt physical metadata đọc từ warehouse với semantic metadata do admin/model cấu hình; không mô tả curated semantic examples như tự sinh từ database.
 
 ## Evaluation và hoàn thành
 

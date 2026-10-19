@@ -34,7 +34,7 @@ DiscoveryRun statuses: PENDING,RUNNING,SUCCESS,FAILED. Metadata canonical gồm 
 
 | Method/path | Output |
 |---|---|
-| GET /datasets/{id}/catalog | `{datasetId,semanticVersion,schemaVersion,tableCount,metricCount,dimensionCount,relationshipCount,exampleCount,categories:[{name,count}]}` |
+| GET /datasets/{id}/catalog | `{datasetId,semanticVersion,schemaVersion,tableCount,metricCount,dimensionCount,relationshipCount,exampleCount,tableCategories:[{name,count}],metricCategories:[{name,count}],exampleCategories:[{name,count}]}`. Counts are computed separately from live physical tables and the active semantic model. |
 | GET /datasets/{id}/tables | Page<TableMetadata>; filters search,schema,category,status,queryable |
 | GET /datasets/{id}/tables/{tableId} | TableMetadata + columns/PK/FK/description/grain; tableId opaque do discovery cấp |
 | GET /datasets/{id}/metrics | Page<Metric>; search,category,dataType |
@@ -64,7 +64,7 @@ CSV escape delimiters/quotes/newlines và chống spreadsheet formula injection 
 
 ## Ingestion
 
-Pipeline chỉ chạy nguồn đã đăng ký và dataset được phép ghi bằng operator credential tách biệt. Không upload SQL hay tự fetch URL bất kỳ từ browser.
+Pipeline chỉ chạy nguồn đã đăng ký và dataset được phép ghi bằng operator credential tách biệt. Không tự fetch URL bất kỳ từ browser. SQL script file được xử lý bởi module Import SQL riêng bên dưới; không gửi SQL file vào ingestion-run endpoint.
 
 | Method/path | Input / output |
 |---|---|
@@ -74,6 +74,19 @@ Pipeline chỉ chạy nguồn đã đăng ký và dataset được phép ghi b�
 | GET /warehouse/ingestion/runs/{runId} | IngestionRun + stage details/errors sanitized |
 
 IngestionRun: runId,batchId,warehouseId,datasetId,engine,status,sourceId,rowsWritten,rejectedCount,startedAt,completedAt,durationMs,idempotent,steps,error. Nullable timestamps/duration trước hoàn tất. Stages RAW,STAGING,WAREHOUSE,MART; status PENDING,RUNNING,SUCCESS,FAILED,SKIPPED. Run status PENDING,RUNNING,SUCCESS,PARTIAL,FAILED. Idempotency key cùng principal+source+dataset+payload trả cùng run; reuse key với payload khác trả 409 INVALID_REQUEST. Không tự rerun failure và double insert.
+
+## Import SQL (mandatory)
+
+Upload chỉ qua Java API. Chỉ ADMIN/OPERATOR có quyền trên target warehouse được validate/execute; mọi operation có audit và correlation ID. Đặt bounds cho file size, statement count, execution time, object count và data volume. Lưu upload tạm thời an toàn, không extract path từ filename, không log raw contents; xóa artifact theo retention policy.
+
+| Method/path | Input / output |
+|---|---|
+| POST `/import/sql/validate` | `multipart/form-data`: `file`, `sourceDialect` (`AUTO_DETECT`,`POSTGRESQL`,`MYSQL`,`SQL_SERVER`), `warehouseId`, `targetSchema`; trả `ImportPlan` gồm dialect detected, target engine, native/cross-dialect mode, statement/object counts, supported actions, warnings/unsupported features, bounded preview và `planId`/digest. Không ghi DDL/data vào target. |
+| POST `/import/sql/runs` | `{planId,planDigest,idempotencyKey}` → 202 `ImportRun`; server chỉ thực thi immutable plan/file đã validate, không tin lại SQL do client gửi. Schema/table collision/destructive operations reject rõ ràng; không implicit overwrite. |
+| GET `/import/sql/runs` | Page<ImportRun> theo warehouseId,engine,status,from,to,search. |
+| GET `/import/sql/runs/{runId}` | ImportRun + statement/stage outcome, counts, sanitized error. |
+
+Parser bắt buộc hỗ trợ native PostgreSQL/MySQL/SQL Server và cross-dialect translation qua canonical schema model cho analytical subset: CREATE SCHEMA/TABLE, PK/FK/UNIQUE/INDEX, identity/auto-increment, DEFAULT cơ bản, INSERT và các scalar type đã chốt trong source prompt. AUTO_DETECT mơ hồ, syntax lỗi, dialect mismatch và feature ngoài subset trả error riêng (`SQL_IMPORT_PARSE_ERROR`, `SQL_IMPORT_DIALECT_MISMATCH`, `UNSUPPORTED_IMPORT_FEATURE`); không silently skip hoặc fallback thực thi nguyên văn. Review concrete plan trước khi chạy. Thực thi target bằng provisioning writer riêng; runtime query principal chỉ SELECT. Transaction, rollback/recovery và partial-import semantics phải được thiết kế/test theo capabilities mỗi engine, không hứa atomic rollback nếu engine không đảm bảo.
 
 ## Evaluation
 
@@ -94,4 +107,4 @@ GET `/monitoring/summary`: filters warehouseId,engine,datasetId,from,to → quer
 
 GET `/settings`: safe platform settings (locale,timezone,defaultQueryMode,limits,availableModes,providerConfigured,modelDisplayName). PATCH `/settings`: admin cập nhật allowlisted nonsecret defaults/limits trong server bounds; không nhập key qua public settings. Model/provider secrets quản lý deployment env; thay đổi phải audit. UI user preference locale/timezone có thể giữ local, không ảnh hưởng canonical timestamps hay query timezone của dataset.
 
-Không có `/import/sql` trong phạm vi chính. Xem [future extensions](../future-extensions.md).
+SQL Import và in-app ingestion là scope bắt buộc theo [scope](../scope.md), không phải future extension. Không có quyền thực thi arbitrary SQL file.

@@ -1,0 +1,45 @@
+name: nla-chinook
+services:
+  postgres:
+    image: postgres:16-alpine
+    ports: ["127.0.0.1:55432:5432"]
+    environment:
+      POSTGRES_USER: nla_provisioner
+      POSTGRES_PASSWORD: ${NLA_PG_ADMIN_PASSWORD:?Run data/scripts/docker_chinook.py init}
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nla_provisioner -d postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  mysql:
+    image: mysql:8.4
+    ports: ["127.0.0.1:53306:3306"]
+    environment:
+      MYSQL_ROOT_PASSWORD: ${NLA_MYSQL_ADMIN_PASSWORD:?Run data/scripts/docker_chinook.py init}
+    volumes: ["mysql_data:/var/lib/mysql"]
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_ROOT_PASSWORD mysqladmin ping -u root --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-CU22-ubuntu-22.04
+    platform: linux/amd64
+    ports: ["127.0.0.1:51433:1433"]
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: ${NLA_MSSQL_ADMIN_PASSWORD:?Run data/scripts/docker_chinook.py init}
+      MSSQL_MEMORY_LIMIT_MB: "2048"
+    volumes: ["mssql_data:/var/opt/mssql"]
+    healthcheck:
+      test: ["CMD-SHELL", "SQLCMDPASSWORD=$$MSSQL_SA_PASSWORD /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -Q 'SELECT 1' -o /dev/null"]
+      interval: 10s
+      timeout: 10s
+      retries: 40
+      start_period: 30s
+volumes:
+  postgres_data:
+  mysql_data:
+  mssql_data:

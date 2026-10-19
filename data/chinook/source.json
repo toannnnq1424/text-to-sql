@@ -1,0 +1,33 @@
+{
+  "source": "https://github.com/lerocha/chinook-database",
+  "release": "v1.4.5",
+  "upstreamCommit": "4a944a942426e1f3263fe539155fb7ef92b04b4a",
+  "license": "LICENSE.md",
+  "files": {
+    "POSTGRESQL": {
+      "name": "Chinook_PostgreSql.sql",
+      "sha256": "e3fde5c1a5b51a2a91429a702c9ca6e69ba56e6c7f5e112724d70c3d03db695e"
+    },
+    "MYSQL": {
+      "name": "Chinook_MySql.sql",
+      "sha256": "02a1835417c3ea19bff64e1d1f22be738ce51b3f88b0473c24eebff9a3ccde4b"
+    },
+    "SQL_SERVER": {
+      "name": "Chinook_SqlServer.sql",
+      "sha256": "5ea75c9e925ead917d3fabea6ed3cc8c1ff1d036b61e915c94631aafa2b0802b"
+    }
+  },
+  "expectedCounts": {
+    "album": 347,
+    "artist": 275,
+    "customer": 59,
+    "employee": 8,
+    "genre": 25,
+    "invoice": 412,
+    "invoice_line": 2240,
+    "media_type": 5,
+    "playlist": 18,
+    "playlist_track": 8715,
+    "track": 3503
+  }
+}

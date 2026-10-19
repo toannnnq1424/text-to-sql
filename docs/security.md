@@ -1,6 +1,6 @@
 # Security boundary và dữ liệu
 
-Đặc tả mục tiêu cho triển khai; chưa là khẳng định hệ thống đã an toàn hoặc kiểm thử.
+Đặc tả mục tiêu và controls bắt buộc cho mọi deployment. Work log/acceptance mới nhất quyết định phần nào đã được kiểm thử thật.
 
 ## Query
 
@@ -22,10 +22,14 @@ Credential reference trỏ secret provider/env binding, không secret trực ti�
 
 Treat question/schema description/examples là untrusted content; system rules không bị prompt injection override. Provider chỉ nhận relevant authorized metadata đã lọc; không gửi data rows/secrets. Python strict JSON, enum/size limit, controlled errors; Java independently validates. FE render text, chart JSON allowlist và references hợp lệ; không executable AI JS/HTML/React. CSV export sanitize spreadsheet formulas cho string cell.
 
-## Ghi dữ liệu
+## Ghi dữ liệu và Import SQL
 
-Provisioning/ELT chỉ dùng scripts/pipelines đã review, trusted source, environment/identity riêng. Trigger ingestion không nhận câu SQL tùy ý hoặc URL tải bất kỳ. Idempotency, rejected row accounting và transaction/checkpoint theo engine phải được test. Không có general SQL upload executor trong app chính. SQL Import chỉ xem xét sau ở future-extensions.md.
+In-app ingestion và SQL Import là mandatory. Query reader khác ingestion/import writer và provisioning admin; writer không được chia sẻ cho Python hay browser. Pipeline ingestion chỉ chạy registered source; không tự fetch URL do người dùng nhập.
+
+SQL Import nhận file qua Java, parse thành statement/AST và canonical schema/data plan, trả validation/preview trước khi chạy. Allowlist chỉ gồm subset đã chốt ở `contracts/public-api.md`; reject multi-dialect ambiguity, destructive DDL, procedure/trigger, file/network/system function, unsupported vendor syntax, path traversal, oversized file, excessive statements/data và resource exhaustion. Không execute file nguyên văn qua psql/mysql/sqlcmd, shell hoặc `Statement.execute` dựa vào filename/extension. Native import vẫn phải parse/validate; cross-dialect bắt buộc semantic type mapping, quote/identity/default/FK order và error reporting thật cho mỗi engine.
+
+Confirm phải tham chiếu digest của plan/file đã validate; idempotency ngăn submit lặp; collision/destructive action fail closed; audit ai/target/source dialect/digest/outcome, không log raw SQL/data hoặc secret. Staging/transaction/rollback/recovery phụ thuộc engine capability; báo rõ partial outcome và không tuyên bố atomicity khi không đạt. Permission test, malicious SQL corpus, file size/encoding, timeout, cancelled job, writer/read-only grants và data integrity tests đều chạy trên cả ba adapters.
 
 ## Evidence bắt buộc
 
-Security corpus cho cả 3 engines: nested CTE/subquery, quoted identifiers, comments/multi statement, unknown/schema-qualified tables, SELECT INTO/export, function side effects, unauthorized dataset, SQL injection qua question/search/sort/metadata, query timeout, payload limits, credential/log redaction, auth và CSV formula injection. Unit/parser tests kết hợp runtime DB grant tests, không thay nhau.
+Security corpus cho cả 3 engines: nested CTE/subquery, quoted identifiers, comments/multi statement, unknown/schema-qualified tables, SELECT INTO/export, function side effects, unauthorized dataset, SQL injection qua question/search/sort/metadata, SQL Import dialect parsing + unsupported/destructive/file/network payload, query/import timeout, payload limits, credential/log redaction, login/role/resource authorization và CSV formula injection. Unit/parser tests kết hợp runtime DB grant tests, không thay nhau.
