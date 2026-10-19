@@ -1,12 +1,246 @@
 package dev.nla;
-import org.springframework.web.bind.annotation.*;import org.springframework.security.access.prepost.PreAuthorize;import org.springframework.core.env.Environment;import org.springframework.http.HttpStatus;import java.time.*;import java.util.*;
-@RestController @RequestMapping("/api/v1") public class PlatformController {
- private final Store store;private final QueryService queries;private final Environment env;
- public PlatformController(Store store,QueryService queries,Environment env){this.store=store;this.queries=queries;this.env=env;}
- @GetMapping("/health") Object health(){return Map.of("status","UP");}
- @GetMapping("/session") Object session(){var auth=org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();var roles=auth==null?List.of():auth.getAuthorities().stream().map(x->x.getAuthority().replace("ROLE_","")).filter(Set.of("ADMIN","OPERATOR","ANALYST","VIEWER")::contains).toList();if(env.getProperty("nla.local",Boolean.class,false)&&roles.isEmpty())roles=List.of("VIEWER");return Json.obj("subject",store.actor(),"name",store.admin()?"Local Administrator":"Local Reader","roles",roles,"local",env.getProperty("nla.local",Boolean.class,false));}
- @GetMapping("/platform/summary") Object summary(){var warehouses=store.warehouses();Set<String> ids=warehouses.stream().map(w->Json.str(w,"warehouseId")).collect(java.util.stream.Collectors.toSet());var history=queries.history();long successes=history.stream().filter(q->q.get("status").equals("SUCCESS")).count();return Json.obj("warehouseCount",warehouses.size(),"datasetCount",store.all("dataset").stream().filter(d->ids.contains(d.get("warehouseId"))).count(),"healthyWarehouseCount",warehouses.stream().filter(w->w.get("status").equals("ACTIVE")).count(),"querySuccessRate",history.isEmpty()?null:(double)successes/history.size(),"recentQueries",history.stream().sorted(Comparator.comparing(q->Json.str(q,"createdAt"),Comparator.reverseOrder())).limit(5).toList(),"recentEvaluationRuns",store.runs("EVALUATION").stream().limit(5).toList(),"recentIngestionRuns",store.runs("INGESTION").stream().limit(5).toList(),"systemHealth",warehouses.stream().allMatch(w->w.get("status").equals("ACTIVE"))?"UP":"PARTIAL");}
- @GetMapping("/monitoring/summary") Object monitoring(@RequestParam Map<String,String> p){String from=p.getOrDefault("from",Instant.now().minus(Duration.ofDays(1)).toString()),to=p.getOrDefault("to",Instant.now().toString());Instant start,end;try{start=Instant.parse(from);end=Instant.parse(to);if(start.isAfter(end))throw new Exception();}catch(Exception e){throw ApiException.bad("Khoảng thời gian không hợp lệ.");}var list=queries.history().stream().filter(q->{var created=Instant.parse(Json.str(q,"createdAt"));return !created.isBefore(start)&&created.isBefore(end);}).filter(q->List.of("warehouseId","datasetId","engine").stream().allMatch(k->!p.containsKey(k)||p.get(k).isBlank()||p.get(k).equals(q.get(k)))).toList();var latency=list.stream().map(q->q.get("latencyMs")).filter(Number.class::isInstance).map(Number.class::cast).mapToLong(Number::longValue).sorted().toArray();long ok=list.stream().filter(q->q.get("status").equals("SUCCESS")).count();long validation=list.stream().filter(q->Set.of("REJECTED","VALIDATION_ERROR").contains(q.get("status"))).count();var engines=new TreeMap<String,Integer>();var datasets=new TreeMap<String,Integer>();for(var q:list){engines.merge(Json.str(q,"engine"),1,Integer::sum);datasets.merge(Json.str(q,"datasetId"),1,Integer::sum);}long llmErrors=list.stream().filter(q->{var stored=queries.stored(Json.str(q,"queryId"));return "LLM_ERROR".equals(Json.map(stored.get("error")).get("code"));}).count();return Json.obj("queryVolume",list.size(),"successRate",list.isEmpty()?null:(double)ok/list.size(),"llmErrorCount",llmErrors,"sqlValidationRejectionCount",validation,"timeoutCount",list.stream().filter(q->q.get("status").equals("TIMEOUT")).count(),"avgLatencyMs",latency.length==0?null:Math.round(Arrays.stream(latency).average().orElse(0)),"p95LatencyMs",latency.length==0?null:latency[(int)Math.ceil(latency.length*.95)-1],"queriesByEngine",engines.entrySet().stream().map(e->Json.obj("engine",e.getKey(),"count",e.getValue())).toList(),"queriesByDataset",datasets.entrySet().stream().map(e->Json.obj("datasetId",e.getKey(),"name",store.dataset(e.getKey()).get("name"),"count",e.getValue())).toList(),"warehouseHealth",store.warehouses().stream().map(w->Json.obj("id",w.get("warehouseId"),"name",w.get("name"),"status",w.get("status"))).toList(),"ingestionHealth",store.runs("INGESTION").stream().limit(10).map(r->Json.obj("id",r.get("runId"),"name",r.get("sourceId"),"status",r.get("status"))).toList(),"from",from,"to",to,"denominator",list.size());}
- @GetMapping("/settings") Object settings(){var s=store.settings();s.put("providerConfigured",!env.getProperty("LLM_MODEL","").isBlank());s.put("modelDisplayName",env.getProperty("LLM_MODEL"));s.put("availableModes",List.of("AUTO","API","DETERMINISTIC"));return s;}
- @PatchMapping("/settings") @PreAuthorize("hasRole('ADMIN')") Object settingsUpdate(@RequestBody Map<String,Object>b){RegistryController.fields(b,Set.of("locale","timezone","defaultQueryMode","limits"));RegistryController.required(b,"locale","timezone","defaultQueryMode");if(!Set.of("vi","en").contains(Json.str(b,"locale"))||!Set.of("AUTO","API","DETERMINISTIC").contains(Json.str(b,"defaultQueryMode")))throw ApiException.bad("Cài đặt không hợp lệ.");try{ZoneId.of(Json.str(b,"timezone"));}catch(Exception e){throw ApiException.bad("Timezone không hợp lệ.");}var limits=Json.map(b.get("limits"));RegistryController.fields(limits,Set.of("maxRows","maxBytes","statementTimeoutMs","queryDeadlineMs"));for(var limit:Map.of("maxRows",1000,"maxBytes",5242880,"statementTimeoutMs",15000,"queryDeadlineMs",60000).entrySet())if(!(limits.get(limit.getKey()) instanceof Number n)||n.longValue()<1||n.longValue()>limit.getValue())throw ApiException.bad("Giới hạn vượt server bounds.");if(((Number)limits.get("statementTimeoutMs")).intValue()>=((Number)limits.get("queryDeadlineMs")).intValue())throw ApiException.bad("Statement timeout phải nhỏ hơn deadline.");var s=store.settings();s.putAll(b);store.settings(s);store.audit("SETTINGS_UPDATE","platform");return settings();}
+
+import java.time.*;
+import java.util.*;
+import org.springframework.core.env.Environment;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/v1")
+public class PlatformController {
+  private final Store store;
+  private final QueryService queries;
+  private final Environment env;
+
+  public PlatformController(Store store, QueryService queries, Environment env) {
+    this.store = store;
+    this.queries = queries;
+    this.env = env;
+  }
+
+  @GetMapping("/health")
+  Object health() {
+    return Map.of("status", "UP");
+  }
+
+  @GetMapping("/session")
+  Object session() {
+    var auth =
+        org.springframework.security.core.context.SecurityContextHolder.getContext()
+            .getAuthentication();
+    var roles =
+        auth == null
+            ? List.of()
+            : auth.getAuthorities().stream()
+                .map(x -> x.getAuthority().replace("ROLE_", ""))
+                .filter(Set.of("ADMIN", "OPERATOR", "ANALYST", "VIEWER")::contains)
+                .toList();
+    if (env.getProperty("nla.local", Boolean.class, false) && roles.isEmpty())
+      roles = List.of("VIEWER");
+    return Json.obj(
+        "subject",
+        store.actor(),
+        "name",
+        store.admin() ? "Local Administrator" : "Local Reader",
+        "roles",
+        roles,
+        "local",
+        env.getProperty("nla.local", Boolean.class, false));
+  }
+
+  @GetMapping("/platform/summary")
+  Object summary() {
+    var warehouses = store.warehouses();
+    Set<String> ids =
+        warehouses.stream()
+            .map(w -> Json.str(w, "warehouseId"))
+            .collect(java.util.stream.Collectors.toSet());
+    var history = queries.history();
+    long successes = history.stream().filter(q -> q.get("status").equals("SUCCESS")).count();
+    return Json.obj(
+        "warehouseCount",
+        warehouses.size(),
+        "datasetCount",
+        store.all("dataset").stream().filter(d -> ids.contains(d.get("warehouseId"))).count(),
+        "healthyWarehouseCount",
+        warehouses.stream().filter(w -> w.get("status").equals("ACTIVE")).count(),
+        "querySuccessRate",
+        history.isEmpty() ? null : (double) successes / history.size(),
+        "recentQueries",
+        history.stream()
+            .sorted(Comparator.comparing(q -> Json.str(q, "createdAt"), Comparator.reverseOrder()))
+            .limit(5)
+            .toList(),
+        "recentEvaluationRuns",
+        store.runs("EVALUATION").stream().limit(5).toList(),
+        "recentIngestionRuns",
+        store.runs("INGESTION").stream().limit(5).toList(),
+        "systemHealth",
+        warehouses.stream().allMatch(w -> w.get("status").equals("ACTIVE")) ? "UP" : "PARTIAL");
+  }
+
+  @GetMapping("/monitoring/summary")
+  Object monitoring(@RequestParam Map<String, String> p) {
+    String from = p.getOrDefault("from", Instant.now().minus(Duration.ofDays(1)).toString()),
+        to = p.getOrDefault("to", Instant.now().toString());
+    Instant start, end;
+    try {
+      start = Instant.parse(from);
+      end = Instant.parse(to);
+      if (start.isAfter(end)) throw new Exception();
+    } catch (Exception e) {
+      throw ApiException.bad("Khoảng thời gian không hợp lệ.");
+    }
+    var list =
+        queries.history().stream()
+            .filter(
+                q -> {
+                  var created = Instant.parse(Json.str(q, "createdAt"));
+                  return !created.isBefore(start) && created.isBefore(end);
+                })
+            .filter(
+                q ->
+                    List.of("warehouseId", "datasetId", "engine").stream()
+                        .allMatch(
+                            k ->
+                                !p.containsKey(k)
+                                    || p.get(k).isBlank()
+                                    || p.get(k).equals(q.get(k))))
+            .toList();
+    var latency =
+        list.stream()
+            .map(q -> q.get("latencyMs"))
+            .filter(Number.class::isInstance)
+            .map(Number.class::cast)
+            .mapToLong(Number::longValue)
+            .sorted()
+            .toArray();
+    long ok = list.stream().filter(q -> q.get("status").equals("SUCCESS")).count();
+    long validation =
+        list.stream()
+            .filter(q -> Set.of("REJECTED", "VALIDATION_ERROR").contains(q.get("status")))
+            .count();
+    var engines = new TreeMap<String, Integer>();
+    var datasets = new TreeMap<String, Integer>();
+    for (var q : list) {
+      engines.merge(Json.str(q, "engine"), 1, Integer::sum);
+      datasets.merge(Json.str(q, "datasetId"), 1, Integer::sum);
+    }
+    long llmErrors =
+        list.stream()
+            .filter(
+                q -> {
+                  var stored = queries.stored(Json.str(q, "queryId"));
+                  return "LLM_ERROR".equals(Json.map(stored.get("error")).get("code"));
+                })
+            .count();
+    return Json.obj(
+        "queryVolume",
+        list.size(),
+        "successRate",
+        list.isEmpty() ? null : (double) ok / list.size(),
+        "llmErrorCount",
+        llmErrors,
+        "sqlValidationRejectionCount",
+        validation,
+        "timeoutCount",
+        list.stream().filter(q -> q.get("status").equals("TIMEOUT")).count(),
+        "avgLatencyMs",
+        latency.length == 0 ? null : Math.round(Arrays.stream(latency).average().orElse(0)),
+        "p95LatencyMs",
+        latency.length == 0 ? null : latency[(int) Math.ceil(latency.length * .95) - 1],
+        "queriesByEngine",
+        engines.entrySet().stream()
+            .map(e -> Json.obj("engine", e.getKey(), "count", e.getValue()))
+            .toList(),
+        "queriesByDataset",
+        datasets.entrySet().stream()
+            .map(
+                e ->
+                    Json.obj(
+                        "datasetId",
+                        e.getKey(),
+                        "name",
+                        store.dataset(e.getKey()).get("name"),
+                        "count",
+                        e.getValue()))
+            .toList(),
+        "warehouseHealth",
+        store.warehouses().stream()
+            .map(
+                w ->
+                    Json.obj(
+                        "id",
+                        w.get("warehouseId"),
+                        "name",
+                        w.get("name"),
+                        "status",
+                        w.get("status")))
+            .toList(),
+        "ingestionHealth",
+        store.runs("INGESTION").stream()
+            .limit(10)
+            .map(
+                r ->
+                    Json.obj(
+                        "id", r.get("runId"), "name", r.get("sourceId"), "status", r.get("status")))
+            .toList(),
+        "from",
+        from,
+        "to",
+        to,
+        "denominator",
+        list.size());
+  }
+
+  @GetMapping("/settings")
+  Object settings() {
+    var s = store.settings();
+    s.put("providerConfigured", !env.getProperty("LLM_MODEL", "").isBlank());
+    s.put("modelDisplayName", env.getProperty("LLM_MODEL"));
+    s.put("availableModes", List.of("AUTO", "API", "DETERMINISTIC"));
+    return s;
+  }
+
+  @PatchMapping("/settings")
+  @PreAuthorize("hasRole('ADMIN')")
+  Object settingsUpdate(@RequestBody Map<String, Object> b) {
+    RegistryController.fields(b, Set.of("locale", "timezone", "defaultQueryMode", "limits"));
+    RegistryController.required(b, "locale", "timezone", "defaultQueryMode");
+    if (!Set.of("vi", "en").contains(Json.str(b, "locale"))
+        || !Set.of("AUTO", "API", "DETERMINISTIC").contains(Json.str(b, "defaultQueryMode")))
+      throw ApiException.bad("Cài đặt không hợp lệ.");
+    try {
+      ZoneId.of(Json.str(b, "timezone"));
+    } catch (Exception e) {
+      throw ApiException.bad("Timezone không hợp lệ.");
+    }
+    var limits = Json.map(b.get("limits"));
+    RegistryController.fields(
+        limits, Set.of("maxRows", "maxBytes", "statementTimeoutMs", "queryDeadlineMs"));
+    for (var limit :
+        Map.of(
+                "maxRows",
+                1000,
+                "maxBytes",
+                5242880,
+                "statementTimeoutMs",
+                15000,
+                "queryDeadlineMs",
+                60000)
+            .entrySet())
+      if (!(limits.get(limit.getKey()) instanceof Number n)
+          || n.longValue() < 1
+          || n.longValue() > limit.getValue())
+        throw ApiException.bad("Giới hạn vượt server bounds.");
+    if (((Number) limits.get("statementTimeoutMs")).intValue()
+        >= ((Number) limits.get("queryDeadlineMs")).intValue())
+      throw ApiException.bad("Statement timeout phải nhỏ hơn deadline.");
+    var s = store.settings();
+    s.putAll(b);
+    store.settings(s);
+    store.audit("SETTINGS_UPDATE", "platform");
+    return settings();
+  }
 }

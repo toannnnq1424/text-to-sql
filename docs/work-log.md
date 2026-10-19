@@ -100,3 +100,13 @@ Các entry triển khai tiếp theo thêm phía dưới; không đánh dấu FE/
 - Còn thiếu / blocker / phụ thuộc: provider OIDC, SQL Import UI/API end-to-end và live-data/visual acceptance còn thiếu.
 - Việc tiếp nối: cập nhật PR #2 và tiếp tục triển khai các workflow bắt buộc; code style không thay thế acceptance chức năng.
 - Commit/push: entry này đi cùng commit; SHA remote xác minh sau push.
+
+### 2026-10-20 01:56 UTC+07 — Chuẩn hóa code backend / conversation chính
+- Nhánh / commit subject: `module/backend`; `style: format backend code for review`.
+- Phạm vi: format toàn bộ Java backend và tests; bổ sung quy tắc formatter chung để không tiếp tục nén nhiều lệnh trên một dòng.
+- Trạng thái: VERIFIED cho không thay đổi hành vi và regression suite backend; backend acceptance tổng thể INCOMPLETE, vì task này không triển khai SQL Import/ingestion tổng quát/OIDC.
+- Đã làm: format Java bằng Google Java Format; bổ sung hướng dẫn code style và sửa hướng dẫn CONTRIBUTING đã lỗi thời, nói repo chỉ là bộ tài liệu.
+- Kiểm chứng: `NLA_INTEGRATION=true NLA_TESTCONTAINERS=true mvn test` — 27 passed, 0 failed, 0 skipped; gồm 3 adapter Testcontainers và live warehouse tests trên ba engine; `git diff --check` PASS.
+- Còn thiếu / blocker / phụ thuộc: không có thay đổi runtime trong task format; SQL Import end-to-end và các acceptance bắt buộc khác vẫn chưa triển khai/xác minh.
+- Việc tiếp nối: hoàn tất implementation BE theo acceptance; không coi regression test hiện có là bằng chứng SQL Import hoặc ingestion tổng quát đã chạy.
+- Commit/push: entry này đi cùng commit; SHA remote xác minh sau push.
