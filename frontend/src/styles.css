@@ -1639,7 +1639,7 @@ main {
 }
 .three-columns {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(210px, 0.8fr) repeat(2, minmax(0, 1.2fr));
   gap: 20px;
 }
 .three-columns > div + div {
@@ -1683,13 +1683,27 @@ main {
   border-width: 0 0 0 1px;
   border-radius: 0 8px 8px 0;
 }
+.result-scroll table {
+  width: max-content;
+}
 .result-scroll td {
   white-space: nowrap;
   font-size: 12px;
   min-width: 105px;
 }
 .result-scroll td:first-child {
-  min-width: 45px;
+  min-width: 38px;
+  width: 38px;
+}
+.result-scroll th:last-child,
+.result-scroll td:last-child {
+  width: 54px;
+  min-width: 54px;
+  text-align: center;
+  white-space: nowrap;
+}
+.result-scroll th:last-child {
+  font-size: 0;
 }
 .result-scroll .numeric {
   text-align: right;
@@ -1754,7 +1768,8 @@ main {
 }
 .sql-line {
   display: block;
-  white-space: pre;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .line-no {
   display: inline-block;
@@ -1805,11 +1820,12 @@ main {
 }
 .number-chart {
   text-align: center;
-  padding: 60px 20px;
+  min-height: 210px;
+  padding: 28px 20px;
 }
 .number-chart strong {
   display: block;
-  font-size: 44px;
+  font-size: clamp(44px, 5vw, 64px);
   color: var(--blue);
   margin: 16px 0;
   overflow-wrap: anywhere;
@@ -1970,6 +1986,17 @@ summary {
   padding: 14px 18px;
   margin-top: 20px;
   background: #fff;
+}
+.local-login-form {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  align-items: end;
+  gap: 8px 12px;
+  min-width: min(460px, 100%);
+}
+.local-login-form > small {
+  grid-column: 1 / -1;
+  margin-top: -5px;
 }
 .auth-banner > svg {
   color: var(--blue);
@@ -2498,6 +2525,14 @@ summary {
   .auth-banner {
     align-items: flex-start;
     padding: 12px;
+    flex-wrap: wrap;
+  }
+  .local-login-form {
+    grid-template-columns: 1fr;
+    min-width: 100%;
+  }
+  .local-login-form > small {
+    grid-column: auto;
   }
   .auth-banner .button {
     font-size: 10px;

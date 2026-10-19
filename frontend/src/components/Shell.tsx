@@ -25,7 +25,7 @@ import { useAuth } from "../app/auth";
 import { warehouseApi } from "../api/warehouseApi";
 import { datasetApi } from "../api/datasetApi";
 import { engineLabel } from "../lib/format";
-import { AsyncSelect, Badge, Button, Notice } from "./ui";
+import { AsyncSelect, Badge, Button, Field, Notice } from "./ui";
 import { BrandMark } from "./Artwork";
 export const navigation = [
   { to: "/", label: "Trang chủ", icon: Home },
@@ -49,7 +49,9 @@ export function Shell() {
     );
   const [open, setOpen] = useState(false),
     [notifications, setNotifications] = useState(false),
-    [authError, setAuthError] = useState("");
+    [authError, setAuthError] = useState(""),
+    [localToken, setLocalToken] = useState(""),
+    [localBusy, setLocalBusy] = useState(false);
   const current = navigation.find((n) =>
     n.to === "/"
       ? location.pathname === "/"
@@ -106,6 +108,10 @@ export function Shell() {
   }, [open, mobile]);
 
   const signin = () => void auth.login().catch((e) => setAuthError(e.message));
+  const openLocalLogin = () => {
+    document.querySelector<HTMLInputElement>(".local-login-form input")?.focus();
+    document.querySelector(".auth-banner")?.scrollIntoView({ block: "nearest" });
+  };
   return (
     <>
       <a className="skip-link" href="#main">
@@ -297,7 +303,7 @@ export function Shell() {
                     : "Natural Language Analytics"}
                 </small>
               </div>
-              {auth.user ? (
+              {auth.user && (!auth.localMode || auth.can("ADMIN")) ? (
                 <Button
                   aria-label="Đăng xuất"
                   variant="ghost"
@@ -308,7 +314,11 @@ export function Shell() {
                   <LogOut size={18} />
                 </Button>
               ) : (
-                <Button aria-label="Đăng nhập" variant="ghost" onClick={signin}>
+                <Button
+                  aria-label={auth.localMode ? "Đăng nhập quản trị local" : "Đăng nhập"}
+                  variant="ghost"
+                  onClick={auth.localMode ? openLocalLogin : signin}
+                >
                   <LogIn size={19} />
                 </Button>
               )}
@@ -319,27 +329,70 @@ export function Shell() {
           {(authError || auth.error) && (
             <Notice tone="error">{authError || auth.error}</Notice>
           )}
-          {auth.ready && !auth.user && !c.enabled && (
+          {auth.ready &&
+            ((auth.localMode && !auth.can("ADMIN")) ||
+              (!auth.user && !c.enabled)) && (
             <div className="auth-banner">
               <ShieldCheck size={20} />
               <div>
                 <strong>
-                  {auth.configured
+                  {auth.localMode
+                    ? "Dữ liệu đang mở ở chế độ chỉ đọc local"
+                    : auth.configured
                     ? "Đăng nhập để truy cập dữ liệu của bạn"
                     : "Chưa cấu hình kết nối đăng nhập"}
                 </strong>
                 <span>
-                  {auth.configured
+                  {auth.localMode
+                    ? "Dùng token admin trong `.local/docker.env` để thực hiện thao tác quản trị."
+                    : auth.configured
                     ? "Sử dụng tài khoản được cấp quyền truy cập warehouse."
                     : "Cấu hình OIDC public client để kết nối an toàn tới Java API."}
                 </span>
               </div>
-              {auth.configured && (
+              {auth.localMode && auth.localLogin ? (
+                <form
+                  className="local-login-form"
+                  onSubmit={async (event) => {
+                    event.preventDefault();
+                    setLocalBusy(true);
+                    setAuthError("");
+                    try {
+                      await auth.localLogin?.(localToken);
+                      setLocalToken("");
+                    } catch (error) {
+                      setAuthError(
+                        error instanceof Error
+                          ? error.message
+                          : "Đăng nhập local thất bại.",
+                      );
+                    } finally {
+                      setLocalBusy(false);
+                    }
+                  }}
+                >
+                  <Field label="Local API token">
+                    <input
+                      aria-label="Local API token"
+                      type="password"
+                      autoComplete="off"
+                      minLength={32}
+                      required
+                      value={localToken}
+                      onChange={(event) => setLocalToken(event.target.value)}
+                    />
+                  </Field>
+                  <Button type="submit" variant="primary" disabled={localBusy}>
+                    {localBusy ? "Đang xác thực…" : "Đăng nhập local"}
+                  </Button>
+                  <small>Token nằm trong `.local/docker.env`.</small>
+                </form>
+              ) : auth.configured ? (
                 <Button variant="primary" onClick={signin}>
                   Đăng nhập
                   <ArrowRight size={16} />
                 </Button>
-              )}
+              ) : null}
             </div>
           )}
           <Outlet />
