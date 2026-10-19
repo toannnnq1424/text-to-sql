@@ -565,6 +565,20 @@ legend {
   color: var(--muted);
   margin: 10px 0;
 }
+.notification-status {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  margin: 12px 0;
+  font-size: 12px;
+}
+.notification-status li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
 .notification-menu a {
   display: flex;
   gap: 10px;
@@ -1779,6 +1793,27 @@ main {
   color: #9aabc9;
   margin-right: 12px;
   font-size: 10px;
+}
+.sql-keyword {
+  color: #1761df;
+  font-weight: 700;
+}
+.sql-function {
+  color: #7b3fd1;
+  font-weight: 600;
+}
+.sql-string {
+  color: #d34b52;
+}
+.sql-number {
+  color: #b66a1b;
+}
+.sql-quoted-identifier {
+  color: #16806f;
+}
+.sql-comment {
+  color: #8695ad;
+  font-style: italic;
 }
 .source-table {
   display: flex;

@@ -5,12 +5,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import {
-  UserManager,
-  WebStorageStateStore,
-  InMemoryWebStorage,
-  User,
-} from "oidc-client-ts";
+import { UserManager, WebStorageStateStore, User } from "oidc-client-ts";
 import { setTokenProvider } from "../api/client";
 import { hasRole } from "./permissions";
 export type AuthState = {
@@ -20,7 +15,7 @@ export type AuthState = {
   error: string | null;
   can: (role: "VIEWER" | "ANALYST" | "OPERATOR" | "ADMIN") => boolean;
   login: () => Promise<void>;
-  localLogin?: (token:string)=>Promise<void>;
+  localLogin?: (token: string) => Promise<void>;
   localMode?: boolean;
   logout: () => Promise<void>;
 };
@@ -42,8 +37,9 @@ let configurationError: string | null = null;
 let initialSession: Promise<User | null> | undefined;
 const authority = import.meta.env.VITE_OIDC_AUTHORITY,
   client = import.meta.env.VITE_OIDC_CLIENT_ID;
-const localAuth=import.meta.env.DEV&&import.meta.env.VITE_LOCAL_AUTH==='true';
-let localToken:string|null=null;
+const localAuth =
+  import.meta.env.DEV && import.meta.env.VITE_LOCAL_AUTH === "true";
+let localToken: string | null = null;
 const configured = Boolean(authority && client);
 if (configured) {
   try {
@@ -64,7 +60,9 @@ if (configured) {
       scope: import.meta.env.VITE_OIDC_SCOPE || "openid profile email",
       response_type: "code",
       automaticSilentRenew: true,
-      userStore: new WebStorageStateStore({ store: new InMemoryWebStorage() }),
+      // Keep the OIDC session across reloads in this tab, without persisting
+      // access tokens in localStorage or sharing them with other tabs.
+      userStore: new WebStorageStateStore({ store: sessionStorage }),
       stateStore: new WebStorageStateStore({ store: sessionStorage }),
     });
   } catch {
@@ -96,11 +94,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     manager?.events.addAccessTokenExpired(expired);
     const init = async () => {
       try {
-        if(localAuth){
-         const {request}=await import('../api/client');const {z}=await import('zod');
-         setTokenProvider(async()=>localToken);
-         const session=await request('/session',z.object({subject:z.string(),name:z.string(),roles:z.array(z.string()),local:z.literal(true)}));
-         if(live)setUser(new User({access_token:localToken||'',token_type:'Bearer',expires_at:Math.floor(Date.now()/1000)+3600,profile:{sub:session.subject,name:session.name,roles:session.roles,iss:window.location.origin,aud:'local',exp:Math.floor(Date.now()/1000)+3600,iat:Math.floor(Date.now()/1000)}}));return;
+        if (localAuth) {
+          const { request } = await import("../api/client");
+          const { z } = await import("zod");
+          setTokenProvider(async () => localToken);
+          const session = await request(
+            "/session",
+            z.object({
+              subject: z.string(),
+              name: z.string(),
+              roles: z.array(z.string()),
+              local: z.literal(true),
+            }),
+          );
+          if (live)
+            setUser(
+              new User({
+                access_token: localToken || "",
+                token_type: "Bearer",
+                expires_at: Math.floor(Date.now() / 1000) + 3600,
+                profile: {
+                  sub: session.subject,
+                  name: session.name,
+                  roles: session.roles,
+                  iss: window.location.origin,
+                  aud: "local",
+                  exp: Math.floor(Date.now() / 1000) + 3600,
+                  iat: Math.floor(Date.now() / 1000),
+                },
+              }),
+            );
+          return;
         }
         if (manager) {
           const m = manager;
@@ -141,10 +165,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
     void init();
-    if(!localAuth)setTokenProvider(async () => {
-      const u = await manager?.getUser();
-      return u && !u.expired ? u.access_token : null;
-    });
+    if (!localAuth)
+      setTokenProvider(async () => {
+        const u = await manager?.getUser();
+        return u && !u.expired ? u.access_token : null;
+      });
     return () => {
       live = false;
       manager?.events.removeUserLoaded(loaded);
@@ -160,14 +185,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       import.meta.env.VITE_OIDC_ROLE_CLAIM || "roles",
     );
   }
-  const localLogin=async(token:string)=>{
-   if(!localAuth||token.trim().length<32)throw new Error('Local token không hợp lệ.');
-   const {request}=await import('../api/client');const {z}=await import('zod');
-   const previous=localToken;localToken=token.trim();setTokenProvider(async()=>localToken);
-   try{
-    const session=await request('/session',z.object({subject:z.string(),name:z.string(),roles:z.array(z.string()),local:z.literal(true)}));
-    setUser(new User({access_token:localToken,token_type:'Bearer',expires_at:Math.floor(Date.now()/1000)+3600,profile:{sub:session.subject,name:session.name,roles:session.roles,iss:window.location.origin,aud:'local',exp:Math.floor(Date.now()/1000)+3600,iat:Math.floor(Date.now()/1000)}}));setError(null);
-   }catch(e){localToken=previous;throw e;}
+  const localLogin = async (token: string) => {
+    if (!localAuth || token.trim().length < 32)
+      throw new Error("Local token không hợp lệ.");
+    const { request } = await import("../api/client");
+    const { z } = await import("zod");
+    const previous = localToken;
+    localToken = token.trim();
+    setTokenProvider(async () => localToken);
+    try {
+      const session = await request(
+        "/session",
+        z.object({
+          subject: z.string(),
+          name: z.string(),
+          roles: z.array(z.string()),
+          local: z.literal(true),
+        }),
+      );
+      setUser(
+        new User({
+          access_token: localToken,
+          token_type: "Bearer",
+          expires_at: Math.floor(Date.now() / 1000) + 3600,
+          profile: {
+            sub: session.subject,
+            name: session.name,
+            roles: session.roles,
+            iss: window.location.origin,
+            aud: "local",
+            exp: Math.floor(Date.now() / 1000) + 3600,
+            iat: Math.floor(Date.now() / 1000),
+          },
+        }),
+      );
+      setError(null);
+    } catch (e) {
+      localToken = previous;
+      throw e;
+    }
   };
   const login = async () => {
     if (!manager)
@@ -177,7 +233,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   };
   const logout = async () => {
-    if(localAuth){localToken=null;setUser(null);window.location.reload();return;}
+    if (localAuth) {
+      localToken = null;
+      setUser(null);
+      window.location.reload();
+      return;
+    }
     if (manager) {
       await manager.signoutRedirect();
       setUser(null);
@@ -192,7 +253,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error,
         can,
         login,
-        logout,localLogin,localMode:localAuth,
+        logout,
+        localLogin,
+        localMode: localAuth,
       }}
     >
       {children}

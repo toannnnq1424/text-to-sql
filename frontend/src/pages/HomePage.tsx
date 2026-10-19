@@ -119,7 +119,7 @@ export function HomePage() {
                   icon={<Layers3 />}
                   label="Datasets"
                   value={data.datasetCount}
-                  note="Không giới hạn lĩnh vực"
+                  note={`${data.datasetCount} dataset đã đăng ký`}
                   tone="purple"
                 />
                 <Stat

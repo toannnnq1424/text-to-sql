@@ -31,6 +31,8 @@ Nếu phát hiện xung đột chưa được giải quyết, ghi cụ thể và
 - Login/OIDC, role/resource authorization, in-app SQL Import đã validate/preview và data ingestion đều là scope bắt buộc. Không chuyển chúng thành future extension; không execute arbitrary SQL file.
 - Tuân thủ đầy đủ `docs/implementation-rules.md`: không chia version, không skeleton/placeholder, không trì hoãn implementation, validation, error handling, security, test hoặc tích hợp bắt buộc. Làm module nào hoàn chỉnh module đó trong scope cam kết; không giảm scope để chạy demo.
 - Abstraction cho chức năng bắt buộc phải đi kèm implementation thật. UI/contract/mock/stub chưa phải chức năng hoàn thành; không chuyển phần target còn thiếu thành future work/roadmap/extension point.
+- Không kết thúc task bằng cấu trúc, interface, endpoint/screen, happy path hoặc fixture Chinook nếu acceptance yêu cầu luồng tổng quát. Đối chiếu acceptance trước khi code; nghiệm thu bằng caller thật, persistence/warehouse thật và test tích hợp. Nếu còn thiếu thì ghi INCOMPLETE/BLOCKED cùng nguyên nhân, tuyệt đối không mô tả phần dựng khung như feature đã xong hoặc né phần còn thiếu bằng cách chuyển sang task khác.
+- `data/chinook/` là sample có provenance, không phải khuôn bắt người dùng thêm folder mỗi lần kết nối/nạp warehouse. Kết nối database có sẵn đi qua registry/discovery; import do người dùng thực hiện phải đi qua module chung trong app. Chỉ thêm thư mục nguồn khi repo phân phối thêm sample dataset có provenance đầy đủ.
 - Credentials không vào Git, API response, prompt LLM hoặc log. Không chạy `.sql` không tin cậy; provisioning là quy trình quản trị tách biệt.
 - Không spawn/delegate agent chỉ vì tài liệu nói ba luồng song song. Chỉ sử dụng subagent khi người dùng hoặc task cụ thể yêu cầu; các conversation có thể được giao độc lập.
 
@@ -39,6 +41,8 @@ Nếu phát hiện xung đột chưa được giải quyết, ghi cụ thể và
 Chỉ sửa vùng được giao. Hợp đồng chung là vùng phối hợp; báo tác động trước khi bên khác dùng thay đổi. Không ghi đè công việc chưa commit của conversation khác. Dùng nhánh `module/<task>` khi tạo nhánh công việc. Đọc `CONTRIBUTING.md` và `docs/task-template.md`.
 
 Chạy kiểm tra tương ứng `docs/acceptance.md`; ghi rõ pass/fail/blocked/not-run và bằng chứng. Không khẳng định Docker, integration, pixel accuracy, provider thật hoặc E2E đã pass nếu chưa chạy. Mock/stub chỉ dùng test hoặc hỗ trợ phối hợp tạm thời khi cần, tách biệt runtime sản phẩm; không thay implementation thật hay nghiệm thu hệ thống. Không thêm TODO cho tính năng bắt buộc rồi gọi hoàn thành. Nếu task là tài liệu, không tự thêm application code, dependencies hoặc runtime.
+
+Code phải dễ đọc ngay từ commit đầu: một import/declaration/statement mỗi dòng; không nén nhiều lệnh bằng dấu chấm phẩy hoặc viết cả module trên một dòng. Format Java bằng Google Java Format, Python bằng Black/isort (line length 100), và TypeScript/React/CSS bằng Prettier. Quy trình và lệnh được ghi ở [docs/code-style.md](docs/code-style.md).
 
 ## Nhật ký sau mỗi commit/push
 

@@ -8,6 +8,7 @@
 - Thêm ảnh cần provenance; 14 ảnh hiện tại đã được người dùng cho phép. Bulk data/binaries/keys không commit mặc định.
 - PR mô tả kết quả hành vi, contract/data/security/visual tác động thực tế, evidence tests và phần chưa chạy. Không list PASS cho test chưa chạy.
 - Task tài liệu kiểm tra link local, JSON parse, manifest hashes, nội dung xung đột; runtime task dùng acceptance matrix. Không tạo test app giả cho thay đổi docs.
+- Format toàn bộ file nguồn liên quan theo [quy tắc code style](docs/code-style.md); tránh các dòng chứa nhiều lệnh hoặc module bị nén thành một dòng.
 - `.env` thật ignored; nếu cần `.env.example` chỉ có safe dummy values. Không log/token/provider key trong PR.
 - Chưa chọn open-source license; không tự gán license cho mã/ảnh/dataset của người khác.
 

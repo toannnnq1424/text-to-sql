@@ -29,6 +29,14 @@ Nguyên tắc bắt buộc:
 - Không được để phần tích hợp giữa các module đến một “version sau”.
 - Không được giảm scope đã cam kết chỉ để sản phẩm chạy demo.
 
+## Cấm để lại skeleton và báo cáo sai mức hoàn thành
+
+Không được kết thúc task ở trạng thái chỉ dựng cấu trúc, form, route, endpoint, interface, service rỗng, pipeline mẫu hoặc happy path rồi để phần triển khai thật cho task/lần sau. Quy tắc này áp dụng cả khi skeleton biên dịch được, trả dữ liệu Chinook, hoặc UI gọi được API: những điều đó không tự chứng minh chức năng tổng quát đã hoàn thành.
+
+Trước khi sửa, đối chiếu code hiện có với target/acceptance và ghi nhận phần thiếu. Khi nhận một module, hoàn thành luồng end-to-end đã cam kết trong phạm vi đó ngay lần làm này: đầu vào thật → validation/authorization → xử lý nghiệp vụ → persistence/warehouse thật → trạng thái/kết quả/lỗi → UI/API caller → kiểm thử tích hợp phù hợp. Mọi abstraction bắt buộc phải có implementation hoạt động và consumer thật. Không để TODO, endpoint/screen placeholder, fixture runtime, dữ liệu mẫu hoặc script riêng cho một dataset đứng thay module tổng quát.
+
+Chỉ được báo PASS khi có bằng chứng đường chạy thật đối với acceptance liên quan; test unit, build, contract, screenshot tĩnh hay demo một nguồn không đủ để tuyên bố module hoàn tất. Nếu chưa thể hoàn thành do blocker khách quan, báo phần đã làm và phần còn thiếu là INCOMPLETE/BLOCKED, nêu nguyên nhân cụ thể; không đổi tên trạng thái thành “đã dựng”, không ghi như đã hoàn thành, và không chuyển phần bắt buộc sang roadmap/future work. Không mở task triển khai khác như cách né phần dang dở đã nhận.
+
 ## Ảnh mock là chuẩn phong cách UI
 
 “Mock images” là các ảnh tham chiếu do người dùng cung cấp, dùng để tuân theo style, bố cục, typography, spacing, màu sắc, sidebar cố định và các tương tác/thành phần UI phù hợp ngay từ bước dựng đầu. Không có nghĩa là truyền dữ liệu giả vào giao diện, hard-code số liệu trong ảnh hoặc dựng một bản demo bằng dữ liệu giả.
@@ -46,6 +54,8 @@ DeterministicModelClient là chức năng offline được yêu cầu riêng, ph
 ## Scope và hướng mở rộng
 
 Theo điều chỉnh mới nhất ngày 2026-10-19, SQL Import trực tiếp trong application và data ingestion pipeline đều là module bắt buộc trong target hiện tại. Phải hoàn thiện end-to-end cho PostgreSQL, MySQL, SQL Server; không chuyển import UI/API/parser/cross-dialect mapping, ingestion source/run, validation/security/error handling, job progress/result hoặc tests sang `future-extensions.md`. Upload SQL phải parse subset allowlisted và review plan; không chạy file tùy ý.
+
+`data/chinook/` và `data/scripts/docker_chinook.py` chỉ là fixture/provisioning có provenance để dựng bộ mẫu kiểm thử cố định. Chúng không phải module import tổng quát và không được dùng làm lý do yêu cầu người dùng tạo `data/<source>` cho mỗi warehouse. Warehouse có sẵn phải dùng luồng registry/connection/discovery; import do người dùng khởi chạy phải dùng workflow chung trong application, lưu run/metadata theo contract. Chỉ thêm folder riêng khi repository thực sự phân phối một sample dataset được pin/versioned, kèm nguồn, giấy phép, checksum và cách tái tạo.
 
 Local inference/training vẫn là tùy chọn và không thay ưu tiên provider API. Các hướng mở rộng khác chỉ lưu ở future-extensions.md khi người dùng xác định chúng ngoài scope chính. Không được chuyển một chức năng bắt buộc còn thiếu sang tài liệu đó để né hoàn thành target.
 

@@ -3,6 +3,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse, delay } from "msw";
 import { renderApp, readyDataset } from "../test/render";
+import { warehouseSelectionKey } from "./warehouseSelection";
 import { server } from "../test/server";
 import * as f from "../test/fixtures";
 const api = "*/api/v1";
@@ -55,6 +56,45 @@ describe("shell and context", () => {
       expect(screen.getByRole("button", { name: "Dataset" })).toHaveTextContent(
         "Commerce demo",
       ),
+    );
+  });
+  it("restores warehouse context only for the signed-in subject", async () => {
+    let posted: unknown;
+    server.use(
+      http.post(`${api}/query`, async ({ request }) => {
+        posted = await request.json();
+        return HttpResponse.json(f.query, { status: 201 });
+      }),
+    );
+    sessionStorage.setItem(
+      warehouseSelectionKey("test-user"),
+      JSON.stringify({
+        warehouseId: "wh-demo-pg",
+        datasetId: "ds-commerce-pg",
+      }),
+    );
+    sessionStorage.setItem(
+      warehouseSelectionKey("other-user"),
+      JSON.stringify({
+        warehouseId: "wh-demo-mysql",
+        datasetId: "ds-commerce-mysql",
+      }),
+    );
+
+    renderApp("/query", ["ADMIN"], "other-user");
+    await readyDataset();
+
+    expect(screen.getByRole("button", { name: "Warehouse" })).toHaveTextContent(
+      "MySQL",
+    );
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText("Câu hỏi phân tích"), "Đếm bản ghi");
+    await user.click(screen.getByRole("button", { name: "Gửi" }));
+    await waitFor(() =>
+      expect(posted).toMatchObject({
+        warehouseId: "wh-demo-mysql",
+        datasetId: "ds-commerce-mysql",
+      }),
     );
   });
   it("reports API failures instead of fabricating an empty list", async () => {

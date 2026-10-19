@@ -17,7 +17,10 @@ import {
   Resource,
 } from "../components/ui";
 export function SettingsPage() {
- const auth=useAuth(),[localToken,setLocalToken]=useState(''),[localError,setLocalError]=useState(''),[localBusy,setLocalBusy]=useState(false);
+  const auth = useAuth(),
+    [localToken, setLocalToken] = useState(""),
+    [localError, setLocalError] = useState(""),
+    [localBusy, setLocalBusy] = useState(false);
   const c = useWarehouse(),
     { locale, setLocale } = useLocale();
   const settings = useQuery({
@@ -31,7 +34,54 @@ export function SettingsPage() {
         title="Cài đặt"
         description="Tùy chỉnh trải nghiệm và cấu hình hoạt động của nền tảng. Các thông số hệ thống được kiểm soát và xác thực bởi Java API."
       />
-      {auth.localMode&&<Card title="Phiên quản trị local"><p className="muted">Nhập LOCAL_API_TOKEN từ file .local/docker.env để kiểm thử thao tác quản trị trên máy này. Token chỉ giữ trong bộ nhớ, không lưu trình duyệt.</p><form className="inline-actions" onSubmit={async e=>{e.preventDefault();setLocalBusy(true);try{await auth.localLogin?.(localToken);setLocalToken('');setLocalError('');}catch(e){setLocalError(e instanceof Error?e.message:'Đăng nhập thất bại.');}finally{setLocalBusy(false);}}}><Field label="Local API token"><input type="password" value={localToken} onChange={e=>setLocalToken(e.target.value)} autoComplete="off" required minLength={32}/></Field><Button type="submit" variant="primary" disabled={localBusy}>Kết nối phiên local</Button></form>{localError&&<Notice tone="error">{localError}</Notice>}{auth.can('ADMIN')&&<Notice tone="success">Phiên local đã được Java xác thực với quyền ADMIN.</Notice>}</Card>}<Card title="Tùy chọn giao diện" icon={<Globe2 size={22} />}>
+      {auth.localMode && (
+        <Card title="Phiên quản trị local">
+          <p className="muted">
+            Nhập LOCAL_API_TOKEN từ file .local/docker.env để kiểm thử thao tác
+            quản trị trên máy này. Token chỉ giữ trong bộ nhớ, không lưu trình
+            duyệt.
+          </p>
+          <form
+            className="inline-actions"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setLocalBusy(true);
+              try {
+                await auth.localLogin?.(localToken);
+                setLocalToken("");
+                setLocalError("");
+              } catch (e) {
+                setLocalError(
+                  e instanceof Error ? e.message : "Đăng nhập thất bại.",
+                );
+              } finally {
+                setLocalBusy(false);
+              }
+            }}
+          >
+            <Field label="Local API token">
+              <input
+                type="password"
+                value={localToken}
+                onChange={(e) => setLocalToken(e.target.value)}
+                autoComplete="off"
+                required
+                minLength={32}
+              />
+            </Field>
+            <Button type="submit" variant="primary" disabled={localBusy}>
+              Kết nối phiên local
+            </Button>
+          </form>
+          {localError && <Notice tone="error">{localError}</Notice>}
+          {auth.can("ADMIN") && (
+            <Notice tone="success">
+              Phiên local đã được Java xác thực với quyền ADMIN.
+            </Notice>
+          )}
+        </Card>
+      )}
+      <Card title="Tùy chọn giao diện" icon={<Globe2 size={22} />}>
         <div className="form-grid">
           <Field label="Ngôn ngữ điều hướng">
             <select value={locale} onChange={(e) => setLocale(e.target.value)}>

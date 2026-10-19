@@ -70,11 +70,12 @@ function CatalogContent() {
   const selected = sections.some((s) => s[0] === section)
     ? section
     : "overview";
-  const categories = selected === "tables"
-    ? summary.data?.tableCategories
-    : selected === "metrics"
-      ? summary.data?.metricCategories
-      : [];
+  const categories =
+    selected === "tables"
+      ? summary.data?.tableCategories
+      : selected === "metrics"
+        ? summary.data?.metricCategories
+        : [];
   return (
     <>
       {selected === "overview" && (

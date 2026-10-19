@@ -33,6 +33,14 @@ python3 data/scripts/docker_chinook.py status
 python3 data/scripts/docker_chinook.py provision
 ```
 
+Mỗi bản clone tự tạo credential ngẫu nhiên, riêng tư khi chạy `init`; không cần xin hoặc lấy token từ maintainer. `.local/compose.env` chứa credential Compose và local API token; sau `provision`, `.local/docker.env` chứa cấu hình runtime cho backend/frontend. Cả thư mục `.local/` đã được Git ignore. Admin token chỉ dùng cho thao tác quản trị trong môi trường local; người dùng có thể đăng nhập bằng token vừa tạo từ banner đăng nhập hoặc Settings.
+
+Compose file nằm tại [`infra/compose.databases.yml`](infra/compose.databases.yml), không phải ở thư mục gốc. Dùng script ở trên là cách khởi chạy khuyến nghị vì script tự truyền file env riêng tư. Nếu cần gọi Compose trực tiếp sau `init`, lệnh tương đương là:
+
+```bash
+docker compose --env-file .local/compose.env -f infra/compose.databases.yml up -d
+```
+
 `provision` tải đúng release Chinook đã pin, xác minh SHA-256 rồi mới nạp script native vào ba database cô lập. Database tên `nla_chinook`; thông tin quản trị và runtime được tạo riêng trong `.local/`, không commit lên Git. Các port chỉ bind loopback: PostgreSQL `127.0.0.1:55432`, MySQL `127.0.0.1:53306`, SQL Server `127.0.0.1:51433`. Dữ liệu Chinook có 11 bảng; provisioning xác minh số dòng và tài khoản đọc không thể ghi.
 
 Provisioning đồng thời tạo metadata store PostgreSQL `nla_metadata` cùng vai trò runtime; pipeline staging/mart được quản trị trong từng engine. Các giá trị đăng nhập không dùng giá trị mẫu cố định như `postgrespassword`; xem file runtime cục bộ nếu cần tích hợp công cụ ngoài repo và không chia sẻ file đó.
@@ -63,7 +71,7 @@ Trong terminal riêng:
 python3 infra/local/run.py backend
 ```
 
-Lệnh này chạy Maven/Spring Boot với Java 21 và nạp cấu hình `.local/docker.env` vào tiến trình mà không in secrets. Backend chạy ở `http://localhost:8080`; API chính là `POST http://localhost:8080/api/v1/query`. Local profile cung cấp quyền đọc ẩn danh cho demo; thao tác quản trị cần local API token mà script đã tạo và có thể nhập trong Settings của UI.
+Lệnh này chạy Maven/Spring Boot với Java 21 và nạp cấu hình `.local/docker.env` vào tiến trình mà không in secrets. Backend chạy ở `http://localhost:8080`; API chính là `POST http://localhost:8080/api/v1/query`. Local profile cung cấp quyền đọc ẩn danh cho demo; thao tác quản trị cần local API token được tạo riêng trên máy đó ở bước `init`, có thể nhập trong banner đăng nhập hoặc Settings của UI.
 
 ### 4. Khởi chạy Frontend
 
