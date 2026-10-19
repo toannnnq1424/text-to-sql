@@ -162,6 +162,30 @@ test("SQL, result tabs, table export and history retain their own navigation", a
     page.getByRole("heading", { name: "Thông tin kỹ thuật" }),
   ).toBeVisible();
 });
+test("compact generated SQL is formatted into readable lines in result details", async ({
+  page,
+}) => {
+  await javaTestBoundary(page);
+  const sourceSql =
+    "SELECT r.region_name, SUM(o.total_amount) AS revenue FROM orders o JOIN regions r ON o.region_id = r.region_id WHERE o.order_date >= '2024-09-01' AND o.order_date < '2024-10-01' GROUP BY r.region_name ORDER BY revenue DESC;";
+  await page.route("**/api/v1/query/qry-demo-001", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ ...f.query, generatedSql: sourceSql }),
+    }),
+  );
+  await page.goto("/query/qry-demo-001/sql");
+  const sqlBlock = page.getByLabel("SQL", { exact: true });
+  await expect(sqlBlock).toContainText("GROUP BY r.region_name");
+  await expect(sqlBlock.locator(".sql-line")).toHaveCount(9);
+  await expect(sqlBlock.locator(".sql-string").first()).toContainText(
+    "2024-09-01",
+  );
+  await expect(sqlBlock.locator(".sql-keyword").first()).toHaveText("SELECT");
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(1729);
+});
 test("engine switching clears the old question and selects only a matching dataset", async ({
   page,
 }) => {
@@ -176,6 +200,18 @@ test("engine switching clears the old question and selects only a matching datas
   ).toContainText("MySQL");
   await expect(page.getByLabel("Câu hỏi phân tích")).toHaveValue("");
   await expect(page.locator(".sidebar-status")).toContainText("ACTIVE");
+});
+test("system notification menu displays monitoring API data", async ({
+  page,
+}) => {
+  await javaTestBoundary(page);
+  await page.goto("/query");
+  await page.getByRole("button", { name: "Thông báo hệ thống" }).click();
+  const menu = page.locator(".notification-menu");
+  await expect(menu).toContainText("Warehouse · Demo POSTGRESQL");
+  await expect(menu).toContainText("Lỗi LLM");
+  await expect(menu).toContainText("1");
+  await expect(menu.getByRole("link", { name: "Mở giám sát" })).toBeVisible();
 });
 test("offline Java is an error state, not fabricated success", async ({
   page,
@@ -216,3 +252,25 @@ for (const path of [
     });
     expect(errors).toEqual([]);
   });
+
+for (const width of [1024, 390]) {
+  test(`field-heavy screens stay inside the viewport at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: width < 500 ? 844 : 1100 });
+    await javaTestBoundary(page);
+    for (const path of [
+      "/warehouses",
+      "/ingestion/ing-001",
+      "/evaluation/results/case-result-001?runId=eval-001",
+      "/settings",
+    ]) {
+      await page.goto(path);
+      await expect(page.locator(".loading")).toHaveCount(0);
+      const overflowing = await page.evaluate(
+        () => document.documentElement.scrollWidth > window.innerWidth + 1,
+      );
+      expect(overflowing, `${path} overflows at ${width}px`).toBe(false);
+    }
+  });
+}

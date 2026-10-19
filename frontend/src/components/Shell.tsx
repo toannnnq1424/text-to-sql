@@ -24,9 +24,11 @@ import { useWarehouse, useLocale } from "../app/providers";
 import { useAuth } from "../app/auth";
 import { warehouseApi } from "../api/warehouseApi";
 import { datasetApi } from "../api/datasetApi";
+import { monitoringApi } from "../api/monitoringApi";
 import { engineLabel } from "../lib/format";
 import { AsyncSelect, Badge, Button, Field, Notice } from "./ui";
 import { BrandMark } from "./Artwork";
+import { useQuery } from "@tanstack/react-query";
 export const navigation = [
   { to: "/", label: "Trang chủ", icon: Home },
   { to: "/query", label: "Truy vấn", icon: MessageCircle },
@@ -52,6 +54,19 @@ export function Shell() {
     [authError, setAuthError] = useState(""),
     [localToken, setLocalToken] = useState(""),
     [localBusy, setLocalBusy] = useState(false);
+  const monitoring = useQuery({
+    queryKey: ["header-monitoring", c.warehouseId, c.datasetId],
+    queryFn: ({ signal }) =>
+      monitoringApi.summary(
+        {
+          warehouseId: c.warehouseId,
+          datasetId: c.datasetId,
+        },
+        signal,
+      ),
+    enabled: notifications && c.enabled,
+    staleTime: 30_000,
+  });
   const current = navigation.find((n) =>
     n.to === "/"
       ? location.pathname === "/"
@@ -109,8 +124,12 @@ export function Shell() {
 
   const signin = () => void auth.login().catch((e) => setAuthError(e.message));
   const openLocalLogin = () => {
-    document.querySelector<HTMLInputElement>(".local-login-form input")?.focus();
-    document.querySelector(".auth-banner")?.scrollIntoView({ block: "nearest" });
+    document
+      .querySelector<HTMLInputElement>(".local-login-form input")
+      ?.focus();
+    document
+      .querySelector(".auth-banner")
+      ?.scrollIntoView({ block: "nearest" });
   };
   return (
     <>
@@ -275,10 +294,44 @@ export function Shell() {
               {notifications && (
                 <div className="notification-menu">
                   <strong>Thông báo hệ thống</strong>
-                  <p>
-                    Theo dõi tình trạng warehouse, lỗi truy vấn và pipeline
-                    trong Giám sát.
-                  </p>
+                  {!c.enabled ? (
+                    <p>Đăng nhập và chọn warehouse để tải trạng thái thật.</p>
+                  ) : monitoring.isPending ? (
+                    <p role="status">Đang tải trạng thái hệ thống…</p>
+                  ) : monitoring.error ? (
+                    <p role="alert">
+                      Không tải được trạng thái: {monitoring.error.message}
+                    </p>
+                  ) : monitoring.data ? (
+                    <ul className="notification-status">
+                      {monitoring.data.warehouseHealth.map((item) => (
+                        <li key={`warehouse-${item.id}`}>
+                          <span>Warehouse · {item.name}</span>
+                          <Badge status={item.status} />
+                        </li>
+                      ))}
+                      {monitoring.data.ingestionHealth.map((item) => (
+                        <li key={`ingestion-${item.id}`}>
+                          <span>Pipeline · {item.name}</span>
+                          <Badge status={item.status} />
+                        </li>
+                      ))}
+                      <li>
+                        <span>Lỗi LLM</span>
+                        <strong>{monitoring.data.llmErrorCount}</strong>
+                      </li>
+                      <li>
+                        <span>SQL bị từ chối</span>
+                        <strong>
+                          {monitoring.data.sqlValidationRejectionCount}
+                        </strong>
+                      </li>
+                      <li>
+                        <span>Query timeout</span>
+                        <strong>{monitoring.data.timeoutCount}</strong>
+                      </li>
+                    </ul>
+                  ) : null}
                   <Link
                     to="/monitoring"
                     onClick={() => setNotifications(false)}
@@ -315,7 +368,9 @@ export function Shell() {
                 </Button>
               ) : (
                 <Button
-                  aria-label={auth.localMode ? "Đăng nhập quản trị local" : "Đăng nhập"}
+                  aria-label={
+                    auth.localMode ? "Đăng nhập quản trị local" : "Đăng nhập"
+                  }
                   variant="ghost"
                   onClick={auth.localMode ? openLocalLogin : signin}
                 >
@@ -332,69 +387,73 @@ export function Shell() {
           {auth.ready &&
             ((auth.localMode && !auth.can("ADMIN")) ||
               (!auth.user && !c.enabled)) && (
-            <div className="auth-banner">
-              <ShieldCheck size={20} />
-              <div>
-                <strong>
-                  {auth.localMode
-                    ? "Dữ liệu đang mở ở chế độ chỉ đọc local"
-                    : auth.configured
-                    ? "Đăng nhập để truy cập dữ liệu của bạn"
-                    : "Chưa cấu hình kết nối đăng nhập"}
-                </strong>
-                <span>
-                  {auth.localMode
-                    ? "Dùng token admin trong `.local/docker.env` để thực hiện thao tác quản trị."
-                    : auth.configured
-                    ? "Sử dụng tài khoản được cấp quyền truy cập warehouse."
-                    : "Cấu hình OIDC public client để kết nối an toàn tới Java API."}
-                </span>
-              </div>
-              {auth.localMode && auth.localLogin ? (
-                <form
-                  className="local-login-form"
-                  onSubmit={async (event) => {
-                    event.preventDefault();
-                    setLocalBusy(true);
-                    setAuthError("");
-                    try {
-                      await auth.localLogin?.(localToken);
-                      setLocalToken("");
-                    } catch (error) {
-                      setAuthError(
-                        error instanceof Error
-                          ? error.message
-                          : "Đăng nhập local thất bại.",
-                      );
-                    } finally {
-                      setLocalBusy(false);
-                    }
-                  }}
-                >
-                  <Field label="Local API token">
-                    <input
-                      aria-label="Local API token"
-                      type="password"
-                      autoComplete="off"
-                      minLength={32}
-                      required
-                      value={localToken}
-                      onChange={(event) => setLocalToken(event.target.value)}
-                    />
-                  </Field>
-                  <Button type="submit" variant="primary" disabled={localBusy}>
-                    {localBusy ? "Đang xác thực…" : "Đăng nhập local"}
+              <div className="auth-banner">
+                <ShieldCheck size={20} />
+                <div>
+                  <strong>
+                    {auth.localMode
+                      ? "Dữ liệu đang mở ở chế độ chỉ đọc local"
+                      : auth.configured
+                        ? "Đăng nhập để truy cập dữ liệu của bạn"
+                        : "Chưa cấu hình kết nối đăng nhập"}
+                  </strong>
+                  <span>
+                    {auth.localMode
+                      ? "Dùng token admin trong `.local/docker.env` để thực hiện thao tác quản trị."
+                      : auth.configured
+                        ? "Sử dụng tài khoản được cấp quyền truy cập warehouse."
+                        : "Cấu hình OIDC public client để kết nối an toàn tới Java API."}
+                  </span>
+                </div>
+                {auth.localMode && auth.localLogin ? (
+                  <form
+                    className="local-login-form"
+                    onSubmit={async (event) => {
+                      event.preventDefault();
+                      setLocalBusy(true);
+                      setAuthError("");
+                      try {
+                        await auth.localLogin?.(localToken);
+                        setLocalToken("");
+                      } catch (error) {
+                        setAuthError(
+                          error instanceof Error
+                            ? error.message
+                            : "Đăng nhập local thất bại.",
+                        );
+                      } finally {
+                        setLocalBusy(false);
+                      }
+                    }}
+                  >
+                    <Field label="Local API token">
+                      <input
+                        aria-label="Local API token"
+                        type="password"
+                        autoComplete="off"
+                        minLength={32}
+                        required
+                        value={localToken}
+                        onChange={(event) => setLocalToken(event.target.value)}
+                      />
+                    </Field>
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      disabled={localBusy}
+                    >
+                      {localBusy ? "Đang xác thực…" : "Đăng nhập local"}
+                    </Button>
+                    <small>Token nằm trong `.local/docker.env`.</small>
+                  </form>
+                ) : auth.configured ? (
+                  <Button variant="primary" onClick={signin}>
+                    Đăng nhập
+                    <ArrowRight size={16} />
                   </Button>
-                  <small>Token nằm trong `.local/docker.env`.</small>
-                </form>
-              ) : auth.configured ? (
-                <Button variant="primary" onClick={signin}>
-                  Đăng nhập
-                  <ArrowRight size={16} />
-                </Button>
-              ) : null}
-            </div>
-          )}
+                ) : null}
+              </div>
+            )}
           <Outlet />
         </main>
         <footer className="app-footer">

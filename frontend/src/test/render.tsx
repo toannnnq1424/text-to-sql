@@ -10,7 +10,7 @@ import {
   queryClientDefaults,
 } from "../app/providers";
 import { AppRoutes } from "../App";
-export function testAuth(roles = ["ADMIN"]): AuthState {
+export function testAuth(roles = ["ADMIN"], subject = "test-user"): AuthState {
   return {
     user: new User({
       access_token: "test-only-token",
@@ -20,7 +20,7 @@ export function testAuth(roles = ["ADMIN"]): AuthState {
         aud: "test-client",
         exp: Math.floor(Date.now() / 1000) + 3600,
         iat: Math.floor(Date.now() / 1000),
-        sub: "test-user",
+        sub: subject,
         name: "Test user",
         roles,
       },
@@ -34,11 +34,15 @@ export function testAuth(roles = ["ADMIN"]): AuthState {
     logout: async () => {},
   };
 }
-export function renderApp(path = "/", roles = ["ADMIN"]) {
+export function renderApp(
+  path = "/",
+  roles = ["ADMIN"],
+  subject = "test-user",
+) {
   const client = new QueryClient({ defaultOptions: queryClientDefaults });
   const rendered = render(
     <QueryClientProvider client={client}>
-      <AuthContext value={testAuth(roles)}>
+      <AuthContext value={testAuth(roles, subject)}>
         <LocaleProvider>
           <WarehouseProvider>
             <MemoryRouter initialEntries={[path]}>

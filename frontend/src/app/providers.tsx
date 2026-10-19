@@ -11,6 +11,11 @@ import { warehouseApi } from "../api/warehouseApi";
 import { datasetApi } from "../api/datasetApi";
 import type { Warehouse, Dataset } from "../api/schema";
 import { useAuth, canReadApi } from "./auth";
+import {
+  readWarehouseSelection,
+  warehouseSelectionKey,
+  type WarehouseSelection,
+} from "./warehouseSelection";
 const en: Record<string, string> = {
   "Trang chủ": "Home",
   "Truy vấn": "Query",
@@ -78,30 +83,38 @@ type ContextState = {
   enabled: boolean;
 };
 const WarehouseContext = createContext<ContextState | null>(null);
-function readId(key: string) {
-  try {
-    return sessionStorage.getItem(key) || "";
-  } catch {
-    return "";
-  }
-}
 export function WarehouseProvider({ children }: { children: ReactNode }) {
   const auth = useAuth(),
     enabled = canReadApi(auth),
     client = useQueryClient();
-  const identity=auth.user?.profile.sub||'anonymous';
-  const previousIdentity=useRef(identity);
-  useEffect(()=>{if(previousIdentity.current!==identity){void client.cancelQueries();client.clear();previousIdentity.current=identity;}},[identity,client]);
-  const [warehouseId, setWarehouseId] = useState(() => readId("warehouseId")),
-    [datasetId, setDatasetId] = useState(() => readId("datasetId"));
+  const identity = auth.user?.profile.sub || "anonymous";
+  const previousIdentity = useRef(identity);
+  useEffect(() => {
+    if (previousIdentity.current !== identity) {
+      void client.cancelQueries();
+      client.clear();
+      previousIdentity.current = identity;
+    }
+  }, [identity, client]);
+  const [selection, setSelection] = useState(() =>
+    readWarehouseSelection(sessionStorage, identity),
+  );
+  const activeSelection =
+    selection.identity === identity
+      ? selection
+      : readWarehouseSelection(sessionStorage, identity);
+  const { warehouseId, datasetId } = activeSelection;
+  useEffect(() => {
+    if (selection.identity !== identity) setSelection(activeSelection);
+  }, [activeSelection, identity, selection.identity]);
   const warehouseList = useQuery({
-    queryKey: ["warehouses", "initial"],
+    queryKey: ["warehouses", identity, "initial"],
     queryFn: ({ signal }) =>
       warehouseApi.list({ page: 1, pageSize: 20 }, signal),
     enabled,
   });
   const warehouseDetail = useQuery({
-    queryKey: ["warehouse", warehouseId],
+    queryKey: ["warehouse", identity, warehouseId],
     queryFn: ({ signal }) => warehouseApi.get(warehouseId, signal),
     enabled: enabled && Boolean(warehouseId),
   });
@@ -111,17 +124,17 @@ export function WarehouseProvider({ children }: { children: ReactNode }) {
       const w =
         warehouseList.data.items.find((w) => w.status === "ACTIVE") ||
         warehouseList.data.items[0];
-      setWarehouseId(w.warehouseId);
+      setSelection({ identity, warehouseId: w.warehouseId, datasetId: "" });
     }
-  }, [enabled, warehouseId, warehouseList.data]);
+  }, [enabled, identity, warehouseId, warehouseList.data]);
   const datasets = useQuery({
-    queryKey: ["datasets", "initial", warehouseId],
+    queryKey: ["datasets", identity, "initial", warehouseId],
     queryFn: ({ signal }) =>
       datasetApi.list({ warehouseId, page: 1, pageSize: 20 }, signal),
     enabled: enabled && Boolean(warehouseId),
   });
   const datasetDetail = useQuery({
-    queryKey: ["dataset", datasetId],
+    queryKey: ["dataset", identity, datasetId],
     queryFn: ({ signal }) => datasetApi.get(datasetId, signal),
     enabled: enabled && Boolean(datasetId),
   });
@@ -134,28 +147,39 @@ export function WarehouseProvider({ children }: { children: ReactNode }) {
       const d =
         datasets.data.items.find((d) => d.status === "ACTIVE") ||
         datasets.data.items[0];
-      setDatasetId(d.datasetId);
+      setSelection({ identity, warehouseId, datasetId: d.datasetId });
     }
-  }, [enabled, warehouseId, datasetId, datasets.data]);
+  }, [enabled, identity, warehouseId, datasetId, datasets.data]);
   useEffect(() => {
     if (datasetDetail.data && datasetDetail.data.warehouseId !== warehouseId)
-      setDatasetId("");
-  }, [datasetDetail.data, warehouseId]);
+      setSelection({ identity, warehouseId, datasetId: "" });
+  }, [datasetDetail.data, identity, warehouseId]);
   useEffect(() => {
-    sessionStorage.setItem("warehouseId", warehouseId);
-    sessionStorage.setItem("datasetId", datasetId);
-  }, [warehouseId, datasetId]);
+    sessionStorage.setItem(
+      warehouseSelectionKey(identity),
+      JSON.stringify({ warehouseId, datasetId }),
+    );
+  }, [identity, warehouseId, datasetId]);
   const selectWarehouse = (w: Warehouse) => {
     if (w.warehouseId === warehouseId) return;
     void client.cancelQueries();
-    setDatasetId("");
-    setWarehouseId(w.warehouseId);
+    const next = { identity, warehouseId: w.warehouseId, datasetId: "" };
+    setSelection(next);
+    sessionStorage.setItem(
+      warehouseSelectionKey(identity),
+      JSON.stringify(next),
+    );
   };
   const selectDataset = (d: Dataset) => {
     if (d.warehouseId !== warehouseId) return;
     void client.cancelQueries();
-    client.setQueryData(["dataset", d.datasetId], d);
-    setDatasetId(d.datasetId);
+    client.setQueryData(["dataset", identity, d.datasetId], d);
+    const next = { ...activeSelection, datasetId: d.datasetId };
+    setSelection(next);
+    sessionStorage.setItem(
+      warehouseSelectionKey(identity),
+      JSON.stringify(next),
+    );
   };
   useEffect(() => {
     if (!enabled && auth.ready) {

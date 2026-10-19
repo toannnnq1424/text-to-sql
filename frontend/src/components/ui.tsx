@@ -28,6 +28,7 @@ import { useAuth } from "../app/auth";
 import { useWarehouse, useLocale } from "../app/providers";
 import { ApiError, type Params } from "../api/client";
 import { copyText } from "../lib/format";
+import { formatSqlForDisplay } from "../lib/sqlDisplay";
 export function Card({
   title,
   icon,
@@ -360,6 +361,7 @@ export function SqlBlock({
   sql: string | null | undefined;
   label?: string;
 }) {
+  const lines = sql ? formatSqlForDisplay(sql).split("\n") : undefined;
   return (
     <div className="sql-block">
       <header>
@@ -368,13 +370,13 @@ export function SqlBlock({
       </header>
       {sql ? (
         <pre tabIndex={0} aria-label={label}>
-          <code>
-            {sql.split("\n").map((line, i) => (
+          <code className="sql-code">
+            {lines?.map((line, i) => (
               <span className="sql-line" key={i}>
                 <span className="line-no" aria-hidden="true">
                   {i + 1}
                 </span>
-                {line}
+                <SqlSyntaxLine line={line} />
                 {"\n"}
               </span>
             ))}
@@ -388,6 +390,37 @@ export function SqlBlock({
       )}
     </div>
   );
+}
+const sqlKeywords = new Set(
+  "all and as asc between by case cast cross current_date date desc distinct else end from full group having in inner interval is join left like limit not null offset on or order outer over partition right select then top union when where with year month".split(
+    " ",
+  ),
+);
+const sqlTokenPattern = /--[^\n]*|\b[A-Za-z_][\w$]*\b|\b\d+(?:\.\d+)?\b|'(?:''|[^'])*'|"(?:""|[^"])*"|`(?:``|[^`])*`|\[(?:[^\]])*\]/g;
+function SqlSyntaxLine({ line }: { line: string }) {
+  const tokens: ReactNode[] = [];
+  let cursor = 0;
+  for (const match of line.matchAll(sqlTokenPattern)) {
+    const token = match[0];
+    const start = match.index ?? cursor;
+    if (start > cursor) tokens.push(line.slice(cursor, start));
+    let kind = "sql-identifier";
+    if (token.startsWith("--")) kind = "sql-comment";
+    else if (token.startsWith("'")) kind = "sql-string";
+    else if (/^\d/.test(token)) kind = "sql-number";
+    else if (/^[\[\`\"]/.test(token)) kind = "sql-quoted-identifier";
+    else if (/^\s*\(/.test(line.slice((match.index ?? 0) + token.length)))
+      kind = "sql-function";
+    else if (sqlKeywords.has(token.toLowerCase())) kind = "sql-keyword";
+    tokens.push(
+      <span className={kind} key={`${start}-${token}`}>
+        {token}
+      </span>,
+    );
+    cursor = start + token.length;
+  }
+  if (cursor < line.length) tokens.push(line.slice(cursor));
+  return <>{tokens}</>;
 }
 export function DetailList({ items }: { items: [string, ReactNode][] }) {
   return (
