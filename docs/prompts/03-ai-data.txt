@@ -1,0 +1,447 @@
+Bạn là Senior Python Engineer,
+AI Engineer,
+Prompt Engineer
+và Data Engineer.
+
+Hãy xây dựng hoàn chỉnh Python AI Service cho dự án:
+
+Natural Language Analytics Warehouse.
+
+Python phụ trách AI/Text-to-SQL.
+
+Java Spring Boot là backend chính.
+
+Không chia version.
+Không chỉ support PostgreSQL rồi để dialect khác cho sau.
+
+Ngay từ target cuối phải support:
+
+POSTGRESQL
+MYSQL
+SQL_SERVER.
+
+==================================================
+1. KIẾN TRÚC
+==================================================
+
+React
+ ↓
+Java Spring Boot
+ ↓
+Python AI Service
+ ↓
+LLM Provider
+
+Warehouse được Java query trực tiếp.
+
+Python không được:
+
+- expose public API cho React;
+- trực tiếp execute production SQL;
+- bypass Java SQL security;
+- lưu database credential;
+- quyết định SQL cuối cùng được chạy.
+
+==================================================
+2. TECH STACK
+==================================================
+
+Python 3.11+
+FastAPI
+Pydantic
+httpx
+pytest.
+
+Có thể sử dụng thư viện LLM phù hợp.
+
+==================================================
+3. API
+==================================================
+
+Implement:
+
+POST /internal/v1/text-to-sql
+
+Request:
+
+{
+  "correlationId": "...",
+  "warehouseId": "...",
+  "datasetId": "...",
+  "sqlDialect": "POSTGRESQL | MYSQL | SQL_SERVER",
+  "question": "...",
+  "semanticContext": {
+    "tables": [],
+    "metrics": [],
+    "dimensions": [],
+    "relationships": [],
+    "examples": []
+  }
+}
+
+Response:
+
+{
+  "sql": "...",
+  "explanation": "...",
+  "assumptions": [],
+  "selectedMetrics": [],
+  "selectedDimensions": [],
+  "chartRecommendation": {
+    "type": "..."
+  },
+  "confidence": 0.0,
+  "model": "..."
+}
+
+Contract không tự ý thay đổi.
+
+==================================================
+4. TEXT-TO-SQL PIPELINE
+==================================================
+
+Question
+ ↓
+Normalization
+ ↓
+Semantic Context Selection
+ ↓
+Few-shot Selection
+ ↓
+Dialect-aware Prompt
+ ↓
+LLM
+ ↓
+Structured JSON Parsing
+ ↓
+AI-side Validation
+ ↓
+Candidate SQL.
+
+==================================================
+5. SQL DIALECT
+==================================================
+
+Bắt buộc support:
+
+PostgreSQL
+MySQL
+SQL Server.
+
+Prompt phải nói rõ dialect hiện tại.
+
+Không sinh PostgreSQL SQL cho SQL Server.
+
+Ví dụ phải hiểu:
+
+PostgreSQL/MySQL:
+LIMIT
+
+SQL Server:
+TOP
+hoặc
+OFFSET/FETCH.
+
+Phải xử lý khác biệt về:
+
+identifier quote
+date function
+date truncation
+casting
+string operation
+boolean
+timestamp
+limit syntax.
+
+==================================================
+6. MODEL ABSTRACTION
+==================================================
+
+Tạo:
+
+TextToSqlModelClient.
+
+Implement:
+
+OpenAICompatibleModelClient
+DeterministicModelClient.
+
+Config:
+
+LLM_BASE_URL
+LLM_API_KEY
+LLM_MODEL
+LLM_TIMEOUT_MS.
+
+==================================================
+7. DETERMINISTIC MODE
+==================================================
+
+Deterministic mode phải chạy offline.
+
+Mục đích:
+
+CI
+Java integration test
+evaluation
+local demo.
+
+Không gọi đây là production AI.
+
+Phải support cả ba dialect.
+
+Ví dụ cùng một semantic question,
+deterministic provider phải trả SQL đúng dialect.
+
+==================================================
+8. SEMANTIC CONTEXT
+==================================================
+
+Python không được hard-code domain.
+
+Không có logic:
+
+if revenue
+if customer
+if product.
+
+Core chỉ dùng semantic context Java gửi sang.
+
+Semantic context gồm:
+
+tables
+columns
+metrics
+dimensions
+relationships
+synonyms
+examples
+business rules.
+
+==================================================
+9. CONTEXT SELECTION
+==================================================
+
+Không nhét toàn bộ schema vào prompt.
+
+SemanticContextSelector phải chọn:
+
+relevant tables
+relevant metrics
+relevant dimensions
+join paths
+few-shot examples.
+
+Có token/context budget.
+
+==================================================
+10. PROMPT ENGINEERING
+==================================================
+
+Prompt phải yêu cầu:
+
+- chỉ một SELECT;
+- đúng SQL dialect;
+- chỉ dùng allowed tables;
+- chỉ dùng allowed columns;
+- không bịa schema;
+- không bịa field;
+- không DML;
+- không multi-statement;
+- không comment injection;
+- structured JSON output.
+
+==================================================
+11. STRUCTURED OUTPUT
+==================================================
+
+Validate Pydantic schema.
+
+Nếu LLM trả JSON sai:
+
+trả controlled error.
+
+Không cố đoán dữ liệu nguy hiểm.
+
+==================================================
+12. UNSUPPORTED QUESTION
+==================================================
+
+Nếu semantic context không đủ:
+
+trả:
+
+INSUFFICIENT_CONTEXT
+
+hoặc:
+
+UNSUPPORTED_QUESTION.
+
+Không bịa SQL.
+
+==================================================
+13. CHART RECOMMENDATION
+==================================================
+
+Allowed:
+
+table
+number
+bar
+grouped-bar
+line
+area
+pie.
+
+Python chỉ recommend.
+
+Java/frontend validate lại.
+
+==================================================
+14. CONFIDENCE
+==================================================
+
+Confidence không được random.
+
+Có rule rõ ràng dựa trên:
+
+context match
+metric match
+dimension match
+model structured response
+ambiguity.
+
+==================================================
+15. ERROR MODEL
+==================================================
+
+Handle:
+
+provider timeout
+provider unavailable
+invalid JSON
+missing context
+unsupported question
+low confidence
+dialect generation error.
+
+Không trả raw traceback cho Java.
+
+==================================================
+16. EVALUATION
+==================================================
+
+Có evaluation dataset tối thiểu 40 câu.
+
+Không chỉ một domain.
+
+Có cả:
+
+Vietnamese
+English
+simple aggregation
+group by
+time series
+top N
+bottom N
+filters
+multiple filters
+ambiguous question
+unsupported
+injection attempt.
+
+Mỗi case có thể chạy theo:
+
+POSTGRESQL
+MYSQL
+SQL_SERVER.
+
+==================================================
+17. DIALECT EVALUATION
+==================================================
+
+Cùng logical question phải sinh SQL đúng engine.
+
+Đánh giá:
+
+structured output success
+dialect correctness
+semantic correctness
+SQL parse success khi Java validate
+execution result equivalence.
+
+Không so sánh raw SQL string tuyệt đối.
+
+==================================================
+18. DEMO DATA SUPPORT
+==================================================
+
+Python có thể phụ trách generator cho demo data.
+
+Nếu làm:
+
+data phải deterministic.
+
+Có thể tạo:
+
+commerce analytics dataset
+market analytics dataset.
+
+Nhưng schema phải thống nhất với Java migrations/config.
+
+Không tự tạo schema riêng làm Java không biết.
+
+==================================================
+19. TEST
+==================================================
+
+Test:
+
+Vietnamese question
+English question
+PostgreSQL prompt
+MySQL prompt
+SQL Server prompt
+semantic selection
+few-shot selection
+valid JSON
+invalid JSON
+timeout
+unsupported question
+deterministic provider
+cross-domain context
+no hard-coded domain.
+
+==================================================
+20. README
+==================================================
+
+Viết:
+
+setup
+env
+run
+API contract
+real mode
+deterministic mode
+dialect handling
+testing.
+
+==================================================
+21. DEFINITION OF DONE
+==================================================
+
+Python chỉ hoàn thành khi:
+
+- API chạy;
+- deterministic mode chạy;
+- real provider cấu hình được;
+- PostgreSQL SQL sinh đúng;
+- MySQL SQL sinh đúng;
+- SQL Server SQL sinh đúng;
+- multi-domain semantic context chạy;
+- evaluation chạy;
+- pytest pass;
+- không TODO quan trọng;
+- không dialect placeholder;
+- không future work.

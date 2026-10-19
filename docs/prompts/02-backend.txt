@@ -1,0 +1,618 @@
+Bạn là Principal Java Engineer,
+Spring Boot Architect,
+Data Platform Engineer
+và Application Security Engineer.
+
+Hãy xây dựng hoàn chỉnh Java backend cho dự án:
+
+Natural Language Analytics Warehouse.
+
+Java là backend chính và security boundary của hệ thống.
+
+Phải phát triển trực tiếp tới target cuối.
+
+Không chia version.
+Không làm PostgreSQL trước rồi để MySQL/SQL Server cho sau.
+Không tạo adapter placeholder.
+
+==================================================
+1. KIẾN TRÚC
+==================================================
+
+React
+   ↓
+Java Spring Boot
+   │
+   ├── PostgreSQL
+   ├── MySQL
+   ├── SQL Server
+   │
+   └── Python AI Service
+          ↓
+         LLM
+
+Java chịu trách nhiệm:
+
+REST API
+Warehouse Registry
+Dataset Registry
+Metadata Discovery
+Semantic Layer
+SQL Dialect
+SQL Security
+SQL Validation
+Query Execution
+History
+Audit
+Ingestion
+SQL Import
+Evaluation
+Monitoring
+Python integration.
+
+==================================================
+2. TECH STACK
+==================================================
+
+Java 21
+Spring Boot
+Maven
+Spring Web
+Spring JDBC
+Flyway
+Jackson
+Bean Validation
+JSqlParser hoặc parser hỗ trợ yêu cầu
+RestClient/WebClient
+JUnit 5
+Mockito
+Testcontainers.
+
+JDBC drivers:
+
+PostgreSQL
+MySQL
+Microsoft SQL Server.
+
+==================================================
+3. MULTI-DATABASE TARGET
+==================================================
+
+Bắt buộc chạy thật:
+
+POSTGRESQL
+MYSQL
+SQL_SERVER
+
+Mỗi engine phải support:
+
+connection
+metadata discovery
+read-only query
+SQL dialect
+query limit
+timeout
+semantic validation
+security validation
+evaluation
+integration test.
+
+==================================================
+4. WAREHOUSE ADAPTER
+==================================================
+
+Thiết kế:
+
+WarehouseAdapter
+
+Implement hoàn chỉnh:
+
+PostgreSqlWarehouseAdapter
+MySqlWarehouseAdapter
+SqlServerWarehouseAdapter
+
+Contract tối thiểu:
+
+testConnection
+discoverSchemas
+discoverTables
+discoverColumns
+discoverRelationships
+executeReadOnlyQuery
+applySafeLimit
+configureTimeout
+quoteIdentifier
+normalizeIdentifier
+getSqlDialect
+getCapabilities.
+
+Không method rỗng.
+Không UnsupportedOperationException cho chức năng bắt buộc.
+
+==================================================
+5. SQL DIALECT
+==================================================
+
+Tạo:
+
+SqlDialect
+
+Implement:
+
+PostgreSqlDialect
+MySqlDialect
+SqlServerDialect.
+
+Support khác biệt:
+
+identifier quoting
+LIMIT
+TOP
+OFFSET/FETCH
+date functions
+date truncation
+casting
+boolean
+timestamp
+string operations
+schema qualification.
+
+Không sửa SQL bằng regex đơn giản.
+
+==================================================
+6. METADATA
+==================================================
+
+Convert metadata từ cả ba engine về canonical model:
+
+WarehouseMetadata
+SchemaMetadata
+TableMetadata
+ColumnMetadata
+RelationshipMetadata.
+
+Core không phụ thuộc DatabaseMetaData format riêng từng vendor.
+
+==================================================
+7. WAREHOUSE REGISTRY
+==================================================
+
+Có entity/config:
+
+warehouseId
+name
+engine
+host
+port
+database
+defaultSchema
+username
+credentialReference
+status.
+
+Status:
+
+ACTIVE
+UNAVAILABLE
+INVALID
+DISABLED.
+
+Secret không trả về frontend.
+
+==================================================
+8. DATASET REGISTRY
+==================================================
+
+Một warehouse có nhiều dataset.
+
+Dataset gồm:
+
+datasetId
+warehouseId
+name
+description
+allowedSchemas
+allowedTables
+semanticVersion
+schemaVersion
+status.
+
+Status:
+
+ACTIVE
+INVALID_SCHEMA
+DISABLED.
+
+==================================================
+9. SEMANTIC LAYER
+==================================================
+
+Semantic layer mô tả:
+
+tables
+columns
+metrics
+dimensions
+relationships
+synonyms
+examples
+business rules.
+
+Core không hard-code:
+
+revenue
+customer
+product
+region.
+
+Semantic model phải validate với physical metadata.
+
+Nếu table/column không tồn tại:
+
+dataset => INVALID_SCHEMA.
+
+==================================================
+10. PYTHON AI CONTRACT
+==================================================
+
+Java gọi Python:
+
+POST /internal/v1/text-to-sql
+
+Request:
+
+{
+  "correlationId": "...",
+  "warehouseId": "...",
+  "datasetId": "...",
+  "sqlDialect": "POSTGRESQL | MYSQL | SQL_SERVER",
+  "question": "...",
+  "semanticContext": {
+    "tables": [],
+    "metrics": [],
+    "dimensions": [],
+    "relationships": [],
+    "examples": []
+  }
+}
+
+Python trả:
+
+{
+  "sql": "...",
+  "explanation": "...",
+  "assumptions": [],
+  "selectedMetrics": [],
+  "selectedDimensions": [],
+  "chartRecommendation": {
+    "type": "..."
+  },
+  "confidence": 0.0,
+  "model": "..."
+}
+
+Python response chỉ là candidate SQL.
+
+==================================================
+11. QUERY PIPELINE
+==================================================
+
+Request
+ ↓
+validate dataset
+ ↓
+load metadata
+ ↓
+load semantic context
+ ↓
+call Python
+ ↓
+parse AI response
+ ↓
+parse SQL AST
+ ↓
+security validation
+ ↓
+table/column allowlist
+ ↓
+dialect validation
+ ↓
+read-only execution
+ ↓
+result formatting
+ ↓
+chart validation
+ ↓
+history/audit
+ ↓
+response.
+
+==================================================
+12. SQL SECURITY
+==================================================
+
+Chỉ SELECT.
+
+Reject:
+
+INSERT
+UPDATE
+DELETE
+DROP
+ALTER
+CREATE
+TRUNCATE
+MERGE
+GRANT
+REVOKE
+COPY
+CALL
+EXEC
+multi statement
+comment injection
+dangerous function
+filesystem
+network
+cross-dataset table
+unauthorized schema.
+
+Không dùng regex làm security layer duy nhất.
+
+==================================================
+13. DATABASE SECURITY
+==================================================
+
+Dùng read-only credential cho query runtime.
+
+Có:
+
+statement timeout
+max rows
+max bytes
+correlation id
+audit.
+
+Security phải đúng theo từng engine.
+
+==================================================
+14. SQL IMPORT
+==================================================
+
+API phải support SQL import.
+
+Source dialect:
+
+AUTO_DETECT
+POSTGRESQL
+MYSQL
+SQL_SERVER.
+
+Target warehouse:
+warehouseId.
+
+Nếu source == target:
+native import.
+
+Nếu source != target:
+parse sang canonical schema model
+→ generate DDL target dialect.
+
+==================================================
+15. CANONICAL SCHEMA MODEL
+==================================================
+
+Tạo model:
+
+DatabaseDefinition
+SchemaDefinition
+TableDefinition
+ColumnDefinition
+PrimaryKeyDefinition
+ForeignKeyDefinition
+IndexDefinition.
+
+Support analytical subset:
+
+CREATE SCHEMA
+CREATE TABLE
+PK
+FK
+UNIQUE
+INDEX
+IDENTITY/AUTO_INCREMENT
+DEFAULT cơ bản
+INSERT
+common datatypes.
+
+==================================================
+16. TYPE MAPPING
+==================================================
+
+Support mapping giữa ba engine:
+
+integer
+bigint
+decimal
+numeric
+float
+varchar
+char
+text
+boolean/bit
+date
+time
+timestamp/datetime
+binary.
+
+Vendor feature ngoài scope:
+
+=> UNSUPPORTED_IMPORT_FEATURE.
+
+Không silently skip.
+
+==================================================
+17. PUBLIC API
+==================================================
+
+Implement hoàn chỉnh:
+
+GET /api/v1/health
+
+GET /api/v1/warehouses
+POST /api/v1/warehouses
+GET /api/v1/warehouses/{id}
+POST /api/v1/warehouses/{id}/test
+POST /api/v1/warehouses/{id}/discover
+
+GET /api/v1/datasets
+POST /api/v1/datasets
+GET /api/v1/datasets/{id}
+
+GET /api/v1/datasets/{id}/catalog
+GET /api/v1/datasets/{id}/metrics
+GET /api/v1/datasets/{id}/dimensions
+GET /api/v1/datasets/{id}/tables
+
+POST /api/v1/query
+GET /api/v1/query/{id}
+GET /api/v1/query/history
+
+POST /api/v1/import/sql
+
+POST /api/v1/warehouse/ingestion/run
+GET /api/v1/warehouse/ingestion/runs
+
+POST /api/v1/evaluation/run
+GET /api/v1/evaluation/runs
+GET /api/v1/evaluation/results
+
+GET /api/v1/monitoring/summary
+
+==================================================
+18. ERROR MODEL
+==================================================
+
+Có:
+
+WAREHOUSE_CONNECTION_ERROR
+DATASET_UNAVAILABLE
+SCHEMA_MISMATCH
+SEMANTIC_MODEL_INVALID
+LLM_ERROR
+SQL_DIALECT_ERROR
+SQL_VALIDATION_ERROR
+SQL_SECURITY_ERROR
+QUERY_TIMEOUT
+QUERY_ERROR
+SQL_IMPORT_PARSE_ERROR
+SQL_IMPORT_DIALECT_MISMATCH
+UNSUPPORTED_IMPORT_FEATURE.
+
+Không generic 500 cho mọi lỗi.
+
+==================================================
+19. QUERY HISTORY
+==================================================
+
+Lưu:
+
+queryId
+warehouseId
+engine
+datasetId
+question
+generatedSql
+status
+model
+semanticVersion
+schemaVersion
+latency
+rowCount
+createdAt
+correlationId.
+
+==================================================
+20. EVALUATION
+==================================================
+
+Evaluation phải chạy trên:
+
+PostgreSQL
+MySQL
+SQL Server.
+
+Đo:
+
+parse success
+validation success
+execution success
+result equivalence
+column match
+chart match
+invalid SQL rejection
+dialect correctness
+latency.
+
+==================================================
+21. TESTCONTAINERS
+==================================================
+
+Bắt buộc:
+
+PostgreSQLContainer
+MySQLContainer
+MSSQLServerContainer.
+
+Tạo contract test chung cho WarehouseAdapter.
+
+Test cùng behavior trên cả ba.
+
+==================================================
+22. DOCKER
+==================================================
+
+docker-compose phải có:
+
+postgres
+mysql
+sqlserver
+backend
+python-ai
+frontend.
+
+==================================================
+23. ACCEPTANCE
+==================================================
+
+Phải chứng minh:
+
+React → Java → Python → PostgreSQL → React.
+
+React → Java → Python → MySQL → React.
+
+React → Java → Python → SQL Server → React.
+
+Cùng một logical question trên equivalent dataset
+cho result tương đương.
+
+==================================================
+24. DEFINITION OF DONE
+==================================================
+
+Java chỉ hoàn thành khi:
+
+- cả 3 engine chạy thật;
+- metadata discovery chạy thật;
+- SQL dialect chạy thật;
+- Python integration chạy thật;
+- SQL security chạy thật;
+- read-only execution chạy thật;
+- SQL import chạy thật;
+- cross-dialect subset chạy thật;
+- history chạy;
+- evaluation chạy;
+- Testcontainers pass;
+- mvn test pass;
+- không TODO quan trọng;
+- không adapter placeholder;
+- không future work.

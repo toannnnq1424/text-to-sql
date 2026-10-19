@@ -1,0 +1,38 @@
+{
+  "items": [
+    {
+      "warehouseId": "wh-demo-pg",
+      "name": "Demo POSTGRESQL",
+      "engine": "POSTGRESQL",
+      "status": "ACTIVE",
+      "capabilities": {
+        "readOnlyQuery": true,
+        "metadataDiscovery": true
+      }
+    },
+    {
+      "warehouseId": "wh-demo-mysql",
+      "name": "Demo MYSQL",
+      "engine": "MYSQL",
+      "status": "ACTIVE",
+      "capabilities": {
+        "readOnlyQuery": true,
+        "metadataDiscovery": true
+      }
+    },
+    {
+      "warehouseId": "wh-demo-mssql",
+      "name": "Demo SQL_SERVER",
+      "engine": "SQL_SERVER",
+      "status": "ACTIVE",
+      "capabilities": {
+        "readOnlyQuery": true,
+        "metadataDiscovery": true
+      }
+    }
+  ],
+  "page": 1,
+  "pageSize": 20,
+  "totalItems": 3,
+  "totalPages": 1
+}

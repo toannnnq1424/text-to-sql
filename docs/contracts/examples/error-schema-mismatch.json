@@ -1,0 +1,11 @@
+{
+  "error": {
+    "code": "SCHEMA_MISMATCH",
+    "message": "Schema của dataset đã thay đổi; cần làm mới metadata.",
+    "correlationId": "corr-schema-001",
+    "retryable": false,
+    "details": {
+      "datasetId": "ds-commerce-pg"
+    }
+  }
+}

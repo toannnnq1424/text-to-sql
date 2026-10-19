@@ -1,0 +1,32 @@
+{
+  "queryId": "qry-rejected-001",
+  "correlationId": "corr-demo-pg",
+  "warehouseId": "wh-demo-pg",
+  "datasetId": "ds-commerce-pg",
+  "engine": "POSTGRESQL",
+  "question": "Tổng doanh thu theo khu vực?",
+  "status": "REJECTED",
+  "generatedSql": null,
+  "sqlDialect": "POSTGRESQL",
+  "model": null,
+  "executionMode": "DETERMINISTIC",
+  "semanticVersion": "1.0.0",
+  "schemaVersion": "1.0.0",
+  "latencyMs": 25,
+  "createdAt": "2026-10-19T00:00:00Z",
+  "completedAt": "2026-10-19T00:00:00.025Z",
+  "explanation": null,
+  "assumptions": [],
+  "selectedMetrics": [],
+  "selectedDimensions": [],
+  "sourceTables": [],
+  "result": null,
+  "chart": null,
+  "error": {
+    "code": "UNSUPPORTED_QUESTION",
+    "message": "Câu hỏi ngoài phạm vi semantic context.",
+    "correlationId": "corr-demo-pg",
+    "retryable": false,
+    "details": {}
+  }
+}

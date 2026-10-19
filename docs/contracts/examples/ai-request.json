@@ -1,0 +1,102 @@
+{
+  "correlationId": "corr-demo-pg",
+  "warehouseId": "wh-demo-pg",
+  "datasetId": "ds-commerce-pg",
+  "sqlDialect": "POSTGRESQL",
+  "question": "Tổng doanh thu theo khu vực?",
+  "semanticContext": {
+    "tables": [
+      {
+        "schema": "analytics",
+        "name": "fact_sales",
+        "logicalName": "Sales facts",
+        "description": "Synthetic sales facts for protocol examples",
+        "grain": "one sale",
+        "columns": [
+          {
+            "name": "sale_id",
+            "dataType": "BIGINT",
+            "nullable": false,
+            "description": "Sale identifier",
+            "synonyms": []
+          },
+          {
+            "name": "region",
+            "dataType": "STRING",
+            "nullable": false,
+            "description": "Sales region",
+            "synonyms": [
+              "khu vực",
+              "region"
+            ]
+          },
+          {
+            "name": "net_amount",
+            "dataType": "DECIMAL",
+            "nullable": false,
+            "description": "Net amount in VND",
+            "synonyms": []
+          }
+        ]
+      }
+    ],
+    "metrics": [
+      {
+        "name": "total_revenue",
+        "description": "Tổng doanh thu thuần",
+        "expression": "SUM(analytics.fact_sales.net_amount)",
+        "unit": "VND",
+        "tableRefs": [
+          {
+            "schema": "analytics",
+            "name": "fact_sales"
+          }
+        ],
+        "compatibleDimensions": [
+          "region"
+        ],
+        "synonyms": [
+          "doanh thu",
+          "revenue"
+        ]
+      }
+    ],
+    "dimensions": [
+      {
+        "name": "region",
+        "description": "Khu vực",
+        "table": {
+          "schema": "analytics",
+          "name": "fact_sales"
+        },
+        "column": "region",
+        "dataType": "STRING",
+        "synonyms": [
+          "khu vực",
+          "region"
+        ]
+      }
+    ],
+    "relationships": [],
+    "examples": [
+      {
+        "question": "Doanh thu theo khu vực?",
+        "sqlDialect": "POSTGRESQL",
+        "sql": "SELECT \"region\", SUM(\"net_amount\") AS \"total_revenue\" FROM \"analytics\".\"fact_sales\" GROUP BY \"region\" ORDER BY \"region\" LIMIT 1000",
+        "selectedMetrics": [
+          "total_revenue"
+        ],
+        "selectedDimensions": [
+          "region"
+        ]
+      }
+    ],
+    "businessRules": [
+      "Aggregate net_amount without joining other facts."
+    ],
+    "semanticVersion": "1.0.0",
+    "schemaVersion": "1.0.0",
+    "timezone": "Asia/Ho_Chi_Minh",
+    "referenceTime": "2026-10-19T00:00:00Z"
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "queryId": "qry-demo-001",
+  "correlationId": "corr-demo-pg",
+  "warehouseId": "wh-demo-pg",
+  "datasetId": "ds-commerce-pg",
+  "engine": "POSTGRESQL",
+  "question": "Tổng doanh thu theo khu vực?",
+  "status": "SUCCESS",
+  "generatedSql": "SELECT \"region\", SUM(\"net_amount\") AS \"total_revenue\" FROM \"analytics\".\"fact_sales\" GROUP BY \"region\" ORDER BY \"region\" LIMIT 1000",
+  "sqlDialect": "POSTGRESQL",
+  "model": "deterministic-fixture-v1",
+  "executionMode": "DETERMINISTIC",
+  "semanticVersion": "1.0.0",
+  "schemaVersion": "1.0.0",
+  "latencyMs": 25,
+  "createdAt": "2026-10-19T00:00:00Z",
+  "completedAt": "2026-10-19T00:00:00.025Z",
+  "explanation": "Tổng net_amount theo region trong dataset demo.",
+  "assumptions": [
+    "net_amount được biểu diễn theo VND."
+  ],
+  "selectedMetrics": [
+    "total_revenue"
+  ],
+  "selectedDimensions": [
+    "region"
+  ],
+  "sourceTables": [
+    {
+      "schema": "analytics",
+      "name": "fact_sales"
+    }
+  ],
+  "result": {
+    "columns": [
+      {
+        "name": "region",
+        "label": "Khu vực",
+        "dataType": "STRING",
+        "semanticRole": "DIMENSION"
+      },
+      {
+        "name": "total_revenue",
+        "label": "Doanh thu",
+        "dataType": "DECIMAL",
+        "semanticRole": "METRIC",
+        "unit": "VND"
+      }
+    ],
+    "rows": [
+      {
+        "region": "Bắc",
+        "total_revenue": "1000000.00"
+      },
+      {
+        "region": "Nam",
+        "total_revenue": "2000000.00"
+      }
+    ],
+    "returnedRowCount": 2,
+    "page": 1,
+    "pageSize": 20,
+    "truncated": false
+  },
+  "chart": {
+    "type": "bar",
+    "title": "Doanh thu theo khu vực",
+    "x": "region",
+    "series": [
+      {
+        "column": "total_revenue",
+        "label": "Doanh thu"
+      }
+    ]
+  },
+  "error": null
+}

@@ -1,0 +1,35 @@
+# Secrets / local environment
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.jks
+# JS
+node_modules/
+dist/
+coverage/
+# Java
+**/target/
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+# Local tools / OS
+.DS_Store
+.idea/
+.vscode/
+*.log
+# Bulk data / runtime state (scripts and provenance stay tracked)
+data/downloads/
+data/cache/
+data/generated/
+infra/volumes/
+# Test artifacts
+playwright-report/
+test-results/

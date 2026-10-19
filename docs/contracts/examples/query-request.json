@@ -1,0 +1,6 @@
+{
+  "warehouseId": "wh-demo-pg",
+  "datasetId": "ds-commerce-pg",
+  "question": "Tổng doanh thu theo khu vực?",
+  "mode": "DETERMINISTIC"
+}

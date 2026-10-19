@@ -1,0 +1,65 @@
+{
+  "items": [
+    {
+      "datasetId": "ds-commerce-pg",
+      "warehouseId": "wh-demo-pg",
+      "name": "Commerce demo",
+      "description": "Synthetic protocol fixture; not provisioned data",
+      "status": "ACTIVE",
+      "allowedSchemas": [
+        "analytics"
+      ],
+      "allowedTables": [
+        {
+          "schema": "analytics",
+          "name": "fact_sales"
+        }
+      ],
+      "semanticVersion": "1.0.0",
+      "schemaVersion": "1.0.0",
+      "updatedAt": "2026-10-19T00:00:00Z"
+    },
+    {
+      "datasetId": "ds-commerce-mysql",
+      "warehouseId": "wh-demo-mysql",
+      "name": "Commerce demo",
+      "description": "Synthetic protocol fixture; not provisioned data",
+      "status": "ACTIVE",
+      "allowedSchemas": [
+        "analytics"
+      ],
+      "allowedTables": [
+        {
+          "schema": "analytics",
+          "name": "fact_sales"
+        }
+      ],
+      "semanticVersion": "1.0.0",
+      "schemaVersion": "1.0.0",
+      "updatedAt": "2026-10-19T00:00:00Z"
+    },
+    {
+      "datasetId": "ds-commerce-mssql",
+      "warehouseId": "wh-demo-mssql",
+      "name": "Commerce demo",
+      "description": "Synthetic protocol fixture; not provisioned data",
+      "status": "ACTIVE",
+      "allowedSchemas": [
+        "analytics"
+      ],
+      "allowedTables": [
+        {
+          "schema": "analytics",
+          "name": "fact_sales"
+        }
+      ],
+      "semanticVersion": "1.0.0",
+      "schemaVersion": "1.0.0",
+      "updatedAt": "2026-10-19T00:00:00Z"
+    }
+  ],
+  "page": 1,
+  "pageSize": 20,
+  "totalItems": 3,
+  "totalPages": 1
+}

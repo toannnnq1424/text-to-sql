@@ -1,0 +1,26 @@
+{
+  "sql": "SELECT \"region\", SUM(\"net_amount\") AS \"total_revenue\" FROM \"analytics\".\"fact_sales\" GROUP BY \"region\" ORDER BY \"region\" LIMIT 1000",
+  "explanation": "Tổng net_amount theo region trong dataset demo.",
+  "assumptions": [
+    "net_amount được biểu diễn theo VND."
+  ],
+  "selectedMetrics": [
+    "total_revenue"
+  ],
+  "selectedDimensions": [
+    "region"
+  ],
+  "chartRecommendation": {
+    "type": "bar",
+    "title": "Doanh thu theo khu vực",
+    "x": "region",
+    "series": [
+      {
+        "column": "total_revenue",
+        "label": "Doanh thu"
+      }
+    ]
+  },
+  "confidence": 1.0,
+  "model": "deterministic-fixture-v1"
+}

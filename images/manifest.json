@@ -1,0 +1,72 @@
+[
+  {
+    "image": "01-home.png",
+    "originalFilename": "Ảnh màn hình 2026-10-12 lúc 20.43.44.png",
+    "sha256": "7f7e2afd7954c97f617a9d1dbe8c7f328c4fe55e16109ccadd8f62041e7f8259"
+  },
+  {
+    "image": "02-query-workspace.png",
+    "originalFilename": "Ảnh màn hình 2026-10-12 lúc 20.43.52.png",
+    "sha256": "18d5d2269272e6f0907ba3e9f03cf770374f17a7b2e99c00402c5973764cf482"
+  },
+  {
+    "image": "03-query-overview.png",
+    "originalFilename": "Ảnh màn hình 2026-10-12 lúc 20.44.00.png",
+    "sha256": "9d0da03928d5f8bcee645f8ac1b595710a5e628f77170204e348dec8038eebe0"
+  },
+  {
+    "image": "04-catalog-tables.png",
+    "originalFilename": "Ảnh màn hình 2026-10-12 lúc 20.44.07.png",
+    "sha256": "1a1d499f1216b3e0af17ce7f0636262bfc693f5bd61d67524665d50c55eb5362"
+  },
+  {
+    "image": "05-evaluation.png",
+    "originalFilename": "Ảnh màn hình 2026-10-12 lúc 20.44.15.png",
+    "sha256": "a480245e965eb5bac222b8c6a0cbb736400fb39960117ae339e57cbe21f88e50"
+  },
+  {
+    "image": "06-query-chart.png",
+    "originalFilename": "Ảnh màn hình 2026-10-12 lúc 20.44.22.png",
+    "sha256": "72b12573ca3eac453c28dea94df88f2502ea6e9d399146ac69a566a11578f530"
+  },
+  {
+    "image": "07-query-sql.png",
+    "originalFilename": "Ảnh màn hình 2026-10-12 lúc 20.44.28.png",
+    "sha256": "690d41fe657397531e3d4e40131f7a4039c7bffbac76f6d1c121a8416602b0f2"
+  },
+  {
+    "image": "08-query-history.png",
+    "originalFilename": "Ảnh màn hình 2026-10-12 lúc 20.44.34.png",
+    "sha256": "a321d467afd8190545fb0809b14fa05dcd42933b034fc3ca1383af4c48e3f250"
+  },
+  {
+    "image": "09-query-data.png",
+    "originalFilename": "Ảnh màn hình 2026-10-12 lúc 20.44.40.png",
+    "sha256": "91859d0831d1e27a951be329c46f5892834dbb53ec297a81dc9501a5032b41b9"
+  },
+  {
+    "image": "10-ingestion.png",
+    "originalFilename": "Ảnh màn hình 2026-10-12 lúc 20.44.46.png",
+    "sha256": "96b6a2c85f5e5725e2289816717d714eef5585b6db6e59b72a21e6d8f7337573"
+  },
+  {
+    "image": "11-dataset-selector-alternate.png",
+    "originalFilename": "Ảnh màn hình 2026-10-12 lúc 20.45.18.png",
+    "sha256": "43b8449e07cc5191e1a82f7cbf52e9f73725dfd050391db54757b483912d1e5a"
+  },
+  {
+    "image": "12-query-overview-alternate.png",
+    "originalFilename": "Ảnh màn hình 2026-10-12 lúc 20.45.30.png",
+    "sha256": "a9fba50ec5831fdfc2af975e892e6b4a3e4e3e49034216d7b60d88ffcf4e08ed"
+  },
+  {
+    "image": "13-metric-detail.png",
+    "originalFilename": "Ảnh màn hình 2026-10-12 lúc 20.45.52.png",
+    "sha256": "d3219ac807070a7d23a850b4259d428b30c6d601d9f1550df629b5c49441341f"
+  },
+  {
+    "image": "14-catalog-metrics.png",
+    "originalFilename": "Ảnh màn hình 2026-10-12 lúc 20.46.03.png",
+    "sha256": "15c2ec77a86b701ce68013682dc7234f1427ce4475e54575eec6f4a86391976a"
+  }
+]

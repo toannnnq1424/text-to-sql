@@ -1,0 +1,714 @@
+Bạn là Senior React Engineer và UI/UX Engineer.
+
+Hãy xây dựng hoàn chỉnh frontend cho dự án:
+
+Natural Language Analytics Warehouse
+
+Đây là nền tảng Text-to-SQL đa warehouse, cho phép người dùng chọn warehouse,
+dataset, đặt câu hỏi bằng tiếng Việt hoặc tiếng Anh và nhận lại:
+
+- kết quả dữ liệu;
+- biểu đồ;
+- SQL đã sinh;
+- giải thích;
+- metadata;
+- execution information.
+
+Frontend phải hoàn thiện ngay theo target cuối,
+không chia version,
+không tạo placeholder screen,
+không hard-code cho một domain hoặc một database cụ thể.
+
+==================================================
+1. KIẾN TRÚC HỆ THỐNG
+==================================================
+
+React
+   │
+   │ REST API
+   ▼
+Java Spring Boot
+   │
+   ├── PostgreSQL
+   ├── MySQL
+   ├── SQL Server
+   │
+   └── Python AI Service
+           │
+           ▼
+         LLM API
+
+React CHỈ gọi Java Spring Boot.
+
+React không được:
+
+- gọi Python trực tiếp;
+- gọi LLM trực tiếp;
+- truy cập database trực tiếp;
+- tự sinh SQL;
+- tự validate SQL security;
+- hard-code SQL dialect;
+- hard-code business domain.
+
+==================================================
+2. TECH STACK
+==================================================
+
+Bắt buộc:
+
+- React;
+- TypeScript;
+- Vite;
+- React Router;
+- Axios hoặc fetch;
+- Recharts hoặc tương đương;
+- Vitest;
+- React Testing Library.
+
+==================================================
+3. MULTI-WAREHOUSE
+==================================================
+
+Frontend phải hỗ trợ đầy đủ:
+
+POSTGRESQL
+MYSQL
+SQL_SERVER
+
+Người dùng có thể có nhiều warehouse.
+
+Ví dụ:
+
+Sales Analytics
+PostgreSQL
+
+Market Analytics
+MySQL
+
+Operations Analytics
+SQL Server
+
+Frontend không được có logic:
+
+if engine == PostgreSQL thì hiện màn hình riêng.
+
+Mọi UI phải sử dụng API/metadata chung.
+
+==================================================
+4. GLOBAL WAREHOUSE / DATASET CONTEXT
+==================================================
+
+Có global context:
+
+Warehouse
+Dataset
+
+Warehouse selector phải hiển thị:
+
+- warehouse name;
+- engine;
+- status.
+
+Dataset selector hiển thị:
+
+- dataset name;
+- semantic version;
+- schema version;
+- status.
+
+Khi đổi dataset:
+
+- sample questions thay đổi;
+- Data Catalog thay đổi;
+- metrics thay đổi;
+- dimensions thay đổi;
+- query context thay đổi.
+
+==================================================
+5. SIDEBAR
+==================================================
+
+Sidebar phải giống nhau trên mọi màn hình:
+
+Trang chủ
+Truy vấn
+Lịch sử truy vấn
+Data Catalog
+Đánh giá
+Nạp dữ liệu
+Warehouses
+Giám sát
+Cài đặt
+
+Route nào thì sidebar item tương ứng phải active chính xác.
+
+Ví dụ:
+
+/query/*
+=> Truy vấn active
+
+/history/*
+=> Lịch sử truy vấn active
+
+/catalog/*
+=> Data Catalog active
+
+/evaluation/*
+=> Đánh giá active
+
+/ingestion/*
+=> Nạp dữ liệu active
+
+/warehouses/*
+=> Warehouses active
+
+Không được xảy ra tình trạng nội dung là Data Catalog
+nhưng sidebar lại active Truy vấn.
+
+==================================================
+6. HOME
+==================================================
+
+Home không phải dashboard thương mại điện tử.
+
+Không hard-code:
+
+Revenue
+Orders
+Customers
+Products
+
+Home là platform overview.
+
+Hiển thị:
+
+- số warehouse;
+- warehouse health;
+- số dataset;
+- recent queries;
+- recent evaluation;
+- query success rate;
+- recent ingestion;
+- system health.
+
+Các số liệu phải lấy từ API.
+
+==================================================
+7. QUERY WORKSPACE
+==================================================
+
+Có:
+
+Warehouse selector
+Dataset selector
+Question input
+Sample questions
+Run Query
+Clear
+Loading state
+Error state
+
+Sample questions lấy động từ semantic model.
+
+Ví dụ dataset thương mại có thể có câu hỏi doanh thu.
+
+Dataset market-price có thể có câu hỏi giá.
+
+Không hard-code sample question vào component lõi.
+
+==================================================
+8. QUERY RESULT
+==================================================
+
+Query result phải hỗ trợ dynamic result.
+
+Tabs:
+
+Overview
+Data
+Visualization
+SQL
+Explanation
+Technical
+
+Sidebar vẫn active:
+
+Truy vấn
+
+Các tab này chỉ là sub-navigation của Query,
+không được làm sidebar active sai.
+
+==================================================
+9. RESULT OVERVIEW
+==================================================
+
+Không mặc định hiện:
+
+Revenue
+Orders
+Customers
+AOV.
+
+Backend trả gì thì render theo metadata.
+
+Nếu result là:
+
+1 metric
+=> number visualization.
+
+Nếu result là:
+
+dimension + metric
+=> bar.
+
+Nếu:
+
+time + metric
+=> line.
+
+Nếu không phù hợp:
+=> table.
+
+==================================================
+10. DATA TABLE
+==================================================
+
+Phải xử lý:
+
+0 row
+1 row
+10 rows
+100 rows
+1000+ rows
+nhiều column
+long text
+null
+boolean
+date
+timestamp
+decimal
+percentage.
+
+Có:
+
+pagination
+page size
+sorting
+horizontal scroll
+sticky header
+column resize nếu hợp lý
+copy cell
+copy row
+CSV export
+truncated warning.
+
+Không render toàn bộ hàng nghìn record cùng lúc.
+
+==================================================
+11. VISUALIZATION
+==================================================
+
+Backend trả chart spec.
+
+Frontend chỉ support allowlist:
+
+table
+number
+bar
+grouped-bar
+line
+area
+pie
+
+Không execute JavaScript do LLM sinh.
+
+Không nhận React component từ LLM.
+
+==================================================
+12. SQL TAB
+==================================================
+
+Hiển thị:
+
+Generated SQL
+SQL Dialect
+Warehouse
+Dataset
+Source tables
+Copy SQL
+
+Ví dụ:
+
+Dialect: PostgreSQL
+
+hoặc:
+
+Dialect: MySQL
+
+hoặc:
+
+Dialect: SQL Server
+
+SQL block phải hỗ trợ long SQL và horizontal scroll.
+
+==================================================
+13. TECHNICAL TAB
+==================================================
+
+Hiển thị:
+
+queryId
+warehouseId
+datasetId
+engine
+model
+semanticVersion
+schemaVersion
+latency
+row count
+truncated
+status
+correlationId.
+
+==================================================
+14. QUERY HISTORY
+==================================================
+
+Phải thiết kế cho nhiều record.
+
+Có:
+
+search
+warehouse filter
+engine filter
+dataset filter
+status filter
+date filter
+model filter
+pagination
+sorting
+page size.
+
+Columns tối thiểu:
+
+Query ID
+Question
+Warehouse
+Engine
+Dataset
+Status
+Model
+Latency
+Created At
+
+Click row mở Query Detail.
+
+==================================================
+15. DATA CATALOG
+==================================================
+
+Catalog phải metadata-driven.
+
+Tabs:
+
+Tables
+Metrics
+Dimensions
+Relationships
+Examples
+
+Có:
+
+search
+filter
+pagination
+sorting
+large metadata support.
+
+Table detail hiển thị:
+
+logical name
+physical name
+schema
+columns
+types
+PK
+FK
+description.
+
+Metric detail:
+
+name
+expression
+unit
+synonyms
+compatible dimensions
+examples.
+
+Dimension detail:
+
+name
+physical mapping
+type
+synonyms
+description.
+
+==================================================
+16. WAREHOUSE MANAGEMENT
+==================================================
+
+Màn hình Warehouses phải hỗ trợ:
+
+Add Warehouse
+Edit Warehouse
+Disable Warehouse
+Test Connection
+Discover Metadata
+Register
+
+Engine selector:
+
+PostgreSQL
+MySQL
+SQL Server
+
+Fields động theo engine nhưng dùng cùng UX.
+
+Tối thiểu:
+
+name
+host
+port
+database
+schema/catalog
+username
+credential reference.
+
+Không hiển thị secret đã lưu.
+
+==================================================
+17. SQL IMPORT UI
+==================================================
+
+Có màn hình:
+
+Import SQL
+
+Input:
+
+Source Dialect:
+AUTO_DETECT
+POSTGRESQL
+MYSQL
+SQL_SERVER
+
+Target Warehouse
+
+File
+
+Import mode:
+Native
+Cross-dialect
+
+Hiển thị:
+
+validation result
+detected dialect
+unsupported features
+statement count
+target engine
+import progress
+import result.
+
+Không tự execute file ở frontend.
+
+Frontend chỉ upload qua Java API.
+
+==================================================
+18. INGESTION
+==================================================
+
+Hiển thị nhiều ingestion run.
+
+Có:
+
+dataset
+warehouse
+engine
+status
+row count
+rejected count
+started
+completed
+error.
+
+Có run detail.
+
+==================================================
+19. EVALUATION
+==================================================
+
+Evaluation phải support:
+
+PostgreSQL
+MySQL
+SQL Server
+
+Overview:
+
+total cases
+execution success
+result equivalence
+invalid SQL rejection
+latency
+dialect accuracy.
+
+Filter:
+
+warehouse
+engine
+dataset
+model
+status
+difficulty.
+
+Case detail:
+
+question
+generated SQL
+expected SQL/result
+dialect
+validation result
+actual result
+failure reason.
+
+==================================================
+20. MONITORING
+==================================================
+
+Monitoring là technical monitoring.
+
+Không phải business dashboard.
+
+Hiển thị:
+
+query volume
+success rate
+LLM error
+SQL validation rejection
+timeout
+average latency
+p95
+queries by engine
+queries by dataset
+warehouse health
+ingestion health.
+
+==================================================
+21. UI STATES
+==================================================
+
+Mọi màn hình phải có:
+
+loading
+empty
+success
+error
+partial
+timeout
+disabled dataset
+warehouse unavailable
+schema mismatch
+large data.
+
+==================================================
+22. RESPONSIVE
+==================================================
+
+Desktop là primary.
+
+Tablet/mobile phải dùng được.
+
+Sidebar collapse.
+
+Large table scroll.
+
+Không ép table thu nhỏ đến mức không đọc được.
+
+==================================================
+23. API CLIENT
+==================================================
+
+Tạo API layer:
+
+api/
+  warehouseApi.ts
+  datasetApi.ts
+  queryApi.ts
+  catalogApi.ts
+  historyApi.ts
+  evaluationApi.ts
+  ingestionApi.ts
+  monitoringApi.ts
+
+Không gọi fetch lung tung trực tiếp trong component.
+
+==================================================
+24. MOCK DEVELOPMENT
+==================================================
+
+Trong lúc Java chưa chạy xong,
+được phép dùng MSW/mock API.
+
+Nhưng mock response phải chính xác theo API contract chung.
+
+Mock không được nằm trong production business logic.
+
+==================================================
+25. TEST
+==================================================
+
+Test:
+
+sidebar active đúng route
+warehouse switch
+engine switch
+dataset switch
+query submit
+loading
+success
+empty
+error
+timeout
+large result
+pagination
+chart
+SQL tab
+history
+catalog
+evaluation
+warehouse registration
+SQL import screen.
+
+==================================================
+26. DEFINITION OF DONE
+==================================================
+
+Frontend chỉ hoàn thành khi:
+
+- chạy được với PostgreSQL;
+- chạy được với MySQL;
+- chạy được với SQL Server;
+- không hard-code domain;
+- không hard-code engine;
+- sidebar active đúng ở mọi route;
+- query result dynamic;
+- catalog dynamic;
+- history support nhiều record;
+- evaluation support nhiều record;
+- warehouse management hoàn chỉnh;
+- SQL import UI hoàn chỉnh;
+- tests chạy;
+- npm build thành công;
+- không có placeholder;
+- không TODO quan trọng.
