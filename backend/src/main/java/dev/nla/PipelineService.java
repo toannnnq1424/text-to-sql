@@ -161,24 +161,20 @@ public class PipelineService {
               w,
               adapters.password(store.credential(Json.str(w, "warehouseId"))),
               validated.sql(),
-              1000,
-              5242880,
-              15);
+              configuredBound(cfg, "maxRows", 1000, 1, 10000),
+              configuredBound(cfg, "maxBytes", 5242880, 1024, 52428800),
+              configuredBound(cfg, "timeoutSeconds", 15, 1, 60));
       if (Boolean.TRUE.equals(raw.get("truncated")))
         throw ApiException.bad("Nguồn pipeline vượt giới hạn đã cấu hình.");
       done(steps.get(active++), start);
+      var columns = configuredColumns(cfg);
+      var columnTypes = columnTypes(Json.objects(raw.get("columns")), columns);
       var rows = Json.objects(raw.get("rows"));
-      long rejected =
-          rows.stream()
-              .filter(
-                  row ->
-                      row.get("country") == null
-                          || row.get("total") == null
-                          || Objects.toString(row.get("country"), "").length() > 100)
-              .count();
+      long rejected = rows.stream().filter(row -> invalidRow(row, cfg, columns)).count();
       run.put("rejectedCount", rejected);
       if (rejected > 0)
-        throw ApiException.bad("Dữ liệu nguồn không vượt qua kiểm tra chất lượng; không ghi mart.");
+        throw ApiException.bad(
+            "Dữ liệu nguồn không vượt qua kiểm tra chất lượng; không ghi vào warehouse.");
       var writer = new LinkedHashMap<>(w);
       writer.put("username", "nla_writer");
       try (Connection conn =
@@ -187,16 +183,27 @@ public class PipelineService {
         try {
           String stage = qualified(adapter, Json.map(cfg.get("stage"))),
               mart = qualified(adapter, Json.map(cfg.get("mart")));
+          verifyTargetColumns(conn, w, Json.map(cfg.get("stage")), columns);
+          verifyTargetColumns(conn, w, Json.map(cfg.get("mart")), columns);
+          String columnList =
+              columns.stream()
+                  .map(adapter::quoteIdentifier)
+                  .collect(java.util.stream.Collectors.joining(","));
+          String placeholders = String.join(",", Collections.nCopies(columns.size(), "?"));
           try (Statement stmt = conn.createStatement()) {
             adapter.configureTimeout(stmt, 15);
             stmt.executeUpdate("DELETE FROM " + stage);
           }
           try (PreparedStatement stmt =
-              conn.prepareStatement("INSERT INTO " + stage + " (country,total) VALUES (?,?)")) {
+              conn.prepareStatement(
+                  "INSERT INTO " + stage + " (" + columnList + ") VALUES (" + placeholders + ")")) {
             adapter.configureTimeout(stmt, 15);
             for (var row : rows) {
-              stmt.setString(1, row.get("country").toString());
-              stmt.setBigDecimal(2, new java.math.BigDecimal(row.get("total").toString()));
+              for (int i = 0; i < columns.size(); i++) {
+                Object value = row.get(columns.get(i));
+                if (value == null) stmt.setNull(i + 1, Types.NULL);
+                else bindValue(stmt, i + 1, value, columnTypes.get(columns.get(i)));
+              }
               stmt.addBatch();
             }
             stmt.executeBatch();
@@ -206,7 +213,14 @@ public class PipelineService {
             adapter.configureTimeout(stmt, 15);
             stmt.executeUpdate("DELETE FROM " + mart);
             stmt.executeUpdate(
-                "INSERT INTO " + mart + " (country,total) SELECT country,total FROM " + stage);
+                "INSERT INTO "
+                    + mart
+                    + " ("
+                    + columnList
+                    + ") SELECT "
+                    + columnList
+                    + " FROM "
+                    + stage);
           }
           done(steps.get(active++), start);
           try (Statement stmt = conn.createStatement();
@@ -237,8 +251,7 @@ public class PipelineService {
       var error =
           Errors.body(
               "INGESTION_ERROR",
-              "Pipeline thất bại; writer transaction được rollback, không thay dữ liệu Chinook"
-                  + " nguồn.",
+              "Pipeline thất bại; transaction được rollback, dữ liệu đích được giữ nguyên.",
               Json.obj());
       run.put("error", error);
       if (active < steps.size()) {
@@ -257,6 +270,114 @@ public class PipelineService {
   private static void done(Map<String, Object> step, long start) {
     step.put("status", "SUCCESS");
     step.put("durationMs", (System.nanoTime() - start) / 1000000);
+  }
+
+  static List<String> configuredColumns(Map<String, Object> config) {
+    Object configured = config.get("columns");
+    if (!(configured instanceof List<?> values) || values.isEmpty() || values.size() > 100)
+      throw ApiException.bad("Pipeline cần khai báo từ 1 đến 100 cột đầu ra.");
+    List<String> columns = new ArrayList<>();
+    Set<String> unique = new HashSet<>();
+    for (Object value : values) {
+      if (!(value instanceof String name)
+          || !name.matches("[A-Za-z_][A-Za-z0-9_]{0,62}")
+          || !unique.add(name.toLowerCase(Locale.ROOT)))
+        throw ApiException.bad("Tên cột pipeline không hợp lệ hoặc bị trùng.");
+      columns.add(name);
+    }
+    return List.copyOf(columns);
+  }
+
+  static int configuredBound(
+      Map<String, Object> config, String key, int fallback, int min, int max) {
+    Object value = config.get(key);
+    if (value == null) return fallback;
+    if (!(value instanceof Number number)
+        || number.longValue() != number.doubleValue()
+        || number.intValue() < min
+        || number.intValue() > max)
+      throw ApiException.bad("Giới hạn " + key + " của pipeline không hợp lệ.");
+    return number.intValue();
+  }
+
+  static boolean invalidRow(
+      Map<String, Object> row, Map<String, Object> config, List<String> columns) {
+    if (!row.keySet().equals(new LinkedHashSet<>(columns))) return true;
+    Object required = config.getOrDefault("requiredColumns", columns);
+    if (!(required instanceof List<?> requiredColumns)
+        || requiredColumns.stream().anyMatch(name -> !columns.contains(name)))
+      throw ApiException.bad("Cấu hình requiredColumns của pipeline không hợp lệ.");
+    for (Object name : requiredColumns) if (row.get(name.toString()) == null) return true;
+
+    Object limits = config.getOrDefault("maxStringLengths", Map.of());
+    if (!(limits instanceof Map<?, ?> maxLengths))
+      throw ApiException.bad("Cấu hình maxStringLengths của pipeline không hợp lệ.");
+    for (var limit : maxLengths.entrySet()) {
+      if (!(limit.getKey() instanceof String name)
+          || !columns.contains(name)
+          || !(limit.getValue() instanceof Number max)
+          || max.doubleValue() != max.intValue()
+          || max.intValue() < 1
+          || max.intValue() > 10000)
+        throw ApiException.bad("Giới hạn chiều dài cột pipeline không hợp lệ.");
+      Object value = row.get(name);
+      if (value != null && value.toString().length() > max.intValue()) return true;
+    }
+    return false;
+  }
+
+  static Map<String, String> columnTypes(List<Map<String, Object>> metadata, List<String> columns) {
+    Map<String, String> types = new LinkedHashMap<>();
+    for (var column : metadata) {
+      String name = Objects.toString(column.get("name"), "");
+      if (columns.contains(name)) types.put(name, Objects.toString(column.get("dataType"), ""));
+    }
+    if (types.size() != columns.size())
+      throw ApiException.bad("Cột pipeline không khớp với kết quả truy vấn nguồn.");
+    return types;
+  }
+
+  private static void bindValue(PreparedStatement statement, int index, Object value, String type)
+      throws SQLException {
+    try {
+      switch (type) {
+        case "INTEGER" -> statement.setInt(index, Integer.parseInt(value.toString()));
+        case "BIGINT" -> statement.setLong(index, Long.parseLong(value.toString()));
+        case "DECIMAL" ->
+            statement.setBigDecimal(index, new java.math.BigDecimal(value.toString()));
+        case "FLOAT" -> statement.setDouble(index, Double.parseDouble(value.toString()));
+        case "BOOLEAN" -> statement.setBoolean(index, Boolean.parseBoolean(value.toString()));
+        case "DATE" -> statement.setDate(index, java.sql.Date.valueOf(value.toString()));
+        case "TIMESTAMP" ->
+            statement.setTimestamp(index, Timestamp.from(Instant.parse(value.toString())));
+        case "STRING" -> statement.setString(index, value.toString());
+        default -> throw ApiException.bad("Kiểu dữ liệu pipeline không được hỗ trợ.");
+      }
+    } catch (NumberFormatException | java.time.DateTimeException e) {
+      throw ApiException.bad("Giá trị nguồn không hợp lệ theo kiểu dữ liệu đã phát hiện.");
+    }
+  }
+
+  private static void verifyTargetColumns(
+      Connection connection,
+      Map<String, Object> warehouse,
+      Map<String, Object> target,
+      List<String> expected)
+      throws SQLException {
+    String schema = Json.str(target, "schema"), table = Json.str(target, "name");
+    Set<String> actual = new HashSet<>();
+    try (ResultSet columns =
+        connection
+            .getMetaData()
+            .getColumns(
+                warehouse.get("engine").equals("MYSQL") ? schema : connection.getCatalog(),
+                warehouse.get("engine").equals("MYSQL") ? null : schema,
+                table,
+                "%")) {
+      while (columns.next()) actual.add(columns.getString("COLUMN_NAME"));
+    }
+    if (!actual.equals(new HashSet<>(expected)))
+      throw new SQLException("Configured target columns do not match the registered table.");
   }
 
   private static String qualified(WarehouseAdapter adapter, Map<String, Object> t) {

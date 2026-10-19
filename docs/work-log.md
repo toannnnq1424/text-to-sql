@@ -110,3 +110,13 @@ Các entry triển khai tiếp theo thêm phía dưới; không đánh dấu FE/
 - Còn thiếu / blocker / phụ thuộc: không có thay đổi runtime trong task format; SQL Import end-to-end và các acceptance bắt buộc khác vẫn chưa triển khai/xác minh.
 - Việc tiếp nối: hoàn tất implementation BE theo acceptance; không coi regression test hiện có là bằng chứng SQL Import hoặc ingestion tổng quát đã chạy.
 - Commit/push: entry này đi cùng commit; SHA remote xác minh sau push.
+
+### 2026-10-20 02:34 UTC+07 — Mở rộng ghi pipeline theo schema đã đăng ký / conversation chính
+- Nhánh / commit subject: `module/backend`; dự kiến `feat: validate and write configured pipeline columns`.
+- Phạm vi: `PipelineService`, kiểm tra cấu hình pipeline, ghi staging/mart và unit regression tests.
+- Trạng thái: VERIFIED cho thực thi ingestion Chinook hiện có trên PostgreSQL, MySQL, SQL Server; target ingestion tổng quát và SQL Import vẫn INCOMPLETE.
+- Đã làm: bỏ giả định `country/total` khỏi phần Java ghi pipeline; dùng danh sách cột đã đăng ký, quote identifier theo dialect, bind giá trị theo kiểu dữ liệu metadata nguồn, kiểm tra schema bảng đích, kiểm tra required fields/giới hạn text và giới hạn tài nguyên có trần. Lỗi chạy pipeline không còn mô tả cố định là dữ liệu Chinook.
+- Kiểm chứng: `mvn test` — 27 tests, 0 failures, 5 integration/Testcontainers skipped trong lần unit run; `python3 infra/local/test_backend.py` PASS (Testcontainers cho 3 engine); `python3 infra/local/smoke.py` PASS trên dịch vụ thật, query/ingestion/idempotency/evaluation chạy trên ba database đã provision; Google Java Format và `git diff --check` PASS.
+- Còn thiếu / blocker / phụ thuộc: runtime sources vẫn là ba pipeline Chinook cấu hình sẵn; chưa có đăng ký/configuration UI/API tổng quát, chưa có file upload SQL Import, OIDC provider chưa cấu hình. Unit và Chinook smoke không chứng minh mọi pipeline/schema tùy ý.
+- Việc tiếp nối: mở rộng data configuration và tests trên nhánh `module/ai-data`; triển khai các API/UI mandatory còn thiếu với acceptance end-to-end.
+- Commit/push: entry này đi cùng commit; SHA remote xác minh sau push.
