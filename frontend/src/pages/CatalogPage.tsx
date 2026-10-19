@@ -70,6 +70,11 @@ function CatalogContent() {
   const selected = sections.some((s) => s[0] === section)
     ? section
     : "overview";
+  const categories = selected === "tables"
+    ? summary.data?.tableCategories
+    : selected === "metrics"
+      ? summary.data?.metricCategories
+      : [];
   return (
     <>
       {selected === "overview" && (
@@ -121,7 +126,7 @@ function CatalogContent() {
                   ]}
                 />
                 <div className="chips">
-                  {data.categories.map((x) => (
+                  {data.tableCategories.map((x) => (
                     <Link
                       className="chip"
                       key={x.name}
@@ -157,7 +162,7 @@ function CatalogContent() {
                   defaultValue={String(list.params.category || "")}
                 >
                   <option value="">Tất cả</option>
-                  {summary.data?.categories.map((c) => (
+                  {categories?.map((c) => (
                     <option key={c.name}>{c.name}</option>
                   ))}
                 </select>
@@ -261,7 +266,7 @@ function CatalogContent() {
                         : summary.data?.metricCount}
                     </span>
                   </button>
-                  {summary.data?.categories.map((category) => (
+                  {categories?.map((category) => (
                     <button
                       key={category.name}
                       className={

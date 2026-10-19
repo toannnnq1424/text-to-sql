@@ -37,6 +37,8 @@ Primary desktop viewport mục tiêu 1728×1280 CSS px để đối chiếu bộ
 
 Lần dựng đầu phải có đủ shell + typography + card/table states + assets mục tiêu. Ảnh mock quy định style UI, không quy định phải đổ dữ liệu giả lên màn hình. Runtime sản phẩm lấy dữ liệu API Java thật; chưa có dữ liệu thì empty state, lỗi thì error state đúng thiết kế. MSW/fixtures chỉ phục vụ test hoặc cô lập dependency tạm thời khi cần, không thay chức năng hoặc dữ liệu sản phẩm. Business metric và sample questions lấy API metadata; hình thức giống ảnh không cho phép hard-code commerce vào core.
 
+Runtime content phải có data provenance: physical metadata/query rows lấy từ warehouse đang chọn; warehouse/dataset display fields lấy từ registry; semantic metrics/dimensions/examples lấy từ active semantic model. Static UI copy, labels, icons và layout tokens có thể cố định; identity/description/count/category/query/result của warehouse không được viết cứng trong component hoặc seed bootstrap rồi hiển thị như dữ liệu live. Dùng empty state nếu semantic metadata chưa có.
+
 ## Visual acceptance
 
 - Chụp screenshot ở viewport cố định, cùng route/state, tắt animation và dùng fixture/time ổn định.

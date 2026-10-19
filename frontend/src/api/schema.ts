@@ -274,7 +274,9 @@ export const CatalogSchema = z.object({
   dimensionCount: count,
   relationshipCount: count,
   exampleCount: count,
-  categories: z.array(z.object({ name: id, count })),
+  tableCategories: z.array(z.object({ name: id, count })),
+  metricCategories: z.array(z.object({ name: id, count })),
+  exampleCategories: z.array(z.object({ name: id, count })),
 });
 export type Catalog = z.infer<typeof CatalogSchema>;
 export const SourceSchema = z.object({

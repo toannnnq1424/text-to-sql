@@ -2,7 +2,7 @@
 
 Bắt buộc đọc và áp dụng [implementation-rules.md](../implementation-rules.md): module được giao phải có implementation thật, validation, error handling, security liên quan và test cần thiết ngay trong cùng phạm vi; không chia version, không placeholder hoặc hoãn tích hợp sang lần sau.
 
-Đọc root AGENTS, scope, toàn bộ contracts, UI reference; prompt nguồn: `docs/prompts/01-frontend.txt`. Prompt yêu cầu import UI được supersede bởi scope; không tạo screen SQL upload trong app chính.
+Đọc root AGENTS, scope, toàn bộ contracts, UI reference; prompt nguồn: `docs/prompts/01-frontend.txt`. SQL Import và ingestion đều là module mandatory: implement flow upload→validation/preview→confirm→progress/result/error và registered-source pipeline bằng dữ liệu/API thật. Không báo hoàn thành khi mới có UI hoặc sample fixture. Runtime business values phải đến từ API/registry/physical metadata; không hardcode sample warehouse identity/counts/descriptions trong page/component.
 
 ## Ownership và stack
 

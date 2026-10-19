@@ -1,11 +1,13 @@
 # Acceptance matrix
 
-Tất cả mục bên dưới **chưa chạy** ở phiên tài liệu. Mỗi task triển khai dùng trạng thái PASS / FAIL / BLOCKED / NOT RUN và link evidence (command, environment, commit, report/screenshot). Không suy diễn PASS từ việc viết test hay có fixture. DoD prompt gốc áp dụng sau điều chỉnh scope; SQL Import là optional extension.
+Các mục bên dưới là acceptance cuối. Một số FE/BE/AI/warehouse paths đã chạy theo [work log](work-log.md), nhưng phản hồi UI ngày 2026-10-19 ghi nhận gaps còn mở tại [current review](current-review.md); không đánh dấu toàn bộ sản phẩm hoàn thành. Mỗi task ghi PASS / FAIL / BLOCKED / NOT RUN cùng command, environment, commit và report/screenshot. SQL Import trực tiếp trong app, ingestion, OIDC login và live-data completeness đều mandatory.
 
 | Phạm vi | Điều cần chứng minh | Kiểm tra/evidence |
 |---|---|---|
 | Contracts | TS/Java/Pydantic cùng request/response; strict enum/null/decimal/pagination/error | Schema validation + consumer/provider contract tests |
 | FE shell | Sidebar fixed + route active đúng, hai selectors, typography/layout/ảnh sát reference từ đầu | Screenshot cùng viewport + visual diff/manual notes |
+| UI review regression | Single-number chart, narrow/wide result table, evaluation SQL blocks, filters/categories, all field/form density | Regression screenshots per review images 2026-10-19; responsive viewport; no clipped/overflow content; badge/list counts agree |
+| Runtime content provenance | Không hardcode sample dataset identity/descriptions/counts; tách physical metadata và semantic configuration | Trace UI values to API response and selected DB; empty semantic state; tests for changing warehouses/datasets |
 | FE states | Loading/empty/error/timeout/partial/disabled/unavailable/schema mismatch/large data | Vitest/RTL + UI interaction checks |
 | FE query | Submit/clear/samples/context switch stale request handling, six tabs dynamic | MSW tests rồi Java integration |
 | Result | 0,1,10,100,1000+ rows; wide/long/null/bool/date/timestamp/decimal/percentage | Table paging/sort/scroll/copy/export/truncation, no precision loss |
@@ -22,6 +24,10 @@ Tất cả mục bên dưới **chưa chạy** ở phiên tài liệu. Mỗi tas
 | Evaluation | ≥40 logical cases, ≥2 domains, Việt/Anh, all 3 dialects = ≥120 combinations | Result equivalence + dialect/parse/validation/execution/chart/latency reports |
 | Monitoring | Volume/rates/provider errors/rejections/timeouts/p95 per engine/dataset | Seed known event counts; null for no sample, accurate denominators |
 | Settings/auth | Safe config only, role/resource scope, dev profile isolated | API authorization tests, no leaked credential |
+| Login/OIDC | Real sign-in/out, callback, token renewal/expiry/error, identity and role mapping; local token is dev-only | Configured test IdP + browser E2E + API unauthenticated/forbidden/resource-scope tests |
+| SQL Import | Native/cross-dialect SQL subset across PostgreSQL/MySQL/SQL Server; no arbitrary execution | Upload→detect/parse→preview/warnings→confirm immutable plan→progress/result/error, parser/security corpus, DB integrity and idempotency tests per target |
+| In-app ingestion | Registered source and actual Raw→Staging→Warehouse→Mart writes per engine | Repeated-batch idempotency, source/schema validation, rejected row accounting, run detail/recovery and UI history from real API |
+| Live data completeness | Every product route reflects selected warehouse/dataset and authoritative API; no stale/fixture payload | Route-by-route API/network evidence, compare table/page/category/row totals against DB, engine switch and empty/error/loading cases |
 | Build/deployment | FE build/tests, mvn test, pytest, Compose all services | Actual commands/logs with versions/host evidence |
 
 ## Điều kiện hoàn thành từng module
@@ -52,4 +58,4 @@ Evidence:
 Remaining limitation:
 ```
 
-Tính năng mandatory không được đánh dấu done bằng placeholder, TODO hoặc UnsupportedOperationException. SQL Import/local training chỉ được đưa vào acceptance khi có task mở rộng riêng, không làm chậm scope chính.
+Tính năng mandatory không được đánh dấu done bằng placeholder, TODO hoặc UnsupportedOperationException. SQL Import/ingestion/login chưa được pass chỉ bằng UI/API shape; cần end-to-end security, failure handling và three-engine evidence. Local training vẫn là tùy chọn.

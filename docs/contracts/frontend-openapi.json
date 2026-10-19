@@ -3683,7 +3683,51 @@
             "minimum": 0,
             "maximum": 9007199254740991
           },
-          "categories": {
+          "tableCategories": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "count": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "name",
+                "count"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "metricCategories": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "count": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "name",
+                "count"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "exampleCategories": {
             "type": "array",
             "items": {
               "type": "object",
@@ -3715,7 +3759,9 @@
           "dimensionCount",
           "relationshipCount",
           "exampleCount",
-          "categories"
+          "tableCategories",
+          "metricCategories",
+          "exampleCategories"
         ],
         "additionalProperties": false
       },

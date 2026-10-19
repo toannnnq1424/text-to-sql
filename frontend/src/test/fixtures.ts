@@ -43,7 +43,9 @@ export const catalog = {
   dimensionCount: 1,
   relationshipCount: 0,
   exampleCount: 1,
-  categories: [{ name: "Sales", count: 1 }],
+  tableCategories: [{ name: "public", count: 1 }],
+  metricCategories: [{ name: "Sales", count: 1 }],
+  exampleCategories: [{ name: "Sales", count: 1 }],
 };
 export const summary = { ...query, rowCount: query.result!.returnedRowCount };
 export const monitoring = {

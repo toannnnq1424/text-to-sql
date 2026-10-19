@@ -324,7 +324,7 @@ export function QueryPage() {
                 >
                   Tất cả
                 </button>
-                {catalog.data?.categories.map((cat) => (
+                {catalog.data?.exampleCategories.map((cat) => (
                   <button
                     key={cat.name}
                     className={category === cat.name ? "active" : ""}

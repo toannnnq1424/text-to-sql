@@ -2,7 +2,7 @@
 
 Nền tảng Text-to-SQL đa warehouse, đa domain: đặt câu hỏi bằng tiếng Việt/Anh, nhận dữ liệu, biểu đồ, SQL, giải thích và thông tin thực thi.
 
-Repository hiện có frontend React, backend Spring Boot, Python AI service, quy trình nạp Chinook và adapter thực thi cho PostgreSQL, MySQL, SQL Server. Ứng dụng kết nối database đã được dựng sẵn; không nhận rồi tự thực thi file SQL tùy ý.
+Repository hiện có frontend React, backend Spring Boot, Python AI service, quy trình nạp Chinook và adapter thực thi cho PostgreSQL, MySQL, SQL Server. Đây là trạng thái đang phát triển, chưa nghiệm thu toàn bộ target. SQL Import trong app, hoàn thiện cấu hình login OIDC, cùng các lỗi UI/data-loading trong [current review](docs/current-review.md) vẫn là scope bắt buộc cần hoàn tất. Import sẽ validate/preview một subset SQL có kiểm soát; app không chạy tùy ý file SQL.
 
 ```text
 React → Java Spring Boot → Python AI Service / provider API
@@ -118,7 +118,8 @@ Các test tích hợp cần Docker và database provisioned; test browser live c
 | [Data sources](docs/data-sources.md) | Nguồn do người dùng cung cấp và cách sử dụng |
 | [Security](docs/security.md) | SQL, credential, auth, giới hạn thực thi |
 | [Acceptance](docs/acceptance.md) | Bằng chứng kiểm chứng |
-| [Future extensions](docs/future-extensions.md) | SQL Import có kiểm soát, local AI/training |
+| [Current review gaps](docs/current-review.md) | Login, import, UI, source dữ liệu và acceptance đang mở |
+| [Future extensions](docs/future-extensions.md) | Local AI/training và nâng quy mô ngoài scope hiện tại |
 | [Work log](docs/work-log.md) | Nhật ký commit/push và handoff |
 
 Ảnh gốc được phép đưa lên GitHub lưu tại [images](images/README.md). Mã nguồn repository chưa chọn giấy phép phát hành; license của dataset bên thứ ba được ghi riêng.

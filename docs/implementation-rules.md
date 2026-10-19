@@ -45,6 +45,8 @@ DeterministicModelClient là chức năng offline được yêu cầu riêng, ph
 
 ## Scope và hướng mở rộng
 
-SQL Import chỉ phát triển sau nếu thực sự cần, theo quyết định trực tiếp đã có của người dùng; local training là tùy chọn và không thay ưu tiên provider API. Các mục này có thể lưu ở future-extensions.md vì người dùng đã xác định ngoài scope chính. Không được chuyển một chức năng bắt buộc khác sang file đó để né hoàn thành target.
+Theo điều chỉnh mới nhất ngày 2026-10-19, SQL Import trực tiếp trong application và data ingestion pipeline đều là module bắt buộc trong target hiện tại. Phải hoàn thiện end-to-end cho PostgreSQL, MySQL, SQL Server; không chuyển import UI/API/parser/cross-dialect mapping, ingestion source/run, validation/security/error handling, job progress/result hoặc tests sang `future-extensions.md`. Upload SQL phải parse subset allowlisted và review plan; không chạy file tùy ý.
+
+Local inference/training vẫn là tùy chọn và không thay ưu tiên provider API. Các hướng mở rộng khác chỉ lưu ở future-extensions.md khi người dùng xác định chúng ngoài scope chính. Không được chuyển một chức năng bắt buộc còn thiếu sang tài liệu đó để né hoàn thành target.
 
 Version của contract, schema, semantic model, API namespace hoặc dependency không phải cách chia phiên bản sản phẩm để trì hoãn target. Đọc cùng scope.md và acceptance.md; báo blocker trung thực, không biến blocker thành lý do tuyên bố phần chưa triển khai đã hoàn tất.

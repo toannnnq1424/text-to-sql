@@ -3,7 +3,7 @@
 Copy và điền scope, không giao cả ba prompt làm ba codebase tự thiết kế.
 
 ```text
-Đọc AGENTS.md, docs/scope.md, docs/implementation-rules.md, docs/roles/<fe|be|ai-data>.md,
+Đọc AGENTS.md, docs/scope.md, docs/current-review.md, docs/implementation-rules.md, docs/roles/<fe|be|ai-data>.md,
 AGENTS.md trong thư mục phụ trách, các contract liên quan và prompt nguồn tương ứng.
 
 Task:
