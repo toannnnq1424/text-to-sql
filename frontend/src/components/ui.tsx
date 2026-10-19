@@ -396,7 +396,8 @@ const sqlKeywords = new Set(
     " ",
   ),
 );
-const sqlTokenPattern = /--[^\n]*|\b[A-Za-z_][\w$]*\b|\b\d+(?:\.\d+)?\b|'(?:''|[^'])*'|"(?:""|[^"])*"|`(?:``|[^`])*`|\[(?:[^\]])*\]/g;
+const sqlTokenPattern =
+  /--[^\n]*|\b[A-Za-z_][\w$]*\b|\b\d+(?:\.\d+)?\b|'(?:''|[^'])*'|"(?:""|[^"])*"|`(?:``|[^`])*`|\[(?:[^\]])*\]/g;
 function SqlSyntaxLine({ line }: { line: string }) {
   const tokens: ReactNode[] = [];
   let cursor = 0;

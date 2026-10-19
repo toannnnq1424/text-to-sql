@@ -42,6 +42,8 @@ Chỉ sửa vùng được giao. Hợp đồng chung là vùng phối hợp; bá
 
 Chạy kiểm tra tương ứng `docs/acceptance.md`; ghi rõ pass/fail/blocked/not-run và bằng chứng. Không khẳng định Docker, integration, pixel accuracy, provider thật hoặc E2E đã pass nếu chưa chạy. Mock/stub chỉ dùng test hoặc hỗ trợ phối hợp tạm thời khi cần, tách biệt runtime sản phẩm; không thay implementation thật hay nghiệm thu hệ thống. Không thêm TODO cho tính năng bắt buộc rồi gọi hoàn thành. Nếu task là tài liệu, không tự thêm application code, dependencies hoặc runtime.
 
+Code phải dễ đọc ngay từ commit đầu: một import/declaration/statement mỗi dòng; không nén nhiều lệnh bằng dấu chấm phẩy hoặc viết cả module trên một dòng. Format Java bằng Google Java Format, Python bằng Black/isort (line length 100), và TypeScript/React/CSS bằng Prettier. Quy trình và lệnh được ghi ở [docs/code-style.md](docs/code-style.md).
+
 ## Nhật ký sau mỗi commit/push
 
 Bắt buộc đọc và cập nhật `docs/work-log.md` trong mỗi commit công việc: vai trò/conversation, thời gian UTC+07, nhánh, phạm vi đã làm, trạng thái thực, checks và phần còn thiếu/phụ thuộc. Sau push kiểm tra SHA local/remote và báo trong bàn giao. Không claim tích hợp hoàn thành bằng mock/UI/contract; không ghi secrets. Entry của chính commit dùng subject + branch thay hash tự tham chiếu.
