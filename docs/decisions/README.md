@@ -15,7 +15,9 @@ Các quyết định dưới đây tổng hợp yêu cầu người dùng và l�
 | D009 | Warehouse provisioning ngoài app; SQL Import optional nếu cần | Theo điều chỉnh trực tiếp mới nhất; supersede prompt import DoD |
 | D010 | Lưu đủ sáu nguồn data và cả 14 ảnh | Theo yêu cầu người dùng; ảnh được phép commit |
 | D011 | Decimal/BIGINT string, bounded result snapshot, chart allowlist | Giữ precision, giới hạn tài nguyên, paging/export nhất quán |
-| D012 | Repo GitHub private mặc định, tên text-to-sql | Lựa chọn chuẩn bị vì chưa được yêu cầu public; user có thể đổi sau |
+| D012 | Repo GitHub tên text-to-sql; ban đầu private, đã chuyển public theo yêu cầu người dùng ngày 2026-10-19 | Yêu cầu trực tiếp mới nhất supersede lựa chọn private ban đầu |
+| D014 | Ảnh mock chỉ là chuẩn style UI, không yêu cầu dữ liệu giả vào sản phẩm | Sửa cách diễn đạt cũ; runtime dùng API thật, test doubles tách riêng |
+| D015 | Không chia version; module hoàn chỉnh với implementation thật, validation/error/security/tests và tích hợp trong cùng lần triển khai | Quy tắc người dùng bổ sung, chi tiết tại implementation-rules.md; không giảm scope hoặc hoãn target vào future work |
 | D013 | PostgreSQL metadata store tách warehouse, auth OIDC/JWT + resource scopes | Quyết định kiến trúc đề xuất để triển khai; cấu hình cụ thể review ở C0 |
 
 Khi thay đổi: ghi ID mới/điều gì supersede, lý do, field/API/role/fixture bị ảnh hưởng và evidence validation; sửa docs liên quan cùng PR. Không sửa archive prompt để làm như nguồn gốc đã nói điều khác.

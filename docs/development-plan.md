@@ -1,6 +1,6 @@
 # Kế hoạch phối hợp: contract trước, ba luồng cùng bắt đầu
 
-**Hiện tại: C0 đang chuẩn bị tài liệu; chưa role review/schema validation runtime.** Không đánh dấu các gate sau hoàn thành trong phiên này. Gate là mốc kỹ thuật của một target cuối đầy đủ, không là phiên bản rút gọn.
+**Hiện tại: C0 đang chuẩn bị tài liệu; chưa role review/schema validation runtime.** Không đánh dấu các gate sau hoàn thành trong phiên này. Gate là mốc kiểm chứng của một target cuối đầy đủ, không là phiên bản rút gọn. Áp dụng [implementation-rules.md](implementation-rules.md) cho mọi task: mỗi chức năng được triển khai cùng validation, error handling, security và test cần thiết; C4 tổng hợp bằng chứng, không phải lúc mới bắt đầu làm các phần đó. Không chuyển integration sang version sau.
 
 ```text
 C0: CHỐT CONTRACT + semantic/demo schema + UI reference
@@ -36,7 +36,7 @@ Trong C1/C2, adapter/tests cả ba engine đã phát triển song song, không �
 
 | Luồng | Task đầu tiên | Phụ thuộc đầu vào | Bằng chứng đầu ra |
 |---|---|---|---|
-| FE | Shell sát ảnh + query/result/catalog/history với MSW shared fixtures | C0 contract + images | UI chạy/build, route/state tests, screenshot |
+| FE | UI tuân style ảnh + query/result/catalog/history nối API client thật; MSW chỉ cho test/cô lập dependency nếu cần | C0 contract + images | UI chạy/build, route/state tests, screenshot |
 | BE | DTO/API, metadata store, registry, auth, 3 adapters/dialects, query với mock AI | C0 + agreed schema | API contract tests, parser/security tests, adapter matrix |
 | AI/Data | Internal API, provider client ưu tiên, deterministic, context selection, canonical generators/eval corpus | C0 + agreed schema | strict response, pytest, fixtures ≥40 logical cases |
 | Infra phối hợp BE | Compose + CI chạy cả 3 DB | runtime choices của các luồng | reproducible services + secrets-safe env example |

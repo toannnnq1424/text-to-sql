@@ -35,7 +35,7 @@ Desktop sidebar fixed toàn chiều cao; content có offset đúng chiều rộn
 
 Primary desktop viewport mục tiêu 1728×1280 CSS px để đối chiếu bộ ảnh 01–10; ảnh có kích thước khác phải chuẩn hóa content bounds trước khi so. Ước lượng ban đầu: sidebar khoảng 310–320px, topbar khoảng 88–96px, padding main 24–32px; phải đo và tinh chỉnh theo ảnh, không coi đây là số pixel đã kiểm chứng. Navy sidebar, electric blue active, nền gần trắng xanh nhạt, heading navy đậm, border xanh xám mỏng, radius card khoảng 12px, status pill, icon outline đồng nhất. Hero illustration phải phù hợp ảnh, không emoji thay thế. Chọn font có glyph Việt đầy đủ, kiểm tra weight/line-height thực tế.
 
-Lần dựng đầu phải có đủ shell + typography + card/table states + assets mục tiêu. MSW data dùng để xây UI thật, không placeholder page. Business metric và sample questions lấy API metadata; hình thức giống ảnh không cho phép hard-code commerce vào core.
+Lần dựng đầu phải có đủ shell + typography + card/table states + assets mục tiêu. Ảnh mock quy định style UI, không quy định phải đổ dữ liệu giả lên màn hình. Runtime sản phẩm lấy dữ liệu API Java thật; chưa có dữ liệu thì empty state, lỗi thì error state đúng thiết kế. MSW/fixtures chỉ phục vụ test hoặc cô lập dependency tạm thời khi cần, không thay chức năng hoặc dữ liệu sản phẩm. Business metric và sample questions lấy API metadata; hình thức giống ảnh không cho phép hard-code commerce vào core.
 
 ## Visual acceptance
 

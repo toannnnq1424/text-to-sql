@@ -1,5 +1,7 @@
 # FE — React / TypeScript / UI UX
 
+Bắt buộc đọc và áp dụng [implementation-rules.md](../implementation-rules.md): module được giao phải có implementation thật, validation, error handling, security liên quan và test cần thiết ngay trong cùng phạm vi; không chia version, không placeholder hoặc hoãn tích hợp sang lần sau.
+
 Đọc root AGENTS, scope, toàn bộ contracts, UI reference; prompt nguồn: `docs/prompts/01-frontend.txt`. Prompt yêu cầu import UI được supersede bởi scope; không tạo screen SQL upload trong app chính.
 
 ## Ownership và stack
@@ -10,10 +12,10 @@ API modules: warehouseApi,datasetApi,queryApi,catalogApi,historyApi,evaluationAp
 
 ## Thứ tự làm ngay sau C0
 
-1. Mở ảnh 01/02/04/08/10, dựng design tokens, shell/sidebar/topbar và một màn query đạt visual target ngay. Mock data đủ độ dày, không blank placeholder.
-2. Làm mock API theo fixtures chung; route, global Warehouse/Dataset context, dataset switch reset sample/catalog/query context và hủy hoặc bỏ stale response theo request ID/context key.
+1. Mở ảnh 01/02/04/08/10, dựng design tokens, shell/sidebar/topbar và một màn query đạt visual target ngay. Tuân theo style ảnh mock; không dùng dữ liệu giả để làm như sản phẩm đã hoạt động. Không có dữ liệu/API lỗi phải hiển thị empty/error state đúng thiết kế.
+2. Implement API client thật theo contract; mock/fixtures chỉ dùng test hoặc cô lập dependency tạm thời khi cần, không làm nguồn dữ liệu sản phẩm. Triển khai route, global Warehouse/Dataset context, dataset switch reset sample/catalog/query context và hủy hoặc bỏ stale response theo request ID/context key.
 3. Triển khai đủ màn home, query và result tabs, history, catalog, warehouses, ingestion, evaluation, monitoring, settings. Không thêm screen theo từng engine.
-4. Nối Java khi API có thật, giữ cùng DTO/client; không rewrite business logic theo response tự bịa.
+4. Tích hợp Java thật trong cùng lần triển khai, giữ cùng DTO/client; không rewrite business logic theo response tự bịa. Màn hình chỉ có UI hoặc mock chưa được báo hoàn thành.
 
 Result tabs Overview/Data/Visualization/SQL/Explanation/Technical nằm dưới `/query/*`; history detail vẫn giữ history active khi route `/history/*`. Data table pagination/sorting/horizontal scroll/sticky header; xử lý null, boolean, Unicode, date/timestamp, decimal string, bigint string, long text và 1000+ rows bằng bounded page/virtualization phù hợp. Copy cell/row, CSV, truncated warning; export không tuyên bố lấy toàn warehouse. Chart fallback table khi spec sai.
 

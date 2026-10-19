@@ -1,5 +1,7 @@
 # AI / Data — Python / Prompt / Evaluation / ELT
 
+Bắt buộc đọc và áp dụng [implementation-rules.md](../implementation-rules.md): module được giao phải có implementation thật, validation, error handling, security liên quan và test cần thiết ngay trong cùng phạm vi; không chia version, không placeholder hoặc hoãn tích hợp sang lần sau.
+
 Đọc AGENTS, scope, contracts, security, data-sources, acceptance và `docs/prompts/03-ai-data.txt`. Không tự tạo schema độc lập với BE. Đọc future-extensions cho local inference/training; API provider là ưu tiên triển khai.
 
 ## Ownership và stack

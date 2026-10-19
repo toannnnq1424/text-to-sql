@@ -1,6 +1,8 @@
 # Hướng mở rộng có điều kiện
 
-Không thuộc phạm vi triển khai chính hoặc điều kiện hoàn thành hiện tại. Không tự triển khai các mục này từ prompt nguồn; cần task thực tế sau này.
+Chỉ ghi các hướng người dùng đã xác định ngoài scope chính (SQL Import nếu thực sự cần, local training tùy chọn) hoặc công việc tăng quy mô nằm ngoài target. Không được đưa chức năng bắt buộc còn thiếu vào đây để né hoàn thành lần triển khai hiện tại. Tuân thủ [implementation-rules.md](implementation-rules.md).
+
+Các hướng hợp lệ dưới đây không thuộc phạm vi triển khai chính hoặc điều kiện hoàn thành hiện tại. Không tự triển khai các mục này từ prompt nguồn; cần task thực tế sau này.
 
 ## SQL Import / cross-dialect provisioning
 

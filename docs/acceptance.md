@@ -24,6 +24,12 @@ Tất cả mục bên dưới **chưa chạy** ở phiên tài liệu. Mỗi tas
 | Settings/auth | Safe config only, role/resource scope, dev profile isolated | API authorization tests, no leaked credential |
 | Build/deployment | FE build/tests, mvn test, pytest, Compose all services | Actual commands/logs with versions/host evidence |
 
+## Điều kiện hoàn thành từng module
+
+Áp dụng đầy đủ [implementation-rules.md](implementation-rules.md). Mỗi module phải có implementation thật trong scope cam kết, validation, error handling, security liên quan, tests cần thiết và tích hợp thật thuộc cùng lần triển khai. Abstraction bắt buộc phải có implementation tương ứng hoạt động. Không chấp nhận skeleton, endpoint/screen placeholder, core TODO, chỉ happy path, UI/contract/mock/stub-only hoặc giảm target để demo. Không chuyển chức năng bắt buộc còn thiếu thành future work/roadmap/extension point.
+
+Ảnh mock chỉ là chuẩn phong cách UI; không lấy dữ liệu giả/fallback giả làm bằng chứng UI đã tích hợp. Thiếu dữ liệu/lỗi phải hiển thị đúng state. Kết quả kiểm thử cô lập không thay evidence đường chạy thật.
+
 ## E2E cuối bắt buộc
 
 - React → Java → Python → PostgreSQL → React.

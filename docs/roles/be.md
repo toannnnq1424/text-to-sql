@@ -1,5 +1,7 @@
 # BE — Java / Spring Boot / Data Platform / Security
 
+Bắt buộc đọc và áp dụng [implementation-rules.md](../implementation-rules.md): module được giao phải có implementation thật, validation, error handling, security liên quan và test cần thiết ngay trong cùng phạm vi; không chia version, không placeholder hoặc hoãn tích hợp sang lần sau.
+
 Đọc AGENTS, scope, architecture, toàn bộ contracts, security, acceptance; prompt nguồn `docs/prompts/02-backend.txt`. SQL Import/cross-dialect DDL không thuộc DoD chính; chỉ là mở rộng có điều kiện. Không tạo endpoint execute file SQL.
 
 ## Ownership và stack
@@ -8,7 +10,7 @@
 
 ## Bắt đầu từ ngày đầu sau C0
 
-1. Public/internal DTO + OpenAPI/schema fixtures dùng chung; auth resource scoping; metadata store migrations; registry/semantic/discovery APIs. Làm Python stub theo fixture để không chờ AI.
+1. Public/internal DTO + OpenAPI/schema fixtures dùng chung; auth resource scoping; metadata store migrations; registry/semantic/discovery APIs. Python stub chỉ dùng test/cô lập dependency tạm thời khi AI đang phát triển song song; Java integration client thật, validation, error handling, security và tests phải implement cùng chức năng, không chờ một giai đoạn sau.
 2. Implement WarehouseAdapter contract và cùng bộ test cho cả ba engine: testConnection, discoverSchemas/Tables/Columns/Relationships, executeReadOnlyQuery, applySafeLimit, configureTimeout, quoteIdentifier, normalizeIdentifier, getSqlDialect, getCapabilities.
 3. PostgreSql/MySql/SqlServer adapters và dialect implement thật. Quote, limit/TOP/OFFSET, date, casts, boolean, timestamp, catalog/schema qualification khác nhau; không regex rewrite SQL hay normalize lowercase mọi tên.
 4. Query pipeline đúng architecture; parse AST recursive, read-only/allowlist, dangerous functions, timeout/row/byte bounds; trả result metadata, chart đã validate, history/audit kể cả lỗi.

@@ -13,3 +13,7 @@ Commands/scenarios đã chạy, mode mock/deterministic/real provider, engines t
 ## Còn hạn chế
 
 Ghi rõ phần chưa chạy hoặc chưa hoàn thành; không gọi mock là E2E.
+
+## Tính hoàn chỉnh của phạm vi cam kết
+
+Xác nhận implementation thật, validation/error handling/security/tests cần thiết và tích hợp cùng lần triển khai. Nêu mọi phần chưa đáp ứng; không tuyên bố UI/contract/mock/stub là hoàn thành, không giảm target để demo hoặc đưa chức năng bắt buộc vào future work. UI dùng ảnh mock làm chuẩn style, không làm lý do cung cấp dữ liệu giả trong sản phẩm.

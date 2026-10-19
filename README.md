@@ -28,9 +28,10 @@ Tương tự thay `be.md` bằng `fe.md` hoặc `ai-data.md`. `AGENTS.md` trong 
 ## Nguyên tắc đã thống nhất
 
 - Chốt `Warehouse`, `Dataset`, `Query` và Java → Python trước khi tách việc; không cầm ba prompt rồi tự thiết kế ba hệ thống riêng.
-- Sau gate contract, React, Java và Python bắt đầu song song từ cùng baseline với mock hợp đồng. Java bắt đầu từ ngày đầu.
+- Sau gate contract, React, Java và Python bắt đầu song song từ cùng baseline. Test doubles có thể cô lập dependency khi cần, không là implementation sản phẩm. Java bắt đầu từ ngày đầu.
+- Tuân thủ [quy tắc triển khai hoàn chỉnh](docs/implementation-rules.md): không chia version, không skeleton/placeholder, không hoãn validation/error handling/security/test hoặc tích hợp; không giảm target để chạy demo.
 - Target cuối bao gồm cả PostgreSQL, MySQL, SQL Server; các mốc tích hợp không phải cách trì hoãn engine hay chia phiên bản sản phẩm.
-- UI bám ảnh từ bước dựng đầu; sidebar cố định trên desktop và thống nhất trên mọi route. Dữ liệu/domain lấy từ API.
+- UI tuân theo style của ảnh mock ngay từ bước dựng đầu; sidebar cố định trên desktop và thống nhất trên mọi route. Ảnh mock không yêu cầu dữ liệu giả: dữ liệu/domain lấy từ API thật, có empty/error states đúng thực tế.
 - AI ưu tiên gọi provider API; deterministic mode phục vụ CI/demo; local inference/training là hướng mở rộng.
 - App kết nối warehouse đã tồn tại. SQL Import là mở rộng tùy nhu cầu, không là điều kiện hoàn thành phạm vi chính.
 
@@ -39,6 +40,7 @@ Tương tự thay `be.md` bằng `fe.md` hoặc `ai-data.md`. `AGENTS.md` trong 
 | Tài liệu | Nội dung |
 |---|---|
 | [Scope](docs/scope.md) | Yêu cầu hiệu lực, xử lý mâu thuẫn prompt |
+| [Implementation rules](docs/implementation-rules.md) | Quy tắc hoàn chỉnh ngay trong lần triển khai, không chia version/placeholder |
 | [Architecture](docs/architecture.md) | Ranh giới, module, ownership |
 | [Contracts](docs/contracts/README.md) | Model, API, lỗi, fixtures dùng chung |
 | [UI reference](docs/ui-reference.md) | 14 ảnh, route, thứ tự ưu tiên, tiêu chí thị giác |

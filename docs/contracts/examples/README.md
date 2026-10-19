@@ -1,6 +1,6 @@
 # Shared protocol fixtures
 
-Các JSON là synthetic examples, không phải database/provider output đã chạy. FE dùng public query/registry/error fixtures cho MSW, BE dùng ai-response làm mock AI, Python dùng ai-request làm mock Java input. Không copy sửa riêng trong ba service.
+Các JSON là synthetic examples, không phải database/provider output đã chạy. FE có thể dùng public query/registry/error fixtures trong test MSW, BE dùng ai-response để test client AI, Python dùng ai-request để test đầu vào. Các test doubles chỉ giúp kiểm thử/cô lập dependency khi cần, không là dữ liệu runtime sản phẩm và không chứng minh chức năng hoàn thành. Ảnh mock người dùng cung cấp chỉ quy định style UI, không yêu cầu đổ các fixtures này lên giao diện sản phẩm. Không copy sửa riêng trong ba service.
 
 - `ai-request.json` / `ai-response.json`: PostgreSQL.
 - Suffix `-mysql`, `-mssql`: cùng logical context và câu hỏi, syntax khác dialect.

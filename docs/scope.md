@@ -4,6 +4,10 @@
 
 Phiên 2026-10-19 chuẩn bị repository, đọc đủ ba prompt, lưu nguyên bản, định nghĩa contract, hướng dẫn vai trò, kế hoạch phối hợp, ảnh và tiêu chí nghiệm thu. Chưa dựng app, gọi provider, tạo warehouse hay tải database mẫu. Những nội dung đặc tả là mục tiêu cho task triển khai sau.
 
+## Quy tắc triển khai bắt buộc
+
+Áp dụng đầy đủ [implementation-rules.md](implementation-rules.md) theo bổ sung trực tiếp của người dùng: không chia version, không skeleton/placeholder, không hoãn implementation/validation/error handling/security/test hoặc tích hợp, không giảm target để chạy demo. Ảnh mock là chuẩn phong cách UI, không yêu cầu dữ liệu giả trong giao diện sản phẩm.
+
 ## Mục tiêu chính
 
 Nền tảng đa warehouse/domain, tiếng Việt/Anh, React → Java → Python; Java truy vấn PostgreSQL/MySQL/SQL Server với read-only credential. Bao gồm registry warehouse/dataset, discovery, semantic layer, query, results, catalog, history/audit, ingestion có kiểm soát, evaluation, technical monitoring và settings. UI phải đẹp và sát ảnh ngay từ bước đầu; API provider AI được ưu tiên trước local training.

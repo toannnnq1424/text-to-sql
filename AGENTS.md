@@ -2,7 +2,7 @@
 
 ## Đọc trước khi làm
 
-Đọc `README.md`, `docs/scope.md`, `docs/architecture.md`, `docs/contracts/README.md` và các contract được dẫn ở đó, `docs/development-plan.md`, sau đó role document và prompt gốc tương ứng. UI task đọc thêm `docs/ui-reference.md` và mở ảnh liên quan. Data task đọc `docs/data-sources.md`. Đọc `AGENTS.md` gần thư mục đang sửa.
+Đọc `README.md`, `docs/scope.md`, `docs/implementation-rules.md`, `docs/architecture.md`, `docs/contracts/README.md` và các contract được dẫn ở đó, `docs/development-plan.md`, sau đó role document và prompt gốc tương ứng. UI task đọc thêm `docs/ui-reference.md` và mở ảnh liên quan. Data task đọc `docs/data-sources.md`. Đọc `AGENTS.md` gần thư mục đang sửa.
 
 ## Phạm vi phiên chuẩn bị
 
@@ -26,7 +26,9 @@ Nếu phát hiện xung đột chưa được giải quyết, ghi cụ thể và
 - Cả ba engine là target bắt buộc. Không adapter rỗng, không đánh dấu hoàn thành bằng mock.
 - Chốt baseline contract trước khi code tách nhánh; sau đó FE/BE/AI làm song song với fixtures chung. BE không chờ UI hoặc Python hoàn tất.
 - Không tự thay DTO, kiểu dữ liệu, enum, URL, trạng thái hoặc error code ở một service. Cập nhật contract và fixtures cùng PR, chỉ rõ tác động FE/BE/AI.
-- UI phải bám ảnh từ lần dựng đầu. Không làm wireframe sơ sài rồi tuyên bố sẽ chỉnh hình sau. Mock phải có giao diện mục tiêu đầy đủ.
+- UI phải tuân theo style/bố cục của ảnh mock người dùng cung cấp ngay từ bước dựng đầu; ảnh mock không có nghĩa là truyền dữ liệu giả lên UI. Giao diện sản phẩm dùng API thật; thiếu dữ liệu/lỗi phải hiển thị state tương ứng, không chèn dữ liệu giả.
+- Tuân thủ đầy đủ `docs/implementation-rules.md`: không chia version, không skeleton/placeholder, không trì hoãn implementation, validation, error handling, security, test hoặc tích hợp bắt buộc. Làm module nào hoàn chỉnh module đó trong scope cam kết; không giảm scope để chạy demo.
+- Abstraction cho chức năng bắt buộc phải đi kèm implementation thật. UI/contract/mock/stub chưa phải chức năng hoàn thành; không chuyển phần target còn thiếu thành future work/roadmap/extension point.
 - Credentials không vào Git, API response, prompt LLM hoặc log. Không chạy `.sql` không tin cậy; provisioning là quy trình quản trị tách biệt.
 - Không spawn/delegate agent chỉ vì tài liệu nói ba luồng song song. Chỉ sử dụng subagent khi người dùng hoặc task cụ thể yêu cầu; các conversation có thể được giao độc lập.
 
@@ -34,4 +36,4 @@ Nếu phát hiện xung đột chưa được giải quyết, ghi cụ thể và
 
 Chỉ sửa vùng được giao. Hợp đồng chung là vùng phối hợp; báo tác động trước khi bên khác dùng thay đổi. Không ghi đè công việc chưa commit của conversation khác. Dùng nhánh `module/<task>` khi tạo nhánh công việc. Đọc `CONTRIBUTING.md` và `docs/task-template.md`.
 
-Chạy kiểm tra tương ứng `docs/acceptance.md`; ghi rõ pass/fail/blocked/not-run và bằng chứng. Không khẳng định Docker, integration, pixel accuracy, provider thật hoặc E2E đã pass nếu chưa chạy. Mock dùng phát triển, không phải nghiệm thu hệ thống thật. Không thêm TODO cho tính năng bắt buộc rồi gọi hoàn thành. Nếu task là tài liệu, không tự thêm application code, dependencies hoặc runtime.
+Chạy kiểm tra tương ứng `docs/acceptance.md`; ghi rõ pass/fail/blocked/not-run và bằng chứng. Không khẳng định Docker, integration, pixel accuracy, provider thật hoặc E2E đã pass nếu chưa chạy. Mock/stub chỉ dùng test hoặc hỗ trợ phối hợp tạm thời khi cần, tách biệt runtime sản phẩm; không thay implementation thật hay nghiệm thu hệ thống. Không thêm TODO cho tính năng bắt buộc rồi gọi hoàn thành. Nếu task là tài liệu, không tự thêm application code, dependencies hoặc runtime.
