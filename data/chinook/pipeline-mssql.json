@@ -18,5 +18,15 @@
     "country",
     "total"
   ],
+  "requiredColumns": [
+    "country",
+    "total"
+  ],
+  "maxStringLengths": {
+    "country": 100
+  },
+  "maxRows": 1000,
+  "maxBytes": 5242880,
+  "timeoutSeconds": 15,
   "credentialReference": "env:NLA_PIPELINE_MSSQL_PASSWORD"
 }

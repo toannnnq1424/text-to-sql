@@ -26,6 +26,8 @@ Expected source data includes 11 tables and 15,607 rows total. The provisioner c
 
 Application metadata is stored separately in PostgreSQL database `nla_metadata`. Each warehouse has its own `nla_` pipeline staging/mart tables; those tables are filtered out of the published Chinook dataset. The exact runtime schemas and semantic mappings are documented in `../scripts/semantic-*.json`.
 
+The checked-in `pipeline-*.json` files are provenance-bound Chinook sample pipelines, not a directory users must create for each warehouse. Each declares its output columns, required fields, string limits, row/byte/deadline bounds, writer credential reference, and target tables. `pipeline_config.py` validates the three sample definitions before the local writer tables/permissions are provisioned. New user sources belong in the application source registry; these sample files are not a substitute for that required feature.
+
 ## Rebuild
 
 From repository root:

@@ -5,9 +5,11 @@ import json
 import secrets
 
 from docker_chinook import CONFIG, LOCAL, ROOT, RUNTIME, execute, init, literal
+from pipeline_config import load_sample_pipeline_configs
 
 
 def provision():
+    load_sample_pipeline_configs(ROOT)
     values = init()
     for engine, suffix in [("POSTGRESQL", "PG"), ("MYSQL", "MYSQL"), ("SQL_SERVER", "MSSQL")]:
         marker = LOCAL / f"pipeline-{engine}.json"
