@@ -1,0 +1,895 @@
+{
+  "semanticVersion": "1.0.0",
+  "schemaVersion": "chinook-1.4.5",
+  "timezone": "UTC",
+  "referenceTime": "2026-10-19T00:00:00Z",
+  "tables": [],
+  "metrics": [
+    {
+      "name": "total_sales",
+      "description": "Tổng doanh số hóa đơn",
+      "expression": "SUM(public.invoice.total)",
+      "unit": "USD",
+      "tableRefs": [
+        {
+          "schema": "public",
+          "name": "invoice"
+        }
+      ],
+      "compatibleDimensions": [
+        "billing_country",
+        "invoice_date"
+      ],
+      "synonyms": [
+        "doanh thu",
+        "sales",
+        "revenue"
+      ],
+      "category": "Sales"
+    },
+    {
+      "name": "invoice_count",
+      "description": "Số hóa đơn",
+      "expression": "COUNT(public.invoice.invoice_id)",
+      "unit": "count",
+      "tableRefs": [
+        {
+          "schema": "public",
+          "name": "invoice"
+        }
+      ],
+      "compatibleDimensions": [
+        "billing_country",
+        "invoice_date"
+      ],
+      "synonyms": [
+        "hóa đơn",
+        "invoices"
+      ],
+      "category": "Sales"
+    },
+    {
+      "name": "track_count",
+      "description": "Số bản nhạc",
+      "expression": "COUNT(public.track.track_id)",
+      "unit": "count",
+      "tableRefs": [
+        {
+          "schema": "public",
+          "name": "track"
+        }
+      ],
+      "compatibleDimensions": [
+        "track_name"
+      ],
+      "synonyms": [
+        "tracks",
+        "bản nhạc"
+      ],
+      "category": "Music"
+    }
+  ],
+  "dimensions": [
+    {
+      "name": "billing_country",
+      "description": "Quốc gia thanh toán",
+      "table": {
+        "schema": "public",
+        "name": "invoice"
+      },
+      "column": "billing_country",
+      "dataType": "STRING",
+      "synonyms": [
+        "quốc gia",
+        "country"
+      ]
+    },
+    {
+      "name": "invoice_date",
+      "description": "Ngày hóa đơn",
+      "table": {
+        "schema": "public",
+        "name": "invoice"
+      },
+      "column": "invoice_date",
+      "dataType": "TIMESTAMP",
+      "synonyms": [
+        "ngày",
+        "date"
+      ]
+    },
+    {
+      "name": "track_name",
+      "description": "Tên bản nhạc",
+      "table": {
+        "schema": "public",
+        "name": "track"
+      },
+      "column": "name",
+      "dataType": "STRING",
+      "synonyms": [
+        "tên bài hát",
+        "track name"
+      ]
+    }
+  ],
+  "relationships": [],
+  "businessRules": [
+    "Invoice total is denominated in USD.",
+    "Do not sum invoice.total after joining invoice_line without controlling fan-out.",
+    "Do not infer joins from matching column names."
+  ],
+  "examples": [
+    {
+      "question": "Tổng doanh số theo quốc gia thanh toán?",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT billing_country, SUM(total) AS total_sales FROM public.invoice GROUP BY billing_country ORDER BY total_sales DESC",
+      "selectedMetrics": [
+        "total_sales"
+      ],
+      "selectedDimensions": [
+        "billing_country"
+      ],
+      "category": "Sales",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "bar",
+        "title": "Doanh số theo quốc gia",
+        "x": "billing_country",
+        "series": [
+          {
+            "column": "total_sales",
+            "label": "Doanh số (USD)"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many tracks are in the catalog?",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT COUNT(*) AS track_count FROM public.track",
+      "selectedMetrics": [
+        "track_count"
+      ],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Số bản nhạc",
+        "series": [
+          {
+            "column": "track_count",
+            "label": "Số bản nhạc"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng album?",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM \"public\".\"album\"",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng album?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the album table?",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM \"public\".\"album\"",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the album table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng album theo khóa chính.",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT * FROM \"public\".\"album\" ORDER BY \"album_id\" LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng album theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from album ordered by primary key.",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT * FROM \"public\".\"album\" ORDER BY \"album_id\" LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from album ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng artist?",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM \"public\".\"artist\"",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng artist?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the artist table?",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM \"public\".\"artist\"",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the artist table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng artist theo khóa chính.",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT * FROM \"public\".\"artist\" ORDER BY \"artist_id\" LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng artist theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from artist ordered by primary key.",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT * FROM \"public\".\"artist\" ORDER BY \"artist_id\" LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from artist ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng customer?",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM \"public\".\"customer\"",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng customer?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the customer table?",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM \"public\".\"customer\"",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the customer table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng customer theo khóa chính.",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT * FROM \"public\".\"customer\" ORDER BY \"customer_id\" LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng customer theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from customer ordered by primary key.",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT * FROM \"public\".\"customer\" ORDER BY \"customer_id\" LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from customer ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng employee?",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM \"public\".\"employee\"",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng employee?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the employee table?",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM \"public\".\"employee\"",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the employee table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng employee theo khóa chính.",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT * FROM \"public\".\"employee\" ORDER BY \"employee_id\" LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng employee theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from employee ordered by primary key.",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT * FROM \"public\".\"employee\" ORDER BY \"employee_id\" LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from employee ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng genre?",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM \"public\".\"genre\"",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng genre?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the genre table?",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM \"public\".\"genre\"",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the genre table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng genre theo khóa chính.",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT * FROM \"public\".\"genre\" ORDER BY \"genre_id\" LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng genre theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from genre ordered by primary key.",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT * FROM \"public\".\"genre\" ORDER BY \"genre_id\" LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from genre ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng invoice?",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM \"public\".\"invoice\"",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng invoice?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the invoice table?",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM \"public\".\"invoice\"",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the invoice table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng invoice theo khóa chính.",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT * FROM \"public\".\"invoice\" ORDER BY \"invoice_id\" LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng invoice theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from invoice ordered by primary key.",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT * FROM \"public\".\"invoice\" ORDER BY \"invoice_id\" LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from invoice ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng invoice_line?",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM \"public\".\"invoice_line\"",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng invoice_line?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the invoice_line table?",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM \"public\".\"invoice_line\"",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the invoice_line table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng invoice_line theo khóa chính.",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT * FROM \"public\".\"invoice_line\" ORDER BY \"invoice_line_id\" LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng invoice_line theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from invoice_line ordered by primary key.",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT * FROM \"public\".\"invoice_line\" ORDER BY \"invoice_line_id\" LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from invoice_line ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng media_type?",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM \"public\".\"media_type\"",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng media_type?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the media_type table?",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM \"public\".\"media_type\"",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the media_type table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng media_type theo khóa chính.",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT * FROM \"public\".\"media_type\" ORDER BY \"media_type_id\" LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng media_type theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from media_type ordered by primary key.",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT * FROM \"public\".\"media_type\" ORDER BY \"media_type_id\" LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from media_type ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng playlist?",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM \"public\".\"playlist\"",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng playlist?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the playlist table?",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM \"public\".\"playlist\"",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the playlist table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng playlist theo khóa chính.",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT * FROM \"public\".\"playlist\" ORDER BY \"playlist_id\" LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng playlist theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from playlist ordered by primary key.",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT * FROM \"public\".\"playlist\" ORDER BY \"playlist_id\" LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from playlist ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng playlist_track?",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM \"public\".\"playlist_track\"",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng playlist_track?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the playlist_track table?",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM \"public\".\"playlist_track\"",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the playlist_track table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng playlist_track theo khóa chính.",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT * FROM \"public\".\"playlist_track\" ORDER BY \"playlist_id\", \"track_id\" LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng playlist_track theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from playlist_track ordered by primary key.",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT * FROM \"public\".\"playlist_track\" ORDER BY \"playlist_id\", \"track_id\" LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from playlist_track ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng track?",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM \"public\".\"track\"",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng track?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the track table?",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM \"public\".\"track\"",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the track table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng track theo khóa chính.",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT * FROM \"public\".\"track\" ORDER BY \"track_id\" LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng track theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from track ordered by primary key.",
+      "sqlDialect": "POSTGRESQL",
+      "sql": "SELECT * FROM \"public\".\"track\" ORDER BY \"track_id\" LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from track ordered by primary key.",
+        "series": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+nla:
+  local: true
+  warehouse-tls: false
+server:
+  address: 127.0.0.1

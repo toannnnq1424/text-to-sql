@@ -1,0 +1,895 @@
+{
+  "semanticVersion": "1.0.0",
+  "schemaVersion": "chinook-1.4.5",
+  "timezone": "UTC",
+  "referenceTime": "2026-10-19T00:00:00Z",
+  "tables": [],
+  "metrics": [
+    {
+      "name": "total_sales",
+      "description": "Tổng doanh số hóa đơn",
+      "expression": "SUM(dbo.Invoice.Total)",
+      "unit": "USD",
+      "tableRefs": [
+        {
+          "schema": "dbo",
+          "name": "Invoice"
+        }
+      ],
+      "compatibleDimensions": [
+        "billing_country",
+        "invoice_date"
+      ],
+      "synonyms": [
+        "doanh thu",
+        "sales",
+        "revenue"
+      ],
+      "category": "Sales"
+    },
+    {
+      "name": "invoice_count",
+      "description": "Số hóa đơn",
+      "expression": "COUNT(dbo.Invoice.InvoiceId)",
+      "unit": "count",
+      "tableRefs": [
+        {
+          "schema": "dbo",
+          "name": "Invoice"
+        }
+      ],
+      "compatibleDimensions": [
+        "billing_country",
+        "invoice_date"
+      ],
+      "synonyms": [
+        "hóa đơn",
+        "invoices"
+      ],
+      "category": "Sales"
+    },
+    {
+      "name": "track_count",
+      "description": "Số bản nhạc",
+      "expression": "COUNT(dbo.Track.TrackId)",
+      "unit": "count",
+      "tableRefs": [
+        {
+          "schema": "dbo",
+          "name": "Track"
+        }
+      ],
+      "compatibleDimensions": [
+        "track_name"
+      ],
+      "synonyms": [
+        "tracks",
+        "bản nhạc"
+      ],
+      "category": "Music"
+    }
+  ],
+  "dimensions": [
+    {
+      "name": "billing_country",
+      "description": "Quốc gia thanh toán",
+      "table": {
+        "schema": "dbo",
+        "name": "Invoice"
+      },
+      "column": "BillingCountry",
+      "dataType": "STRING",
+      "synonyms": [
+        "quốc gia",
+        "country"
+      ]
+    },
+    {
+      "name": "invoice_date",
+      "description": "Ngày hóa đơn",
+      "table": {
+        "schema": "dbo",
+        "name": "Invoice"
+      },
+      "column": "InvoiceDate",
+      "dataType": "TIMESTAMP",
+      "synonyms": [
+        "ngày",
+        "date"
+      ]
+    },
+    {
+      "name": "track_name",
+      "description": "Tên bản nhạc",
+      "table": {
+        "schema": "dbo",
+        "name": "Track"
+      },
+      "column": "Name",
+      "dataType": "STRING",
+      "synonyms": [
+        "tên bài hát",
+        "track name"
+      ]
+    }
+  ],
+  "relationships": [],
+  "businessRules": [
+    "Invoice total is denominated in USD.",
+    "Do not sum invoice.total after joining invoice_line without controlling fan-out.",
+    "Do not infer joins from matching column names."
+  ],
+  "examples": [
+    {
+      "question": "Tổng doanh số theo quốc gia thanh toán?",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT [BillingCountry] AS billing_country, SUM([Total]) AS total_sales FROM [dbo].[Invoice] GROUP BY [BillingCountry] ORDER BY total_sales DESC",
+      "selectedMetrics": [
+        "total_sales"
+      ],
+      "selectedDimensions": [
+        "billing_country"
+      ],
+      "category": "Sales",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "bar",
+        "title": "Doanh số theo quốc gia",
+        "x": "billing_country",
+        "series": [
+          {
+            "column": "total_sales",
+            "label": "Doanh số (USD)"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many tracks are in the catalog?",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT COUNT(*) AS track_count FROM [dbo].[Track]",
+      "selectedMetrics": [
+        "track_count"
+      ],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Số bản nhạc",
+        "series": [
+          {
+            "column": "track_count",
+            "label": "Số bản nhạc"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng album?",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT COUNT(*) AS record_count FROM [dbo].[Album]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng album?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the album table?",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT COUNT(*) AS record_count FROM [dbo].[Album]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the album table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng album theo khóa chính.",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT TOP (5) * FROM [dbo].[Album] ORDER BY [AlbumId]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng album theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from album ordered by primary key.",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT TOP (5) * FROM [dbo].[Album] ORDER BY [AlbumId]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from album ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng artist?",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT COUNT(*) AS record_count FROM [dbo].[Artist]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng artist?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the artist table?",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT COUNT(*) AS record_count FROM [dbo].[Artist]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the artist table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng artist theo khóa chính.",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT TOP (5) * FROM [dbo].[Artist] ORDER BY [ArtistId]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng artist theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from artist ordered by primary key.",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT TOP (5) * FROM [dbo].[Artist] ORDER BY [ArtistId]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from artist ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng customer?",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT COUNT(*) AS record_count FROM [dbo].[Customer]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng customer?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the customer table?",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT COUNT(*) AS record_count FROM [dbo].[Customer]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the customer table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng customer theo khóa chính.",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT TOP (5) * FROM [dbo].[Customer] ORDER BY [CustomerId]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng customer theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from customer ordered by primary key.",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT TOP (5) * FROM [dbo].[Customer] ORDER BY [CustomerId]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from customer ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng employee?",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT COUNT(*) AS record_count FROM [dbo].[Employee]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng employee?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the employee table?",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT COUNT(*) AS record_count FROM [dbo].[Employee]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the employee table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng employee theo khóa chính.",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT TOP (5) * FROM [dbo].[Employee] ORDER BY [EmployeeId]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng employee theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from employee ordered by primary key.",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT TOP (5) * FROM [dbo].[Employee] ORDER BY [EmployeeId]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from employee ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng genre?",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT COUNT(*) AS record_count FROM [dbo].[Genre]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng genre?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the genre table?",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT COUNT(*) AS record_count FROM [dbo].[Genre]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the genre table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng genre theo khóa chính.",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT TOP (5) * FROM [dbo].[Genre] ORDER BY [GenreId]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng genre theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from genre ordered by primary key.",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT TOP (5) * FROM [dbo].[Genre] ORDER BY [GenreId]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from genre ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng invoice?",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT COUNT(*) AS record_count FROM [dbo].[Invoice]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng invoice?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the invoice table?",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT COUNT(*) AS record_count FROM [dbo].[Invoice]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the invoice table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng invoice theo khóa chính.",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT TOP (5) * FROM [dbo].[Invoice] ORDER BY [InvoiceId]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng invoice theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from invoice ordered by primary key.",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT TOP (5) * FROM [dbo].[Invoice] ORDER BY [InvoiceId]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from invoice ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng invoice_line?",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT COUNT(*) AS record_count FROM [dbo].[InvoiceLine]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng invoice_line?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the invoice_line table?",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT COUNT(*) AS record_count FROM [dbo].[InvoiceLine]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the invoice_line table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng invoice_line theo khóa chính.",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT TOP (5) * FROM [dbo].[InvoiceLine] ORDER BY [InvoiceLineId]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng invoice_line theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from invoice_line ordered by primary key.",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT TOP (5) * FROM [dbo].[InvoiceLine] ORDER BY [InvoiceLineId]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from invoice_line ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng media_type?",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT COUNT(*) AS record_count FROM [dbo].[MediaType]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng media_type?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the media_type table?",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT COUNT(*) AS record_count FROM [dbo].[MediaType]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the media_type table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng media_type theo khóa chính.",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT TOP (5) * FROM [dbo].[MediaType] ORDER BY [MediaTypeId]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng media_type theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from media_type ordered by primary key.",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT TOP (5) * FROM [dbo].[MediaType] ORDER BY [MediaTypeId]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from media_type ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng playlist?",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT COUNT(*) AS record_count FROM [dbo].[Playlist]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng playlist?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the playlist table?",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT COUNT(*) AS record_count FROM [dbo].[Playlist]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the playlist table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng playlist theo khóa chính.",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT TOP (5) * FROM [dbo].[Playlist] ORDER BY [PlaylistId]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng playlist theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from playlist ordered by primary key.",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT TOP (5) * FROM [dbo].[Playlist] ORDER BY [PlaylistId]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from playlist ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng playlist_track?",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT COUNT(*) AS record_count FROM [dbo].[PlaylistTrack]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng playlist_track?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the playlist_track table?",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT COUNT(*) AS record_count FROM [dbo].[PlaylistTrack]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the playlist_track table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng playlist_track theo khóa chính.",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT TOP (5) * FROM [dbo].[PlaylistTrack] ORDER BY [PlaylistId], [TrackId]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng playlist_track theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from playlist_track ordered by primary key.",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT TOP (5) * FROM [dbo].[PlaylistTrack] ORDER BY [PlaylistId], [TrackId]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from playlist_track ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng track?",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT COUNT(*) AS record_count FROM [dbo].[Track]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng track?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the track table?",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT COUNT(*) AS record_count FROM [dbo].[Track]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the track table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng track theo khóa chính.",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT TOP (5) * FROM [dbo].[Track] ORDER BY [TrackId]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng track theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from track ordered by primary key.",
+      "sqlDialect": "SQL_SERVER",
+      "sql": "SELECT TOP (5) * FROM [dbo].[Track] ORDER BY [TrackId]",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from track ordered by primary key.",
+        "series": []
+      }
+    }
+  ]
+}

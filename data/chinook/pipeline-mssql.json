@@ -1,0 +1,22 @@
+{
+  "sourceId": "chinook-country-sales-mssql",
+  "name": "Chinook \u2192 Sales by country mart",
+  "type": "REGISTERED_ELT",
+  "engine": "SQL_SERVER",
+  "warehouseId": "wh-chinook-mssql",
+  "datasetId": "ds-chinook-mssql",
+  "readSql": "SELECT [BillingCountry] AS country, SUM([Total]) AS total FROM [dbo].[Invoice] GROUP BY [BillingCountry]",
+  "stage": {
+    "schema": "dbo",
+    "name": "nla_stage_sales"
+  },
+  "mart": {
+    "schema": "dbo",
+    "name": "nla_mart_sales"
+  },
+  "columns": [
+    "country",
+    "total"
+  ],
+  "credentialReference": "env:NLA_PIPELINE_MSSQL_PASSWORD"
+}

@@ -1,0 +1,895 @@
+{
+  "semanticVersion": "1.0.0",
+  "schemaVersion": "chinook-1.4.5",
+  "timezone": "UTC",
+  "referenceTime": "2026-10-19T00:00:00Z",
+  "tables": [],
+  "metrics": [
+    {
+      "name": "total_sales",
+      "description": "Tổng doanh số hóa đơn",
+      "expression": "SUM(nla_chinook.Invoice.Total)",
+      "unit": "USD",
+      "tableRefs": [
+        {
+          "schema": "nla_chinook",
+          "name": "Invoice"
+        }
+      ],
+      "compatibleDimensions": [
+        "billing_country",
+        "invoice_date"
+      ],
+      "synonyms": [
+        "doanh thu",
+        "sales",
+        "revenue"
+      ],
+      "category": "Sales"
+    },
+    {
+      "name": "invoice_count",
+      "description": "Số hóa đơn",
+      "expression": "COUNT(nla_chinook.Invoice.InvoiceId)",
+      "unit": "count",
+      "tableRefs": [
+        {
+          "schema": "nla_chinook",
+          "name": "Invoice"
+        }
+      ],
+      "compatibleDimensions": [
+        "billing_country",
+        "invoice_date"
+      ],
+      "synonyms": [
+        "hóa đơn",
+        "invoices"
+      ],
+      "category": "Sales"
+    },
+    {
+      "name": "track_count",
+      "description": "Số bản nhạc",
+      "expression": "COUNT(nla_chinook.Track.TrackId)",
+      "unit": "count",
+      "tableRefs": [
+        {
+          "schema": "nla_chinook",
+          "name": "Track"
+        }
+      ],
+      "compatibleDimensions": [
+        "track_name"
+      ],
+      "synonyms": [
+        "tracks",
+        "bản nhạc"
+      ],
+      "category": "Music"
+    }
+  ],
+  "dimensions": [
+    {
+      "name": "billing_country",
+      "description": "Quốc gia thanh toán",
+      "table": {
+        "schema": "nla_chinook",
+        "name": "Invoice"
+      },
+      "column": "BillingCountry",
+      "dataType": "STRING",
+      "synonyms": [
+        "quốc gia",
+        "country"
+      ]
+    },
+    {
+      "name": "invoice_date",
+      "description": "Ngày hóa đơn",
+      "table": {
+        "schema": "nla_chinook",
+        "name": "Invoice"
+      },
+      "column": "InvoiceDate",
+      "dataType": "TIMESTAMP",
+      "synonyms": [
+        "ngày",
+        "date"
+      ]
+    },
+    {
+      "name": "track_name",
+      "description": "Tên bản nhạc",
+      "table": {
+        "schema": "nla_chinook",
+        "name": "Track"
+      },
+      "column": "Name",
+      "dataType": "STRING",
+      "synonyms": [
+        "tên bài hát",
+        "track name"
+      ]
+    }
+  ],
+  "relationships": [],
+  "businessRules": [
+    "Invoice total is denominated in USD.",
+    "Do not sum invoice.total after joining invoice_line without controlling fan-out.",
+    "Do not infer joins from matching column names."
+  ],
+  "examples": [
+    {
+      "question": "Tổng doanh số theo quốc gia thanh toán?",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT `BillingCountry` AS billing_country, SUM(`Total`) AS total_sales FROM `nla_chinook`.`Invoice` GROUP BY `BillingCountry` ORDER BY total_sales DESC",
+      "selectedMetrics": [
+        "total_sales"
+      ],
+      "selectedDimensions": [
+        "billing_country"
+      ],
+      "category": "Sales",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "bar",
+        "title": "Doanh số theo quốc gia",
+        "x": "billing_country",
+        "series": [
+          {
+            "column": "total_sales",
+            "label": "Doanh số (USD)"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many tracks are in the catalog?",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT COUNT(*) AS track_count FROM `nla_chinook`.`Track`",
+      "selectedMetrics": [
+        "track_count"
+      ],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Số bản nhạc",
+        "series": [
+          {
+            "column": "track_count",
+            "label": "Số bản nhạc"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng album?",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM `nla_chinook`.`Album`",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng album?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the album table?",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM `nla_chinook`.`Album`",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the album table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng album theo khóa chính.",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT * FROM `nla_chinook`.`Album` ORDER BY `AlbumId` LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng album theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from album ordered by primary key.",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT * FROM `nla_chinook`.`Album` ORDER BY `AlbumId` LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from album ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng artist?",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM `nla_chinook`.`Artist`",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng artist?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the artist table?",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM `nla_chinook`.`Artist`",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the artist table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng artist theo khóa chính.",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT * FROM `nla_chinook`.`Artist` ORDER BY `ArtistId` LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng artist theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from artist ordered by primary key.",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT * FROM `nla_chinook`.`Artist` ORDER BY `ArtistId` LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from artist ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng customer?",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM `nla_chinook`.`Customer`",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng customer?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the customer table?",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM `nla_chinook`.`Customer`",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the customer table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng customer theo khóa chính.",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT * FROM `nla_chinook`.`Customer` ORDER BY `CustomerId` LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng customer theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from customer ordered by primary key.",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT * FROM `nla_chinook`.`Customer` ORDER BY `CustomerId` LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from customer ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng employee?",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM `nla_chinook`.`Employee`",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng employee?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the employee table?",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM `nla_chinook`.`Employee`",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the employee table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng employee theo khóa chính.",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT * FROM `nla_chinook`.`Employee` ORDER BY `EmployeeId` LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng employee theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from employee ordered by primary key.",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT * FROM `nla_chinook`.`Employee` ORDER BY `EmployeeId` LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from employee ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng genre?",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM `nla_chinook`.`Genre`",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng genre?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the genre table?",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM `nla_chinook`.`Genre`",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the genre table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng genre theo khóa chính.",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT * FROM `nla_chinook`.`Genre` ORDER BY `GenreId` LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng genre theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from genre ordered by primary key.",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT * FROM `nla_chinook`.`Genre` ORDER BY `GenreId` LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from genre ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng invoice?",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM `nla_chinook`.`Invoice`",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng invoice?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the invoice table?",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM `nla_chinook`.`Invoice`",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the invoice table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng invoice theo khóa chính.",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT * FROM `nla_chinook`.`Invoice` ORDER BY `InvoiceId` LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng invoice theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from invoice ordered by primary key.",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT * FROM `nla_chinook`.`Invoice` ORDER BY `InvoiceId` LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from invoice ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng invoice_line?",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM `nla_chinook`.`InvoiceLine`",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng invoice_line?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the invoice_line table?",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM `nla_chinook`.`InvoiceLine`",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the invoice_line table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng invoice_line theo khóa chính.",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT * FROM `nla_chinook`.`InvoiceLine` ORDER BY `InvoiceLineId` LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng invoice_line theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from invoice_line ordered by primary key.",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT * FROM `nla_chinook`.`InvoiceLine` ORDER BY `InvoiceLineId` LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Sales",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from invoice_line ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng media_type?",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM `nla_chinook`.`MediaType`",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng media_type?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the media_type table?",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM `nla_chinook`.`MediaType`",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the media_type table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng media_type theo khóa chính.",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT * FROM `nla_chinook`.`MediaType` ORDER BY `MediaTypeId` LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng media_type theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from media_type ordered by primary key.",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT * FROM `nla_chinook`.`MediaType` ORDER BY `MediaTypeId` LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from media_type ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng playlist?",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM `nla_chinook`.`Playlist`",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng playlist?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the playlist table?",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM `nla_chinook`.`Playlist`",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the playlist table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng playlist theo khóa chính.",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT * FROM `nla_chinook`.`Playlist` ORDER BY `PlaylistId` LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng playlist theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from playlist ordered by primary key.",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT * FROM `nla_chinook`.`Playlist` ORDER BY `PlaylistId` LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from playlist ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng playlist_track?",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM `nla_chinook`.`PlaylistTrack`",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng playlist_track?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the playlist_track table?",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM `nla_chinook`.`PlaylistTrack`",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the playlist_track table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng playlist_track theo khóa chính.",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT * FROM `nla_chinook`.`PlaylistTrack` ORDER BY `PlaylistId`, `TrackId` LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng playlist_track theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from playlist_track ordered by primary key.",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT * FROM `nla_chinook`.`PlaylistTrack` ORDER BY `PlaylistId`, `TrackId` LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from playlist_track ordered by primary key.",
+        "series": []
+      }
+    },
+    {
+      "question": "Có bao nhiêu bản ghi trong bảng track?",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM `nla_chinook`.`Track`",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "Có bao nhiêu bản ghi trong bảng track?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "How many records are in the track table?",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT COUNT(*) AS record_count FROM `nla_chinook`.`Track`",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "number",
+        "title": "How many records are in the track table?",
+        "series": [
+          {
+            "column": "record_count",
+            "label": "Số bản ghi"
+          }
+        ]
+      }
+    },
+    {
+      "question": "Xem 5 bản ghi đầu tiên của bảng track theo khóa chính.",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT * FROM `nla_chinook`.`Track` ORDER BY `TrackId` LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "vi",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Xem 5 bản ghi đầu tiên của bảng track theo khóa chính.",
+        "series": []
+      }
+    },
+    {
+      "question": "Show the first 5 records from track ordered by primary key.",
+      "sqlDialect": "MYSQL",
+      "sql": "SELECT * FROM `nla_chinook`.`Track` ORDER BY `TrackId` LIMIT 5",
+      "selectedMetrics": [],
+      "selectedDimensions": [],
+      "category": "Music",
+      "language": "en",
+      "chartRecommendation": {
+        "type": "table",
+        "title": "Show the first 5 records from track ordered by primary key.",
+        "series": []
+      }
+    }
+  ]
+}

@@ -13,6 +13,7 @@ Ownership (allowed paths):
 Dependencies / shared fixtures:
 User-facing outcome:
 Acceptance scenarios:
+Nhật ký: cập nhật docs/work-log.md trong mỗi commit, đối chiếu SHA sau push.
 Checks cần chạy:
 Out of scope:
 
