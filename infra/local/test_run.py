@@ -93,3 +93,22 @@ def test_inherited_application_secrets_obey_the_same_boundary(configured, monkey
         assert "METADATA_PASSWORD" not in env
         assert "LLM_API_KEY" not in env
         assert "OIDC_CLIENT_SECRET" not in env
+
+
+@pytest.mark.parametrize("service", ["backend", "ai", "frontend"])
+def test_private_native_workers_are_backend_only(configured, monkeypatch, service):
+    private_names = {
+        "DATA_TOOL_RUNTIME_URL": "http://data-tool-runtime:8090",
+        "DATA_TOOL_RUNTIME_TOKEN": "private-runtime-token",
+        "FILE_SERVICE_URL": "http://file-service:8011",
+        "FILE_SERVICE_TOKEN": "private-file-service-token",
+        "FILE_UPLOAD_DIRECTORY": "/var/lib/nla/uploads",
+    }
+    for key, value in private_names.items():
+        monkeypatch.setenv(key, value)
+    environment = RUN.service_environment(service, "local")
+    for key, value in private_names.items():
+        if service == "backend":
+            assert environment[key] == value
+        else:
+            assert key not in environment

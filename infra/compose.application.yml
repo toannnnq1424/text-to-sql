@@ -12,9 +12,12 @@ services:
       - "127.0.0.1:${NLA_COMPOSE_API_PORT:-8085}:8080"
     volumes:
       - ../.local/compose-app/mysql-public-key.pem:/run/nla/mysql-public-key.pem:ro
+      - app-uploads:/var/lib/nla/uploads
     networks:
       - default
       - app-private
+      - executor-private
+      - file-private
       - web
       - auth
     depends_on:
@@ -25,6 +28,10 @@ services:
       sqlserver:
         condition: service_healthy
       python-ai:
+        condition: service_healthy
+      data-tool-runtime:
+        condition: service_healthy
+      file-service:
         condition: service_healthy
     read_only: true
     tmpfs:
@@ -47,6 +54,8 @@ services:
       start_period: 30s
 
   python-ai:
+    # The semantic planner's pinned native wheel currently supports Linux x86_64.
+    platform: linux/amd64
     image: nla/python-ai:local
     build:
       context: ..
@@ -68,6 +77,68 @@ services:
       timeout: 5s
       retries: 15
       start_period: 10s
+
+  data-tool-runtime:
+    image: nla/data-tool-runtime:local
+    build:
+      context: ..
+      dockerfile: data-tool-runtime/Dockerfile
+    env_file:
+      - path: ../.local/compose-app/data-runtime.env
+        format: raw
+    volumes:
+      - ../.local/compose-app/mysql-public-key.pem:/run/nla/mysql-public-key.pem:ro
+    networks:
+      - default
+      - executor-private
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      sqlserver:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp:uid=65532,gid=65532,mode=1700
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "/app/data-tool-runtime", "health"]
+      interval: 10s
+      timeout: 3s
+      retries: 15
+    mem_limit: 512m
+    pids_limit: 64
+
+  file-service:
+    image: nla/file-service:local
+    build:
+      context: ..
+      dockerfile: file-service/Dockerfile
+    env_file:
+      - path: ../.local/compose-app/file-service.env
+        format: raw
+    networks:
+      - file-private
+    read_only: true
+    tmpfs:
+      - /tmp:uid=10001,gid=10001,mode=1700,size=134217728
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8011/health', timeout=2)",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 15
+    mem_limit: 768m
+    pids_limit: 64
 
   frontend:
     image: nla/frontend:local
@@ -97,7 +168,14 @@ services:
       timeout: 3s
       retries: 15
 
+volumes:
+  app-uploads:
+
 networks:
+  executor-private:
+    internal: true
+  file-private:
+    internal: true
   app-private:
     internal: true
   web:

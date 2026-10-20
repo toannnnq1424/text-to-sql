@@ -28,7 +28,14 @@ def service_environment(service: str, authentication: str) -> dict[str, str]:
         if service == "frontend":
             return key.startswith("VITE_") or key == "API_PROXY_TARGET"
         return key.startswith(
-            ("METADATA_", "NLA_CHINOOK_", "NLA_PIPELINE_", "NLA_IMPORT_")
+            (
+                "METADATA_",
+                "NLA_CHINOOK_",
+                "NLA_PIPELINE_",
+                "NLA_IMPORT_",
+                "DATA_TOOL_RUNTIME_",
+                "FILE_SERVICE_",
+            )
         ) or key in {
             "LOCAL_API_TOKEN",
             "PYTHON_AI_TOKEN",
@@ -38,16 +45,28 @@ def service_environment(service: str, authentication: str) -> dict[str, str]:
             "WAREHOUSE_ALLOWED_HOSTS",
             "NLA_MYSQL_RSA_PUBLIC_KEY",
             "LLM_MODEL",
+            "FILE_UPLOAD_DIRECTORY",
         }
 
     def application_setting(key: str) -> bool:
         return key.startswith(
-            ("NLA_", "METADATA_", "LLM_", "PYTHON_AI_", "OIDC_", "VITE_", "WAREHOUSE_")
+            (
+                "NLA_",
+                "METADATA_",
+                "LLM_",
+                "PYTHON_AI_",
+                "OIDC_",
+                "VITE_",
+                "WAREHOUSE_",
+                "DATA_TOOL_",
+                "FILE_SERVICE_",
+            )
         ) or key in {
             "LOCAL_API_TOKEN",
             "CHINOOK_DOCKER",
             "SPRING_PROFILES_ACTIVE",
             "API_PROXY_TARGET",
+            "FILE_UPLOAD_DIRECTORY",
         }
 
     env = {

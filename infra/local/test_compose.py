@@ -74,3 +74,30 @@ def test_public_port_and_multiline_values_fail_closed(tmp_path, monkeypatch):
         COMPOSE.configure()
     with pytest.raises(SystemExit, match="single-line"):
         COMPOSE.write_environment(local / "forbidden.env", {"VALUE": "first\nsecond"})
+
+
+def test_native_worker_service_tokens_are_isolated_and_stable(tmp_path, monkeypatch):
+    local = configured_files(tmp_path, monkeypatch)
+    COMPOSE.configure()
+    backend = COMPOSE.environment(local / "backend.env")
+    native = COMPOSE.environment(local / "data-runtime.env")
+    files = COMPOSE.environment(local / "file-service.env")
+    ai = COMPOSE.environment(local / "ai.env")
+    assert backend["DATA_TOOL_RUNTIME_TOKEN"] == native["DATA_TOOL_RUNTIME_TOKEN"]
+    assert backend["FILE_SERVICE_TOKEN"] == files["FILE_SERVICE_TOKEN"]
+    assert backend["FILE_UPLOAD_DIRECTORY"] == "/var/lib/nla/uploads"
+    assert (
+        len({native["DATA_TOOL_RUNTIME_TOKEN"], files["FILE_SERVICE_TOKEN"], ai["PYTHON_AI_TOKEN"]})
+        == 3
+    )
+    assert set(native) == {
+        "DATA_TOOL_RUNTIME_TOKEN",
+        "DATA_TOOL_MYSQL_PUBLIC_KEY",
+        "WAREHOUSE_ALLOWED_HOSTS",
+    }
+    assert set(files) == {"FILE_SERVICE_TOKEN"}
+    assert not any(key.startswith(("DATA_TOOL_", "FILE_SERVICE_")) for key in ai)
+    assert not any(key.endswith("PASSWORD") for key in native)
+    COMPOSE.configure()
+    assert COMPOSE.environment(local / "data-runtime.env") == native
+    assert COMPOSE.environment(local / "file-service.env") == files
