@@ -28,6 +28,9 @@ def test_three_engine_sample_configs_are_valid_and_equivalent():
         and config["sourceDatasetId"] == config["datasetId"]
         for config in configs.values()
     )
+    assert configs["POSTGRESQL"]["sourceObjects"] == [{"schema": "public", "name": "invoice"}]
+    assert configs["MYSQL"]["sourceObjects"] == [{"schema": "nla_chinook", "name": "Invoice"}]
+    assert configs["SQL_SERVER"]["sourceObjects"] == [{"schema": "dbo", "name": "Invoice"}]
 
 
 def test_pipeline_configuration_is_not_bound_to_the_chinook_sample():

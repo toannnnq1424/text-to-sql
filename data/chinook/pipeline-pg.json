@@ -9,7 +9,7 @@
   "sourceDatasetId": "ds-chinook-pg",
   "sourceObjects": [{
     "schema": "public",
-    "name": "Invoice"
+    "name": "invoice"
   }],
   "readSql": "SELECT \"billing_country\" AS country, SUM(\"total\") AS total FROM \"public\".\"invoice\" GROUP BY \"billing_country\"",
   "stage": {

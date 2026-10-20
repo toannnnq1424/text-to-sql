@@ -130,3 +130,13 @@ Các entry triển khai tiếp theo thêm phía dưới; không đánh dấu FE/
 - Còn thiếu / blocker / phụ thuộc: pipeline app vẫn chỉ provision các config Chinook; chưa chứng minh API/UI đăng ký nguồn khác, chạy ingestion generic, hay upload-preview-confirm SQL Import qua caller thật và persistence. Cần tích hợp với BE/FE; OIDC provider cũng chưa cấu hình.
 - Việc tiếp nối: đồng bộ contract branch này vào BE/FE; nghiệm thu import và ingestion bằng API/UI thật, dữ liệu lưu bền trên cả ba engine, và ghi outcome sau khi agent hoàn tất.
 - Commit/push: entry này đi cùng commit; SHA remote xác minh sau push.
+
+### 2026-10-20 14:08 UTC+07 — Sửa source allowlist PostgreSQL khớp tên vật lý / conversation chính
+- Nhánh / commit subject hoặc SHA đã biết: `module/data-ingestion`; dự kiến `fix: match postgres pipeline source table casing`.
+- Phạm vi: cấu hình sample pipeline PostgreSQL và test đối chiếu tên bảng allowlist với physical table của ba engine.
+- Trạng thái: VERIFIED cho tên bảng config; generic source registry/runtime vẫn INCOMPLETE theo entry trước.
+- Đã làm: sửa allowlist PostgreSQL từ `"Invoice"` sang `"invoice"` vì provisioner tạo bảng không quote tên chữ thường; MySQL/SQL Server giữ `Invoice`. Nếu giữ identifier hoa và quote như cũ, lệnh `GRANT SELECT` trong provisioning mới sẽ tìm sai relation PostgreSQL.
+- Kiểm chứng: `pytest data/scripts/test_pipeline_config.py` — 15 passed; Black/isort, compileall và `git diff --check` PASS; áp dụng lệnh `source_grants` với admin account lên PostgreSQL/MySQL/SQL Server local đều phân giải đúng physical table.
+- Còn thiếu / blocker / phụ thuộc: đây chỉ là sửa config sample; không chứng minh ingestion app tổng quát hoặc SQL Import end-to-end.
+- Việc tiếp nối: BE cần lấy follow-up Data commit trước khi nghiệm thu/cherry-pick config mẫu mới.
+- Commit/push: entry này đi cùng commit; SHA remote xác minh sau push.
