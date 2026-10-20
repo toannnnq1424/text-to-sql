@@ -26,6 +26,12 @@ public class FileIngestionController {
     return service.upload(file, sheet, delimiter);
   }
 
+  @DeleteMapping("/{id}")
+  ResponseEntity<?> discard(@PathVariable String id) throws IOException {
+    service.discard(id);
+    return ResponseEntity.noContent().build();
+  }
+
   @GetMapping("/targets")
   Object targets(@RequestParam String warehouseId) {
     return service.targets(warehouseId);

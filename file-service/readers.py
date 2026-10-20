@@ -18,7 +18,21 @@ MAX_ROWS = 100_000
 MAX_COLUMNS = 200
 MAX_CELL = 16_384
 MAX_CANONICAL = 75 * 1024 * 1024
-FORMATS = {"csv", "tsv", "txt", "json", "jsonl", "ndjson", "xlsx", "parquet", "arrow", "feather", "ipc", "orc", "avro"}
+FORMATS = {
+    "csv",
+    "tsv",
+    "txt",
+    "json",
+    "jsonl",
+    "ndjson",
+    "xlsx",
+    "parquet",
+    "arrow",
+    "feather",
+    "ipc",
+    "orc",
+    "avro",
+}
 
 
 class InvalidFile(ValueError):
@@ -29,13 +43,26 @@ def encoded(value):
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
 
 
+def exact_json(value):
+    """Serialize nested source JSON without converting Decimal numbers to strings."""
+    if isinstance(value, Decimal):
+        if not value.is_finite():
+            raise InvalidFile("Non-finite JSON number.")
+        return str(value)
+    if isinstance(value, dict):
+        return "{" + ",".join(encoded(str(k)) + ":" + exact_json(v) for k, v in value.items()) + "}"
+    if isinstance(value, list):
+        return "[" + ",".join(exact_json(v) for v in value) + "]"
+    return encoded(value)
+
+
 def canonical(value):
     if value is None:
         return None
     if isinstance(value, bool):
         return value
     if isinstance(value, (dict, list)):
-        return json.dumps(value, ensure_ascii=False, default=str, allow_nan=False)
+        value = exact_json(value)
     if isinstance(value, dt.datetime):
         if value.tzinfo:
             value = value.astimezone(dt.timezone.utc).replace(tzinfo=None)
@@ -106,7 +133,9 @@ def safe_names(headers):
     used = set()
     for header in headers:
         ascii_name = unicodedata.normalize("NFKD", header.replace("đ", "d").replace("Đ", "D"))
-        base = re.sub(r"[^a-z0-9_]+", "_", ascii_name.encode("ascii", "ignore").decode().lower()).strip("_")[:44]
+        base = re.sub(
+            r"[^a-z0-9_]+", "_", ascii_name.encode("ascii", "ignore").decode().lower()
+        ).strip("_")[:44]
         if not base or base[0].isdigit():
             base = "col_" + base
         name = base
@@ -168,7 +197,10 @@ def _xlsx(path, sheet):
             raise InvalidFile("Workbook expanded size exceeds limit.")
         for entry in entries:
             name = entry.filename.lower()
-            if entry.file_size > 1024 * 1024 and entry.file_size > max(entry.compress_size, 1) * 250:
+            if (
+                entry.file_size > 1024 * 1024
+                and entry.file_size > max(entry.compress_size, 1) * 250
+            ):
                 raise InvalidFile("Workbook compression ratio exceeds limit.")
             if "vbaproject" in name or "externallinks/" in name:
                 raise InvalidFile("Macros and external workbook references are not accepted.")
@@ -183,7 +215,11 @@ def _xlsx(path, sheet):
         workbook.close()
         raise InvalidFile("Workbook row or column limit exceeded.")
     iterator = worksheet.iter_rows()
-    headers = [cell.value for cell in next(iterator, [])]
+    header_cells = list(next(iterator, []))
+    if any(cell.data_type == "f" for cell in header_cells):
+        workbook.close()
+        raise InvalidFile("Formula headers must be replaced with values.")
+    headers = [cell.value for cell in header_cells]
 
     def rows():
         try:
@@ -255,7 +291,9 @@ def parse(path: Path, extension: str, spool: Path, sheet=None, delimiter=None):
             if not isinstance(records, list):
                 raise InvalidFile("JSON must be an array of objects; use NDJSON for records.")
         else:
-            records = (json.loads(line, parse_float=Decimal) for line in text.splitlines() if line.strip())
+            records = (
+                json.loads(line, parse_float=Decimal) for line in text.splitlines() if line.strip()
+            )
         headers, rows, info = _records(records)
     elif extension == "xlsx":
         headers, rows, info = _xlsx(path, sheet)

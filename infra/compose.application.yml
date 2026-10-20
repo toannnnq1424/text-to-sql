@@ -123,7 +123,7 @@ services:
       - file-private
     read_only: true
     tmpfs:
-      - /tmp:uid=10001,gid=10001,mode=1700,size=134217728
+      - /tmp:uid=10001,gid=10001,mode=1700,size=268435456
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     healthcheck:
@@ -138,6 +138,7 @@ services:
       timeout: 3s
       retries: 15
     mem_limit: 768m
+    cpus: 2
     pids_limit: 64
 
   frontend:

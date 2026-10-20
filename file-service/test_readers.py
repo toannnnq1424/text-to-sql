@@ -12,9 +12,9 @@ import pyarrow.parquet as parquet
 import pytest
 from fastapi.testclient import TestClient
 from openpyxl import Workbook
-from readers import InvalidFile, parse
 
 from app import app
+from readers import InvalidFile, canonical, parse
 
 
 def parsed(tmp_path, extension, data, **options):
@@ -26,11 +26,18 @@ def parsed(tmp_path, extension, data, **options):
     return metadata, rows
 
 
-@pytest.mark.parametrize("extension,delimiter", [("csv", ","), ("tsv", "\t"), ("txt", ";"), ("txt", "|")])
+@pytest.mark.parametrize(
+    "extension,delimiter", [("csv", ","), ("tsv", "\t"), ("txt", ";"), ("txt", "|")]
+)
 def test_delimited_full_inference_and_quoted_values(tmp_path, extension, delimiter):
     content = f'ID{delimiter}Tên nhạc{delimiter}Amount{delimiter}enabled\r\n001{delimiter}"a\nb"{delimiter}123.4500{delimiter}true\r\n002{delimiter}O\'Brien{delimiter}1.00{delimiter}false\r\n'
     metadata, rows = parsed(tmp_path, extension, content.encode())
-    assert [c["dataType"] for c in metadata["columns"]] == ["STRING", "STRING", "DECIMAL", "BOOLEAN"]
+    assert [c["dataType"] for c in metadata["columns"]] == [
+        "STRING",
+        "STRING",
+        "DECIMAL",
+        "BOOLEAN",
+    ]
     assert metadata["columns"][1]["name"] == "ten_nhac"
     assert rows[0] == ["001", "a\nb", "123.4500", "true"]
 
@@ -51,8 +58,15 @@ def test_utf16_exact_bigint_and_null(tmp_path):
 
 @pytest.mark.parametrize("extension", ["json", "jsonl", "ndjson"])
 def test_json_union_nested_and_precision(tmp_path, extension):
-    records = [{"id": 9007199254740993, "label": "Việt", "info": {"x": 1}}, {"id": 2, "later": True}]
-    data = json.dumps(records) if extension == "json" else "\n".join(json.dumps(row) for row in records)
+    records = [
+        {"id": 9007199254740993, "label": "Việt", "info": {"x": 1}},
+        {"id": 2, "later": True},
+    ]
+    data = (
+        json.dumps(records)
+        if extension == "json"
+        else "\n".join(json.dumps(row) for row in records)
+    )
     metadata, rows = parsed(tmp_path, extension, data.encode())
     assert metadata["rowCount"] == 2
     assert rows[0][0] == "9007199254740993"
@@ -62,7 +76,13 @@ def test_json_union_nested_and_precision(tmp_path, extension):
 
 @pytest.mark.parametrize("extension", ["parquet", "feather", "arrow", "ipc", "orc"])
 def test_native_formats_exact_decimal_and_temporal(tmp_path, extension):
-    table = pa.table({"id": pa.array([9007199254740993, 2], type=pa.int64()), "amount": pa.array([Decimal("123.4500"), None], type=pa.decimal128(20, 4)), "date": [dt.date(2026, 10, 20), dt.date(2026, 10, 21)]})
+    table = pa.table(
+        {
+            "id": pa.array([9007199254740993, 2], type=pa.int64()),
+            "amount": pa.array([Decimal("123.4500"), None], type=pa.decimal128(20, 4)),
+            "date": [dt.date(2026, 10, 20), dt.date(2026, 10, 21)],
+        }
+    )
     output = pa.BufferOutputStream()
     if extension == "parquet":
         parquet.write_table(table, output)
@@ -80,7 +100,15 @@ def test_native_formats_exact_decimal_and_temporal(tmp_path, extension):
 
 def test_avro_and_sheet_selection(tmp_path):
     buffer = io.BytesIO()
-    fastavro.writer(buffer, {"type": "record", "name": "Data", "fields": [{"name": "id", "type": "long"}, {"name": "value", "type": "string"}]}, [{"id": 1, "value": "nhạc"}])
+    fastavro.writer(
+        buffer,
+        {
+            "type": "record",
+            "name": "Data",
+            "fields": [{"name": "id", "type": "long"}, {"name": "value", "type": "string"}],
+        },
+        [{"id": 1, "value": "nhạc"}],
+    )
     assert parsed(tmp_path, "avro", buffer.getvalue())[1] == [["1", "nhạc"]]
     workbook = Workbook()
     workbook.active.append(["a"])
@@ -114,9 +142,26 @@ def test_formulas_duplicate_headers_and_bad_row_rejected(tmp_path):
 def test_auth_and_stream_complete_output(monkeypatch):
     monkeypatch.setenv("FILE_SERVICE_TOKEN", "x" * 40)
     client = TestClient(app)
-    assert client.post("/internal/v1/parse", files={"file": ("data.csv", b"a\n1\n")}).status_code == 401
-    response = client.post("/internal/v1/parse", files={"file": ("data.csv", b"a\n1\n2\n")}, headers={"Authorization": "Bearer " + "x" * 40})
+    assert (
+        client.post("/internal/v1/parse", files={"file": ("data.csv", b"a\n1\n")}).status_code
+        == 401
+    )
+    response = client.post(
+        "/internal/v1/parse",
+        files={"file": ("data.csv", b"a\n1\n2\n")},
+        headers={"Authorization": "Bearer " + "x" * 40},
+    )
     assert response.status_code == 200
     lines = [json.loads(line) for line in response.text.splitlines()]
     assert lines[0]["rowCount"] == 2
     assert lines[1:] == [{"row": ["1"]}, {"row": ["2"]}]
+
+
+def test_nested_json_numbers_and_limits():
+    result = canonical({"amount": Decimal("123.4500"), "data": [Decimal("0.00000000001")]})
+    assert '"amount":123.4500' in result
+    assert json.loads(result, parse_float=Decimal)["amount"] == Decimal("123.4500")
+    with pytest.raises(InvalidFile):
+        canonical({"large": "a" * 17000})
+    with pytest.raises(InvalidFile):
+        canonical({"value": Decimal("NaN")})

@@ -15,6 +15,7 @@ Types: `STRING | BIGINT | DECIMAL | BOOLEAN | DATE | TIMESTAMP`. Decimal maps to
 - `GET /files/targets?warehouseId=` → `{warehouseId,namespaces:string[]}` actual CREATE-capable namespaces discovered with the registered import writer. No fixed namespace is assumed.
 - `POST /files` multipart `file`, optional `sheet`, optional one-character `delimiter` → FileUpload. XLSX defaults to first sheet and returns all sheet names; changing the sheet reuploads the original file and invalidates the previous plan in the caller.
 - `GET /files/{id}` → FileUpload owned by actor.
+- `DELETE /files/{id}` →204; discards private spool and expires upload/plans while retaining audit/run metadata. Reject409 if active work still references file.
 - `POST /files/{id}/validate` JSON `{warehouseId,targetSchema,targetTable,datasetName,columns}` → FilePlan. All columns supplied in original source order; mapping may rename/retype but not invent/drop columns. Validation scans every row for compatibility. Existing target tables are rejected. The writer must have CREATE/INSERT in a pre-provisioned isolated namespace.
 - `POST /files/runs` JSON `{planId,digest,idempotencyKey}` → FileRun (202). Plan + mapping + file digest + warehouse connection revision are immutable. Expired plans cannot start new work. Exact retries with same actor/key return the original run; changed payload returns 409.
 - `GET /files/runs?warehouseId=&page=&pageSize=` → ordinary Page<FileRun>.

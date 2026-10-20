@@ -8,8 +8,9 @@ from pathlib import Path
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
-from readers import InvalidFile, encoded, parse
 from starlette.background import BackgroundTask
+
+from readers import InvalidFile, encoded, parse
 
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 SLOTS = threading.BoundedSemaphore(2)
@@ -28,7 +29,9 @@ def health():
 
 
 @app.post("/internal/v1/parse", dependencies=[Depends(authenticated)])
-def parse_upload(file: UploadFile = File(), sheet: str | None = Form(None), delimiter: str | None = Form(None)):
+def parse_upload(
+    file: UploadFile = File(), sheet: str | None = Form(None), delimiter: str | None = Form(None)
+):
     if not SLOTS.acquire(blocking=False):
         raise HTTPException(429, "FILE_SERVICE_BUSY")
     directory = tempfile.TemporaryDirectory(prefix="nla-file-")
@@ -57,7 +60,9 @@ def parse_upload(file: UploadFile = File(), sheet: str | None = Form(None), deli
             directory.cleanup()
             SLOTS.release()
 
-        return StreamingResponse(stream(), media_type="application/x-ndjson", background=BackgroundTask(cleanup))
+        return StreamingResponse(
+            stream(), media_type="application/x-ndjson", background=BackgroundTask(cleanup)
+        )
     except HTTPException:
         directory.cleanup()
         SLOTS.release()

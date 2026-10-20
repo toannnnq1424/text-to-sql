@@ -81,7 +81,8 @@ final class FileTypes {
               ? "LONGTEXT"
               : engine.equals("SQL_SERVER") ? "NVARCHAR(MAX)" : "TEXT";
       case "DECIMAL" -> "DECIMAL(38,10)";
-      case "BOOLEAN" -> engine.equals("SQL_SERVER") ? "BIT" : "BOOLEAN";
+      case "BOOLEAN" ->
+          engine.equals("SQL_SERVER") ? "BIT" : engine.equals("MYSQL") ? "BIT(1)" : "BOOLEAN";
       case "TIMESTAMP" ->
           engine.equals("MYSQL")
               ? "DATETIME(6)"

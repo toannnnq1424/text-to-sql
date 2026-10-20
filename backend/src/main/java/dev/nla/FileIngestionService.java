@@ -32,6 +32,7 @@ public final class FileIngestionService {
   private final ScheduledExecutorService janitor = Executors.newSingleThreadScheduledExecutor();
   private final Map<String, Future<?>> jobs = new ConcurrentHashMap<>();
   private final Set<String> cancelled = ConcurrentHashMap.newKeySet();
+  private final Set<String> started = ConcurrentHashMap.newKeySet();
   private static final List<String> LAYERS = List.of("RAW", "STAGING", "WAREHOUSE", "MART");
 
   public FileIngestionService(
@@ -149,17 +150,25 @@ public final class FileIngestionService {
               file.getSize(),
               "expiresAt",
               Instant.now().plus(Duration.ofHours(24)).toString()));
-      files.upload(doc, hashFile(path));
-      store.audit(
-          "FILE_UPLOAD",
-          id,
-          Json.obj(
-              "fileSize",
-              file.getSize(),
-              "rowCount",
-              doc.get("rowCount"),
-              "fileType",
-              doc.get("fileType")));
+      String digest = hashFile(path);
+      var transaction =
+          new org.springframework.transaction.support.TransactionTemplate(
+              new org.springframework.jdbc.datasource.DataSourceTransactionManager(
+                  Objects.requireNonNull(store.jdbc().getDataSource())));
+      transaction.executeWithoutResult(
+          status -> {
+            files.upload(doc, digest);
+            store.audit(
+                "FILE_UPLOAD",
+                id,
+                Json.obj(
+                    "fileSize",
+                    file.getSize(),
+                    "rowCount",
+                    doc.get("rowCount"),
+                    "fileType",
+                    doc.get("fileType")));
+          });
       return doc;
     } catch (Exception failure) {
       Files.deleteIfExists(path);
@@ -169,6 +178,35 @@ public final class FileIngestionService {
 
   public Map<String, Object> upload(String id) {
     return files.get("upload", id);
+  }
+
+  public synchronized void discard(String id) throws IOException {
+    files.get("upload", id);
+    Integer active =
+        store
+            .jdbc()
+            .queryForObject(
+                "SELECT count(*) FROM file_ingestion_run WHERE upload_id=? AND document->>'status'"
+                    + " IN ('PENDING','RUNNING')",
+                Integer.class,
+                id);
+    if (active != null && active > 0)
+      throw new ApiException(
+          HttpStatus.CONFLICT,
+          "FILE_INGESTION_BUSY",
+          "File đang được nạp; hủy tác vụ trước khi xóa.");
+    String now = Instant.now().toString();
+    store
+        .jdbc()
+        .update(
+            "UPDATE file_upload SET"
+                + " expires_at=?::timestamptz,document=jsonb_set(document,'{expiresAt}',to_jsonb(?::text))"
+                + " WHERE id=?",
+            now,
+            now,
+            id);
+    Files.deleteIfExists(spool(id));
+    store.audit("FILE_UPLOAD_DISCARD", id);
   }
 
   static String hashFile(Path path) throws IOException {
@@ -474,7 +512,18 @@ public final class FileIngestionService {
             "createdTables",
             new ArrayList<>());
     try {
-      files.createRun(run, plan, key, requestDigest);
+      var transaction =
+          new org.springframework.transaction.support.TransactionTemplate(
+              new org.springframework.jdbc.datasource.DataSourceTransactionManager(
+                  Objects.requireNonNull(store.jdbc().getDataSource())));
+      transaction.executeWithoutResult(
+          status -> {
+            files.createRun(run, plan, key, requestDigest);
+            store.audit(
+                "FILE_INGESTION_CONFIRM",
+                Json.str(run, "id"),
+                Json.obj("warehouseId", plan.get("warehouseId")));
+          });
     } catch (DuplicateKeyException conflict) {
       old = files.retry(key, requestDigest);
       if (old != null) return old;
@@ -486,6 +535,10 @@ public final class FileIngestionService {
     var task =
         new FutureTask<Void>(
             () -> {
+              synchronized (this) {
+                if (!jobs.containsKey(runId) || cancelled.contains(runId)) return null;
+                started.add(runId);
+              }
               SecurityContextHolder.setContext(context);
               try {
                 execute(plan, run);
@@ -493,13 +546,13 @@ public final class FileIngestionService {
                 SecurityContextHolder.clearContext();
                 jobs.remove(runId);
                 cancelled.remove(runId);
+                started.remove(runId);
               }
               return null;
             });
     jobs.put(runId, task);
     workers.execute(task);
-    store.audit("FILE_INGESTION_CONFIRM", runId, Json.obj("warehouseId", plan.get("warehouseId")));
-    return new LinkedHashMap<>(run);
+    return files.get("run", runId);
   }
 
   private void execute(Map<String, Object> plan, Map<String, Object> run) {
@@ -519,6 +572,7 @@ public final class FileIngestionService {
           spool(Json.str(plan, "uploadId")),
           run,
           files::save);
+      checkCancelled(run);
       var mart = Json.objects(plan.get("layers")).getLast();
       String sql =
           "SELECT COUNT(*) AS record_count FROM "
@@ -591,14 +645,34 @@ public final class FileIngestionService {
               "1.0.0",
               "schemaVersion",
               "1.0.0");
-      store.insertDataset(dataset, semantic);
-      run.put("datasetId", datasetId);
-      run.put("status", "SUCCESS");
-      store.audit(
-          "FILE_INGESTION_SUCCESS",
-          Json.str(run, "id"),
-          Json.obj(
-              "warehouseId", run.get("warehouseId"), "datasetId", datasetId, "rowCount", count));
+      synchronized (this) {
+        checkCancelled(run);
+        var completed = new LinkedHashMap<>(run);
+        completed.put("datasetId", datasetId);
+        completed.put("status", "SUCCESS");
+        completed.put("completedAt", Instant.now().toString());
+        var transactions =
+            new org.springframework.transaction.support.TransactionTemplate(
+                new org.springframework.jdbc.datasource.DataSourceTransactionManager(
+                    Objects.requireNonNull(store.jdbc().getDataSource())));
+        transactions.executeWithoutResult(
+            transaction -> {
+              store.insertDataset(dataset, semantic);
+              store.audit(
+                  "FILE_INGESTION_SUCCESS",
+                  Json.str(run, "id"),
+                  Json.obj(
+                      "warehouseId",
+                      run.get("warehouseId"),
+                      "datasetId",
+                      datasetId,
+                      "rowCount",
+                      count));
+              files.save(completed);
+            });
+        run.clear();
+        run.putAll(completed);
+      }
     } catch (Exception failure) {
       boolean wasCancelled =
           cancelled.contains(Json.str(run, "id")) || Thread.currentThread().isInterrupted();
@@ -622,9 +696,16 @@ public final class FileIngestionService {
       store.audit(
           wasCancelled ? "FILE_INGESTION_CANCELLED" : "FILE_INGESTION_FAILED", Json.str(run, "id"));
     } finally {
-      run.put("completedAt", Instant.now().toString());
-      files.save(run);
+      if (!"SUCCESS".equals(run.get("status"))) {
+        run.put("completedAt", Instant.now().toString());
+        files.save(run);
+      }
     }
+  }
+
+  private void checkCancelled(Map<String, Object> run) throws InterruptedException {
+    if (cancelled.contains(Json.str(run, "id")) || Thread.currentThread().isInterrupted())
+      throw new InterruptedException("Cancelled file job");
   }
 
   public Map<String, Object> run(String id) {
@@ -650,7 +731,10 @@ public final class FileIngestionService {
     if (!Set.of("PENDING", "RUNNING").contains(Json.str(run, "status"))) return run;
     cancelled.add(id);
     var job = jobs.get(id);
-    if (job != null && job.cancel(true) && "PENDING".equals(run.get("status"))) {
+    if (job != null && job.cancel(true) && !started.contains(id)) {
+      workers.remove((Runnable) job);
+      jobs.remove(id);
+      cancelled.remove(id);
       run.put("status", "CANCELLED");
       run.put("completedAt", Instant.now().toString());
       Json.objects(run.get("stages")).forEach(stage -> stage.put("status", "SKIPPED"));

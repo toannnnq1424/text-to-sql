@@ -5,7 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Repository;
 
 @Repository
-final class FileIngestionStore {
+class FileIngestionStore {
   private final Store store;
 
   FileIngestionStore(Store store) {
@@ -105,7 +105,8 @@ final class FileIngestionStore {
     store
         .jdbc()
         .update(
-            "UPDATE file_ingestion_run SET document=?::jsonb WHERE id=?",
+            "UPDATE file_ingestion_run SET document=?::jsonb WHERE id=? AND document->>'status' <>"
+                + " 'SUCCESS'",
             Json.write(run),
             run.get("id"));
   }
