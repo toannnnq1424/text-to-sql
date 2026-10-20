@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   Timer,
 } from "lucide-react";
+import { FileSpreadsheet, Network } from "lucide-react";
 import { useWarehouse } from "../app/providers";
 import { useAuth } from "../app/auth";
 import { ingestionApi } from "../api/ingestionApi";
@@ -24,6 +25,7 @@ import {
 import { PageHeading } from "../components/Shell";
 import { Artwork } from "../components/Artwork";
 import { IngestionSourceRegistry } from "./IngestionSourceRegistry";
+import { FileIngestionWorkflow } from "./FileIngestionWorkflow";
 import {
   DateFilterFields,
   RegistryFilterFields,
@@ -49,15 +51,47 @@ import {
 } from "../components/ui";
 export function IngestionPage() {
   const c = useWarehouse();
+  const { runId } = useParams();
+  const [mode, setMode] = useState<"file" | "warehouse">(
+    runId ? "warehouse" : "file",
+  );
   return (
     <>
       <PageHeading
         title="Nạp dữ liệu vào Warehouse"
-        description="Nạp dữ liệu từ những nguồn đã đăng ký thông qua pipeline có kiểm soát. Theo dõi từng bước xử lý, số dòng nạp và lịch sử thực thi."
+        description="Nạp dữ liệu từ file hoặc chuyển dữ liệu giữa các warehouse bằng pipeline có kiểm soát. Theo dõi preview, các lớp xử lý và lịch sử thực thi."
         art={<Artwork kind="ingestion" />}
       />
       <ApiAccess>
-        <IngestionContent key={`${c.warehouseId}/${c.datasetId}`} />
+        <div
+          className="ingestion-modes"
+          role="tablist"
+          aria-label="Chọn cách nạp dữ liệu"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === "file"}
+            className={mode === "file" ? "active" : ""}
+            onClick={() => setMode("file")}
+          >
+            <FileSpreadsheet size={18} /> Nạp file
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === "warehouse"}
+            className={mode === "warehouse" ? "active" : ""}
+            onClick={() => setMode("warehouse")}
+          >
+            <Network size={18} /> Nguồn warehouse
+          </button>
+        </div>
+        {mode === "file" ? (
+          <FileIngestionWorkflow key={c.warehouseId} />
+        ) : (
+          <IngestionContent key={`${c.warehouseId}/${c.datasetId}`} />
+        )}
       </ApiAccess>
     </>
   );

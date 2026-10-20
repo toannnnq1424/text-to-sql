@@ -425,3 +425,14 @@ Các entry triển khai tiếp theo thêm phía dưới; không đánh dấu FE/
 
 - Branch `module/source-platform-integration`; merge subject `merge: preserve native runtime source budgets and scalar types`.
 - Integrated published9266957 compatibility fixes:50MiB configured ingestion source budget, bounded64MiB aggregate reservations, native UUID result typing. Component7 Go race/DB3 tests and Docker build PASS; combined Compose verification remains pending.
+## 2026-10-20T22:00+07:00 — FE / bulk file upload caller
+
+- Branch `module/file-ingestion-ui`; subject `feat: add complete-file ingestion preview and run workflow`.
+- Resumed the interrupted FE agent's uncommitted work. Added default Nạp file workflow with13 supported extensions, automatic complete column mapping, preview, XLSX sheet/delimiter options, actual writer namespace discovery, target selection, immutable plan review/expiry, idempotent confirm, async progress/cancel/history and Dataset/Catalog links. Existing DB source pipeline remains in its own tab. Context switches to the actual newly registered Dataset after success; no fixed business data or import namespace is inserted into runtime UI.
+- PASS: full FE unit suite123 tests, TypeScript/Vite production build and Prettier check. New isolated workflow tests/API tests cover validation/confirm/expiry/errors; component fixtures are test-only.
+- PENDING: real browser file upload through Java/database3 and packaged OIDC Compose regression. This commit does not claim live or pixel acceptance; root is completing those on the integration branch. No provider call tested.
+
+## 2026-10-20T22:05+07:00 — Root / complete-file UI integration
+
+- Branch `module/source-platform-integration`; merge subject `merge: integrate bulk file upload user workflow`.
+- Integrated published6d9fc26 frontend13-extension upload/preview/mapping/namespace/plan/run/history workflow; corrected component log count to observed123 tests (not126). Root independently reran123 unit tests, build and formatter PASS. Live browser upload and packaged OIDC acceptance remain pending.

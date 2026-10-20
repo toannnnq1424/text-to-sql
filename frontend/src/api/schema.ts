@@ -428,6 +428,145 @@ export const IngestionSchema = z.object({
   error: ErrorBodySchema.nullable(),
 });
 export type IngestionRun = z.infer<typeof IngestionSchema>;
+
+export const FileCellSchema: z.ZodType<unknown> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number().finite(),
+    z.boolean(),
+    z.null(),
+    z.array(FileCellSchema),
+    z.record(z.string(), FileCellSchema),
+  ]),
+);
+export const FileDataTypeSchema = z.enum([
+  "STRING",
+  "BIGINT",
+  "DECIMAL",
+  "BOOLEAN",
+  "DATE",
+  "TIMESTAMP",
+]);
+export const FileColumnSchema = z.strictObject({
+  sourceName: id,
+  name: id,
+  dataType: FileDataTypeSchema,
+  nullable: z.boolean(),
+});
+export type FileColumn = z.infer<typeof FileColumnSchema>;
+export const FileUploadSchema = z.strictObject({
+  id,
+  fileName: id,
+  fileType: id,
+  fileSize: count,
+  rowCount: count,
+  columnCount: count,
+  columns: z.array(FileColumnSchema).max(200),
+  previewRows: z.array(z.array(FileCellSchema)).max(20),
+  warnings: z.array(z.string()),
+  sheets: z.array(z.string()),
+  sheet: z.string().optional(),
+  expiresAt: time,
+});
+export type FileUpload = z.infer<typeof FileUploadSchema>;
+export const FileTargetsSchema = z.strictObject({
+  warehouseId: id,
+  namespaces: z.array(id),
+});
+export type FileTargets = z.infer<typeof FileTargetsSchema>;
+export const FilePlanSchema = z.strictObject({
+  id,
+  uploadId: id,
+  warehouseId: id,
+  targetSchema: id,
+  targetTable: id,
+  datasetName: id,
+  digest: id,
+  status: z.literal("VALIDATED"),
+  fileName: id,
+  rowCount: count,
+  columns: z.array(FileColumnSchema).max(200),
+  previewRows: z.array(z.array(FileCellSchema)).max(20),
+  layers: z
+    .array(
+      z.strictObject({
+        name: z.enum(["RAW", "STAGING", "WAREHOUSE", "MART"]),
+        schema: id,
+        table: id,
+      }),
+    )
+    .length(4),
+  expiresAt: time,
+  warnings: z.array(z.string()),
+});
+export type FilePlan = z.infer<typeof FilePlanSchema>;
+export const FileRunStatusSchema = z.enum([
+  "PENDING",
+  "RUNNING",
+  "SUCCESS",
+  "FAILED",
+  "CANCELLED",
+]);
+export const FileRunStepSchema = z.strictObject({
+  name: z.enum(["RAW", "STAGING", "WAREHOUSE", "MART"]),
+  status: z.enum([
+    "PENDING",
+    "RUNNING",
+    "SUCCESS",
+    "FAILED",
+    "SKIPPED",
+    "CANCELLED",
+  ]),
+  rowsLoaded: count,
+});
+export const FileRunSchema = z.strictObject({
+  id,
+  sourceKind: z.literal("FILE"),
+  status: FileRunStatusSchema,
+  warehouseId: id,
+  datasetId: id.nullable(),
+  fileName: id,
+  startedAt: time,
+  completedAt: time.nullable(),
+  rowCount: count,
+  rowsLoaded: count,
+  stages: z.array(FileRunStepSchema),
+  error: ErrorBodySchema.nullable(),
+  partialFailure: z.boolean(),
+  createdTables: z.array(z.strictObject({ schema: id, table: id })),
+});
+export type FileRun = z.infer<typeof FileRunSchema>;
+export const FilePlanInputSchema = z
+  .strictObject({
+    warehouseId: id,
+    targetSchema: z.string().trim().min(1).max(128),
+    targetTable: z.string().trim().min(1).max(128),
+    datasetName: z.string().trim().min(1).max(120),
+    columns: z.array(FileColumnSchema).min(1).max(200),
+  })
+  .superRefine((value, ctx) => {
+    const targetNames = value.columns.map((column) => column.name);
+    if (new Set(targetNames).size !== targetNames.length) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["columns"],
+        message: "Tên cột đích phải duy nhất.",
+      });
+    }
+    if (value.columns.some((column) => column.name.length > 128)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["columns"],
+        message: "Tên cột đích không được vượt quá 128 ký tự.",
+      });
+    }
+  });
+export type FilePlanInput = z.infer<typeof FilePlanInputSchema>;
+export const FileRunRequestSchema = z.strictObject({
+  planId: id,
+  digest: id,
+  idempotencyKey: id,
+});
 export const EvaluationMetricsSchema = z.object({
   totalCases: count,
   completedCases: count,
