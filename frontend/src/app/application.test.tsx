@@ -73,7 +73,12 @@ describe("shell and context", () => {
       mode: "NATIVE",
       statementCount: 2,
       objectCount: 1,
-      supportedActions: ["CREATE_TABLE", "INSERT"],
+      supportedActions: [
+        "CREATE_SCHEMA",
+        "CREATE_TABLE",
+        "INSERT",
+        "CREATE_INDEX",
+      ],
       warnings: [],
       unsupportedFeatures: [],
       preview: {
@@ -91,12 +96,33 @@ describe("shell and context", () => {
             tables: [
               {
                 name: "imported_tracks",
+                constraints: [
+                  {
+                    kind: "PRIMARY_KEY",
+                    name: "pk_imported_tracks",
+                    columns: ["track_id"],
+                    referenceSchema: "",
+                    referenceTable: "",
+                    referenceColumns: [],
+                  },
+                ],
+                indexes: [
+                  {
+                    name: "ix_imported_tracks_name",
+                    columns: ["name"],
+                    unique: false,
+                  },
+                ],
                 columns: [
                   {
                     name: "track_id",
                     dataType: "INTEGER",
                     nullable: false,
                     primaryKey: true,
+                    identity: true,
+                    unique: false,
+                    hasDefault: true,
+                    defaultValue: "1",
                   },
                 ],
               },
@@ -119,6 +145,7 @@ describe("shell and context", () => {
       screen.getByLabelText("Warehouse đích"),
       "wh-demo-pg",
     );
+    await user.type(screen.getByLabelText("Schema đích"), "public");
     await user.upload(
       screen.getByLabelText("File SQL (tối đa 2 MiB)"),
       new File(
@@ -137,7 +164,7 @@ describe("shell and context", () => {
       expect.objectContaining({
         sourceDialect: "AUTO_DETECT",
         warehouseId: "wh-demo-pg",
-        targetSchema: "analytics",
+        targetSchema: "public",
       }),
     );
     validatePlan.mockRestore();
@@ -567,6 +594,64 @@ describe("warehouse and job management", () => {
     expect(
       await screen.findByRole("heading", { name: "Chi tiết lần nạp dữ liệu" }),
     ).toBeVisible();
+  });
+  it("shows the admin source registry and submits a validated source definition", async () => {
+    const user = userEvent.setup();
+    let created: unknown;
+    server.use(
+      http.post(`${api}/warehouse/ingestion/sources`, async ({ request }) => {
+        created = await request.json();
+        return HttpResponse.json(f.ingestionSource, { status: 201 });
+      }),
+    );
+    renderApp("/ingestion");
+    await readyDataset();
+    await user.click(
+      await screen.findByRole("button", { name: /Đăng ký nguồn/ }),
+    );
+    await user.type(screen.getByLabelText("Tên nguồn"), "Daily sales load");
+    await user.type(
+      screen.getByLabelText(/SELECT nguồn/),
+      "SELECT sale_id AS sale_id FROM analytics.fact_sales",
+    );
+    await user.selectOptions(screen.getByLabelText("Schema raw"), "analytics");
+    await user.type(screen.getByLabelText("Bảng raw"), "raw_sales");
+    await user.selectOptions(
+      screen.getByLabelText("Schema staging"),
+      "analytics",
+    );
+    await user.type(screen.getByLabelText("Bảng staging"), "stage_sales");
+    await user.selectOptions(
+      screen.getByLabelText("Schema warehouse"),
+      "analytics",
+    );
+    await user.type(screen.getByLabelText("Bảng warehouse"), "warehouse_sales");
+    await user.selectOptions(screen.getByLabelText("Schema mart"), "analytics");
+    await user.type(screen.getByLabelText("Bảng mart"), "mart_sales");
+    await user.type(screen.getByLabelText("Alias 1"), "sale_id");
+    await user.click(screen.getByRole("button", { name: "Lưu cấu hình" }));
+    await waitFor(() => expect(created).toBeDefined());
+    expect(created).toMatchObject({
+      name: "Daily sales load",
+      warehouseId: f.warehouses[0].warehouseId,
+      datasetId: f.datasets[0].datasetId,
+      sourceWarehouseId: f.warehouses[0].warehouseId,
+      sourceDatasetId: f.datasets[0].datasetId,
+      raw: { schema: "analytics", name: "raw_sales" },
+      stage: { schema: "analytics", name: "stage_sales" },
+      warehouse: { schema: "analytics", name: "warehouse_sales" },
+      mart: { schema: "analytics", name: "mart_sales" },
+      columns: ["sale_id"],
+      columnTypes: { sale_id: "STRING" },
+    });
+  });
+  it("hides source registration actions from non-admin roles", async () => {
+    renderApp("/ingestion", ["OPERATOR"]);
+    await readyDataset();
+    expect(
+      await screen.findByText(/Chỉ quản trị viên mới được đăng ký/),
+    ).toBeVisible();
+    expect(screen.queryByRole("button", { name: /Đăng ký nguồn/ })).toBeNull();
   });
   it("shows evaluation SQL comparison and actual bounded results", async () => {
     renderApp("/evaluation/results/case-result-001?runId=eval-001");

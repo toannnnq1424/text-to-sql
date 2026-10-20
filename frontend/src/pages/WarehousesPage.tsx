@@ -346,12 +346,16 @@ function WarehouseFields({
         engine: _,
         credentialReference,
         importCredentialReference,
+        ingestionCredentialReference,
         ...update
       } = body;
       return warehouseApi.update(w.warehouseId, {
         ...update,
         ...(credentialReference ? { credentialReference } : {}),
         ...(importCredentialReference ? { importCredentialReference } : {}),
+        ...(ingestionCredentialReference
+          ? { ingestionCredentialReference }
+          : {}),
       });
     },
     onSuccess: onSaved,
@@ -371,7 +375,23 @@ function WarehouseFields({
           importCredentialReference: String(
             data.importCredentialReference || "",
           ),
+          ingestionUsername: String(
+            data.ingestionUsername || w?.ingestionUsername || "",
+          ),
+          ingestionCredentialReference: String(
+            data.ingestionCredentialReference || "",
+          ),
         };
+        if (
+          !w &&
+          Boolean(input.ingestionUsername) !==
+            Boolean(input.ingestionCredentialReference)
+        ) {
+          setError(
+            "Cấu hình pipeline cần cả ingestion writer username và credential reference.",
+          );
+          return;
+        }
         const validation = WarehouseInputSchema.safeParse({
           ...input,
           credentialReference:
@@ -388,13 +408,22 @@ function WarehouseFields({
           return;
         }
         setError("");
-        const { importCredentialReference: _writerReference, ...validInput } =
-          validation.data;
+        const {
+          importCredentialReference: _importReference,
+          ingestionCredentialReference: _ingestionReference,
+          ...validInput
+        } = validation.data;
         mutation.mutate({
           ...validInput,
           credentialReference: input.credentialReference,
           ...(input.importCredentialReference
             ? { importCredentialReference: input.importCredentialReference }
+            : {}),
+          ...(input.ingestionCredentialReference
+            ? {
+                ingestionCredentialReference:
+                  input.ingestionCredentialReference,
+              }
             : {}),
         });
       }}
@@ -502,6 +531,27 @@ function WarehouseFields({
             autoComplete="off"
           />
         </Field>
+        <Field
+          label="Ingestion writer username (optional)"
+          hint="Tài khoản riêng có quyền ghi cho pipeline. Có thể khác reader; không dùng credential read-only."
+        >
+          <input
+            name="ingestionUsername"
+            defaultValue={w?.ingestionUsername}
+            maxLength={128}
+            autoComplete="off"
+          />
+        </Field>
+        <Field
+          label="Ingestion writer credential reference (optional)"
+          hint="Tham chiếu env:NAME tới secret được cấu hình trên Java. Không nhập mật khẩu; để trống giữ cấu hình hiện tại."
+        >
+          <input
+            name="ingestionCredentialReference"
+            maxLength={256}
+            autoComplete="off"
+          />
+        </Field>
       </div>
       <Notice>
         <ShieldCheck size={16} /> Truy vấn dùng credential read-only. SQL Import
@@ -567,6 +617,7 @@ function WarehouseDetail({ warehouse: w }: { warehouse: Warehouse }) {
           ["Database", w.database],
           ["Default schema", w.defaultSchema],
           ["Username", w.username],
+          ["Ingestion writer username", w.ingestionUsername],
           ["Cập nhật", formatDate(w.updatedAt)],
         ]}
       />

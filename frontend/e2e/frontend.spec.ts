@@ -82,7 +82,15 @@ async function javaTestBoundary(page: Page) {
     else if (path.startsWith("/query/")) body = f.query;
     else if (path === "/warehouse/ingestion/runs") body = f.page([f.ingestion]);
     else if (path.startsWith("/warehouse/ingestion/runs/")) body = f.ingestion;
-    else if (path.endsWith("/sources")) body = f.page([f.source]);
+    else if (path === "/warehouse/ingestion/sources") {
+      body =
+        route.request().method() === "POST"
+          ? f.ingestionSource
+          : f.page([f.source]);
+    } else if (/^\/warehouse\/ingestion\/sources\/[^/]+\/test$/.test(path))
+      body = f.sourceTest;
+    else if (/^\/warehouse\/ingestion\/sources\/[^/]+$/.test(path))
+      body = f.ingestionSource;
     else if (path === "/import/sql/validate")
       body = {
         planId: "plan-demo-001",
@@ -95,7 +103,7 @@ async function javaTestBoundary(page: Page) {
         mode: "NATIVE",
         statementCount: 1,
         objectCount: 1,
-        supportedActions: ["CREATE_TABLE"],
+        supportedActions: ["CREATE_SCHEMA", "CREATE_TABLE", "CREATE_INDEX"],
         warnings: [],
         unsupportedFeatures: [],
         preview: {
@@ -113,12 +121,18 @@ async function javaTestBoundary(page: Page) {
               tables: [
                 {
                   name: "imported_rows",
+                  constraints: [],
+                  indexes: [],
                   columns: [
                     {
                       name: "id",
                       dataType: "INTEGER",
                       nullable: false,
                       primaryKey: true,
+                      identity: true,
+                      unique: false,
+                      hasDefault: false,
+                      defaultValue: null,
                     },
                   ],
                 },
@@ -257,6 +271,38 @@ test("compact generated SQL is formatted into readable lines in result details",
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(1729);
 });
+
+for (const width of [1440, 390]) {
+  test(`registered source editor fits the ${width}px ingestion layout`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: width < 500 ? 844 : 1000 });
+    await javaTestBoundary(page);
+    await page.goto("/ingestion");
+    await expect(
+      page.getByRole("heading", { name: "Nguồn pipeline đã đăng ký" }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: /Đăng ký nguồn/ })
+      .first()
+      .click();
+    await expect(
+      page.getByRole("dialog", { name: "Đăng ký nguồn pipeline" }),
+    ).toBeVisible();
+    await expect(page.getByLabel("Warehouse đích")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Dataset nguồn" }),
+    ).toBeVisible();
+    await expect(page.getByLabel("SELECT nguồn")).toBeVisible();
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(width);
+    await page.screenshot({
+      path: testInfo.outputPath(`ingestion-source-editor-${width}.png`),
+      fullPage: true,
+    });
+  });
+}
 test("engine switching clears the old question and selects only a matching dataset", async ({
   page,
 }) => {

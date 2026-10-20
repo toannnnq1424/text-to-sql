@@ -23,6 +23,7 @@ import {
 } from "../lib/format";
 import { PageHeading } from "../components/Shell";
 import { Artwork } from "../components/Artwork";
+import { IngestionSourceRegistry } from "./IngestionSourceRegistry";
 import {
   DateFilterFields,
   RegistryFilterFields,
@@ -39,6 +40,7 @@ import {
   ErrorState,
   Field,
   Filters,
+  Modal,
   Notice,
   Pagination,
   Resource,
@@ -149,6 +151,7 @@ function IngestionContent() {
         </div>
         {run.error && <ErrorState error={run.error} />}
       </Card>
+      <IngestionSourceRegistry />
       <Filters
         key={JSON.stringify(list.params)}
         onApply={(v) => {

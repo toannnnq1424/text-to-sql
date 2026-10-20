@@ -131,6 +131,18 @@ export const handlers = [
   http.get(`${base}/warehouse/ingestion/sources`, () =>
     HttpResponse.json(f.page([f.source])),
   ),
+  http.get(`${base}/warehouse/ingestion/sources/:id`, () =>
+    HttpResponse.json(f.ingestionSource),
+  ),
+  http.post(`${base}/warehouse/ingestion/sources`, () =>
+    HttpResponse.json(f.ingestionSource, { status: 201 }),
+  ),
+  http.patch(`${base}/warehouse/ingestion/sources/:id`, () =>
+    HttpResponse.json(f.ingestionSource),
+  ),
+  http.post(`${base}/warehouse/ingestion/sources/:id/test`, () =>
+    HttpResponse.json(f.sourceTest),
+  ),
   http.post(`${base}/warehouse/ingestion/run`, () =>
     HttpResponse.json(f.ingestion, { status: 202 }),
   ),
@@ -152,7 +164,12 @@ export const handlers = [
       mode: "NATIVE",
       statementCount: 2,
       objectCount: 1,
-      supportedActions: ["CREATE_TABLE", "INSERT"],
+      supportedActions: [
+        "CREATE_SCHEMA",
+        "CREATE_TABLE",
+        "INSERT",
+        "CREATE_INDEX",
+      ],
       warnings: [],
       unsupportedFeatures: [],
       preview: {
@@ -170,12 +187,18 @@ export const handlers = [
             tables: [
               {
                 name: "imported_tracks",
+                constraints: [],
+                indexes: [],
                 columns: [
                   {
                     name: "track_id",
                     dataType: "INTEGER",
                     nullable: false,
                     primaryKey: true,
+                    identity: true,
+                    unique: false,
+                    hasDefault: false,
+                    defaultValue: null,
                   },
                 ],
               },

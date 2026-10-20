@@ -69,9 +69,7 @@ function SqlImportContent() {
   const [plan, setPlan] = useState<ImportPlan | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [targetWarehouseId, setTargetWarehouseId] = useState(c.warehouseId);
-  const [targetSchema, setTargetSchema] = useState(
-    c.warehouse?.defaultSchema || "",
-  );
+  const [targetSchema, setTargetSchema] = useState("");
   const [formError, setFormError] = useState("");
   const [confirming, setConfirming] = useState(false);
   const attempt = useRef<{ planId: string; key: string } | null>(null);
@@ -83,8 +81,8 @@ function SqlImportContent() {
   });
   useEffect(() => {
     setTargetWarehouseId(c.warehouseId);
-    setTargetSchema(c.warehouse?.defaultSchema || "");
-  }, [c.warehouseId, c.warehouse?.defaultSchema]);
+    setTargetSchema("");
+  }, [c.warehouseId]);
   const runs = useQuery({
     queryKey: ["sql-import-runs", list.params],
     queryFn: ({ signal }) => importApi.runs(list.params, signal),
@@ -204,17 +202,8 @@ function SqlImportContent() {
                       required
                       onChange={(event) => {
                         const nextId = event.currentTarget.value;
-                        const next = warehouses.data?.items.find(
-                          (warehouse) => warehouse.warehouseId === nextId,
-                        );
                         setTargetWarehouseId(nextId);
-                        setTargetSchema(
-                          next?.defaultSchema ||
-                            (nextId === c.warehouseId
-                              ? c.warehouse?.defaultSchema
-                              : "") ||
-                            "",
-                        );
+                        setTargetSchema("");
                         setPlan(null);
                       }}
                     >
@@ -237,6 +226,7 @@ function SqlImportContent() {
                 <input
                   name="targetSchema"
                   value={targetSchema}
+                  placeholder="Nhập namespace đã tạo và cấp quyền writer"
                   onChange={(event) =>
                     setTargetSchema(event.currentTarget.value)
                   }
@@ -434,6 +424,7 @@ function ImportPlanReview({
     >
       <DetailList
         items={[
+          ["Dialect được chọn", plan.sourceDialect],
           ["Dialect nhận diện", plan.detectedDialect],
           ["Warehouse đích", plan.warehouseId],
           ["Engine đích", engineLabel[plan.targetEngine]],
@@ -481,7 +472,7 @@ function ImportPlanReview({
         </div>
       )}
       <h3>Statement preview</h3>
-      {plan.preview.statements.length ? (
+      {plan.preview.statements?.length ? (
         <DataGrid
           rows={plan.preview.statements}
           rowKey={(statement) => String(statement.index)}
@@ -509,7 +500,10 @@ function ImportPlanReview({
           ]}
         />
       ) : (
-        <Empty title="Không có statement hợp lệ" />
+        <Notice>
+          Parser đã tạo preview schema/table có cấu trúc. Server không gửi danh
+          sách statement thô trong phản hồi này.
+        </Notice>
       )}
       {plan.preview.schemas.map((schema) => (
         <details className="import-schema" key={schema.name} open>
@@ -527,9 +521,45 @@ function ImportPlanReview({
                     <code>{column.name}</code> · {column.dataType}
                     {column.nullable ? " · nullable" : " · required"}
                     {column.primaryKey ? " · PK" : ""}
+                    {column.unique ? " · UNIQUE" : ""}
+                    {column.identity ? " · identity" : ""}
+                    {column.hasDefault
+                      ? ` · DEFAULT ${column.defaultValue ?? "(empty)"}`
+                      : ""}
                   </li>
                 ))}
               </ul>
+              {table.constraints.length > 0 && (
+                <div className="import-preview-metadata">
+                  <strong>Ràng buộc</strong>
+                  <ul>
+                    {table.constraints.map((constraint, index) => (
+                      <li
+                        key={`${constraint.kind}-${constraint.name}-${index}`}
+                      >
+                        {constraint.kind}
+                        {constraint.name ? ` ${constraint.name}` : ""} (
+                        {constraint.columns.join(", ")})
+                        {constraint.kind === "FOREIGN_KEY" &&
+                          ` → ${constraint.referenceSchema}.${constraint.referenceTable} (${constraint.referenceColumns.join(", ")})`}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {table.indexes.length > 0 && (
+                <div className="import-preview-metadata">
+                  <strong>Indexes</strong>
+                  <ul>
+                    {table.indexes.map((index) => (
+                      <li key={index.name}>
+                        {index.unique ? "UNIQUE " : ""}
+                        {index.name} ({index.columns.join(", ")})
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </details>
           ))}
         </details>
