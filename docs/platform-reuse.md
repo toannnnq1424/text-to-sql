@@ -4,7 +4,7 @@
 
 Theo yêu cầu trực tiếp của người dùng ngày 2026-10-20, ưu tiên tận dụng sâu hai bộ mã nguồn trong Downloads thay vì tự viết lại những phần đã có implementation phù hợp. Tên dịch vụ/thành phần của sản phẩm dùng `semantic-engine` và `data-tool-runtime`; giao diện, logo, tài liệu hướng dẫn người dùng và telemetry của sản phẩm dùng tên Natural Language Analytics Warehouse.
 
-Đã đọc README, giấy phép, package manifests, các lớp connector/metadata, query router, cấu hình tool và auth của hai snapshot. Danh tính nguồn và SHA-256 được lưu tại [reviewed-snapshots.json](integrations/reviewed-snapshots.json). Đây là kết quả khảo sát mã nguồn; **chưa tích hợp, build hoặc chạy các connector của hai snapshot trong application**. Không gọi danh sách connector có trong nguồn là danh sách engine đã nghiệm thu của app.
+Đã khảo sát hai snapshot và tích hợp có chọn lọc vào caller thật: [semantic context index/provider payload](integrations/semantic-context.md) trong Python và [native metadata descriptions](integrations/native-metadata.md) trong Java discovery. Danh tính snapshot và hash nguồn ở [reviewed-snapshots.json](integrations/reviewed-snapshots.json), hồ sơ chi tiết ở từng integration. Đây không phải việc đưa toàn bộ hai codebase, planner hoặc MCP server vào runtime. Không gọi danh sách connector upstream là danh sách engine đã nghiệm thu của app.
 
 Người dùng cho biết đã mua và được phép xử lý các bộ nguồn. Các file được kiểm tra hiện có giấy phép gốc Apache-2.0, không phải MIT; không thấy Git metadata trong hai thư mục tải xuống nên không tự suy đoán commit từ hậu tố `main`. Chưa có một thỏa thuận cấp quyền riêng trong các file đã kiểm tra.
 

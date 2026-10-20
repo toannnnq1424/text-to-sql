@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "purpose": "Local source review; no third-party application code has been copied into this repository.",
+  "purpose": "Snapshot review identity and selected runtime reuse; exact adopted modules and limitations are referenced per project.",
   "sourceCommitStatus": "No Git metadata found in downloaded directories; commit IDs are not inferred from main directory names.",
   "projects": [
     {
@@ -71,7 +71,9 @@
           "bytes": 11342
         }
       ],
-      "runtimeIntegrated": false
+      "runtimeIntegrated": true,
+      "integratedScope": "Dependency-free schema description/index/cache approach adapted into AI context selection and provider request payload; no upstream planner, SDK, vector store or connectors.",
+      "integrationEvidence": "docs/integrations/semantic-context.md"
     },
     {
       "role": "data-tool-runtime",
@@ -126,7 +128,9 @@
           "bytes": 11357
         }
       ],
-      "runtimeIntegrated": false
+      "runtimeIntegrated": true,
+      "integratedScope": "Description-only native catalog SQL adapted into Java discovery on PostgreSQL, MySQL and SQL Server; no upstream Go server or arbitrary execution tools.",
+      "integrationEvidence": "docs/integrations/native-metadata.md"
     }
   ]
 }
