@@ -93,6 +93,27 @@ async function javaTestBoundary(page: Page) {
         route.request().method() === "POST"
           ? f.ingestionSource
           : f.page([f.source]);
+    } else if (path === "/warehouse/ingestion/sources/preview") {
+      body = {
+        readSql: f.ingestionSource.readSql,
+        sourceEngine: "POSTGRESQL",
+        columns: f.sourceTest.columns,
+        columnTypes: f.ingestionSource.columnTypes,
+        rows: [{ sale_id: 42 }],
+        truncated: false,
+        checkedAt: f.sourceTest.checkedAt,
+      };
+    } else if (path === "/warehouse/ingestion/sources/targets") {
+      body = f.page(
+        f.sourceTest.targets.map((target, index) => ({
+          ...f.table,
+          ...target,
+          tableId: `target-${index}`,
+        })),
+      );
+    } else if (path === "/warehouse/ingestion/sources/validate") {
+      const { sourceId: _sourceId, ...result } = f.sourceTest;
+      body = result;
     } else if (/^\/warehouse\/ingestion\/sources\/[^/]+\/test$/.test(path))
       body = f.sourceTest;
     else if (/^\/warehouse\/ingestion\/sources\/[^/]+$/.test(path))
@@ -287,25 +308,80 @@ for (const width of [1440, 390]) {
     await page.goto("/ingestion");
     await page.getByRole("tab", { name: "Nguồn warehouse" }).click();
     await expect(
-      page.getByRole("heading", { name: "Nguồn pipeline đã đăng ký" }),
+      page.getByRole("heading", { name: "Nguồn dữ liệu đã lưu" }),
     ).toBeVisible();
     await page
       .getByRole("button", { name: /Đăng ký nguồn/ })
       .first()
       .click();
     await expect(
-      page.getByRole("dialog", { name: "Đăng ký nguồn pipeline" }),
+      page.getByRole("dialog", { name: "Thêm nguồn dữ liệu" }),
     ).toBeVisible();
-    await expect(page.getByLabel("Warehouse đích")).toBeVisible();
+    await expect(page.getByLabel("Kết nối nguồn")).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Dataset nguồn" }),
     ).toBeVisible();
-    await expect(page.getByLabel("SELECT nguồn")).toBeVisible();
+    await expect(page.getByLabel("Bảng cần lấy dữ liệu")).toBeVisible();
+    await expect(page.getByLabel("SELECT nguồn")).toHaveCount(0);
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBeLessThanOrEqual(width);
     await page.screenshot({
       path: testInfo.outputPath(`ingestion-source-editor-${width}.png`),
+      fullPage: true,
+    });
+    await page
+      .getByRole("button", { name: "Bảng cần lấy dữ liệu", exact: true })
+      .click();
+    await page
+      .getByRole("option", {
+        name: `${f.table.schema}.${f.table.name}`,
+        exact: true,
+      })
+      .click();
+    await page.getByRole("button", { name: "Xem trước và tiếp tục" }).click();
+    await page
+      .getByLabel("Tên nguồn", { exact: true })
+      .fill("Metadata selected source");
+    for (const [index, label] of [
+      "Raw",
+      "Staging",
+      "Warehouse",
+      "Mart",
+    ].entries()) {
+      const target = f.sourceTest.targets[index];
+      await page
+        .getByRole("button", { name: `Bảng ${label}`, exact: true })
+        .click();
+      await page
+        .getByRole("option", {
+          name: `${target.schema}.${target.name}`,
+          exact: true,
+        })
+        .click();
+    }
+    await page.screenshot({
+      path: testInfo.outputPath(`ingestion-source-targets-${width}.png`),
+      fullPage: true,
+    });
+    await page.getByRole("button", { name: "Xem lại cấu hình" }).click();
+    await page
+      .getByRole("button", { name: "Kiểm tra nguồn và bảng đích" })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Lưu nguồn dữ liệu" }),
+    ).toBeEnabled();
+    const dialog = page.getByRole("dialog");
+    expect(
+      await dialog.evaluate(
+        (element) => element.scrollWidth <= element.clientWidth,
+      ),
+    ).toBe(true);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(width);
+    await page.screenshot({
+      path: testInfo.outputPath(`ingestion-source-review-${width}.png`),
       fullPage: true,
     });
   });

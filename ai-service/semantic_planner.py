@@ -14,6 +14,7 @@ from sqlglot import exp
 from sqlglot.optimizer.scope import traverse_scope
 
 from third_party.wren_semantic.cte_rewriter import CTERewriter
+from third_party.wren_semantic.session_context import session_context
 
 
 class StrictModel(BaseModel):
@@ -254,19 +255,14 @@ def plan_sql(request: PlanRequest) -> PlanResponse:
             _canonical_identifier(name) for name in source_model_names
         }:
             raise PlanningFailure("SEMANTIC_MODEL_INVALID")
-        session = wren_core.SessionContext(
-            manifest_b64,
-            None,
-            None,
-            data_source,
-        )
-        rewriter = CTERewriter(
-            manifest_b64,
-            session,
-            data_source,
-            fallback=False,
-        )
-        rewritten = rewriter.rewrite(original_ast.sql(dialect=sqlglot_dialect))
+        with session_context(manifest_b64, data_source) as session:
+            rewriter = CTERewriter(
+                manifest_b64,
+                session,
+                data_source,
+                fallback=False,
+            )
+            rewritten = rewriter.rewrite(original_ast.sql(dialect=sqlglot_dialect))
         _parse_select(rewritten, sqlglot_dialect)
     except PlanningFailure:
         raise

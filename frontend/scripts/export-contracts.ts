@@ -39,6 +39,9 @@ const schemas: Record<string, z.ZodType> = {
     })
     .partial(),
   IngestionSourceTest: s.SourceTestSchema,
+  IngestionSourcePreviewInput: s.SourcePreviewInputSchema,
+  IngestionSourcePreview: s.SourcePreviewSchema,
+  IngestionSourceValidation: s.SourceValidationSchema,
   FileUpload: s.FileUploadSchema,
   FilePlan: s.FilePlanSchema,
   FilePlanInput: s.FilePlanInputSchema,
@@ -252,6 +255,9 @@ add(
   "IngestionSourceUpdate",
 );
 add("post", "/warehouse/ingestion/sources/{id}/test", "IngestionSourceTest");
+add("post", "/warehouse/ingestion/sources/preview", "IngestionSourcePreview", "IngestionSourcePreviewInput");
+add("post", "/warehouse/ingestion/sources/validate", "IngestionSourceValidation", "IngestionSourceInput");
+add("get", "/warehouse/ingestion/sources/targets", "PageTable", undefined, "200", ["warehouseId", "datasetId", "page", "pageSize", "search", "sort", "direction"]);
 add(
   "post",
   "/warehouse/ingestion/run",

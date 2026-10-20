@@ -29,6 +29,29 @@ public class IngestionController {
     return sources.get(sourceId);
   }
 
+  @PostMapping("/sources/preview")
+  @PreAuthorize("hasRole('ADMIN')")
+  Object previewSource(@RequestBody Map<String, Object> request) {
+    return sources.preview(request);
+  }
+
+  @GetMapping("/sources/targets")
+  @PreAuthorize("hasRole('ADMIN')")
+  Object sourceTargets(@RequestParam Map<String, String> request) {
+    return Page.of(
+        sources.targets(
+            request.getOrDefault("warehouseId", ""), request.getOrDefault("datasetId", "")),
+        request,
+        "name",
+        Set.of("name", "schema"));
+  }
+
+  @PostMapping("/sources/validate")
+  @PreAuthorize("hasRole('ADMIN')")
+  Object validateSource(@RequestBody Map<String, Object> request) {
+    return sources.validateDraft(request);
+  }
+
   @PostMapping("/sources")
   @PreAuthorize("hasRole('ADMIN')")
   ResponseEntity<?> createSource(@RequestBody Map<String, Object> request) {

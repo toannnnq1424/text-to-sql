@@ -396,6 +396,37 @@ export const SourceTestSchema = z.strictObject({
   targets: z.array(SourceTargetSchema),
 });
 export type SourceTest = z.infer<typeof SourceTestSchema>;
+export const SourceValidationSchema = SourceTestSchema.omit({ sourceId: true });
+export const SourcePreviewInputSchema = z
+  .strictObject({
+    sourceWarehouseId: id,
+    sourceDatasetId: id,
+    tableId: id.optional(),
+    columns: z.array(id).min(1).max(100).optional(),
+    readSql: z.string().trim().min(1).max(100000).optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (
+      Boolean(value.tableId) === Boolean(value.readSql) ||
+      (!value.tableId && value.columns)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Chọn bảng hoặc nhập SELECT, không đồng thời.",
+      });
+    }
+  });
+export type SourcePreviewInput = z.infer<typeof SourcePreviewInputSchema>;
+export const SourcePreviewSchema = z.strictObject({
+  readSql: id,
+  sourceEngine: EngineSchema,
+  columns: z.array(ColumnSchema).min(1).max(100),
+  columnTypes: IngestionSourceInputSchema.shape.columnTypes,
+  rows: z.array(z.record(id, CellSchema)).max(20),
+  truncated: z.boolean(),
+  checkedAt: time,
+});
+export type SourcePreview = z.infer<typeof SourcePreviewSchema>;
 const RunStatus = z.enum([
   "PENDING",
   "RUNNING",

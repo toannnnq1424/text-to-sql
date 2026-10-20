@@ -33,7 +33,13 @@ public final class Page {
         rows.stream()
             .filter(
                 row ->
-                    search.isBlank() || Json.write(row).toLowerCase(Locale.ROOT).contains(search))
+                    search.isBlank()
+                        || Json.write(row).toLowerCase(Locale.ROOT).contains(search)
+                        || (row.containsKey("schema")
+                            && row.containsKey("name")
+                            && (Json.str(row, "schema") + "." + Json.str(row, "name"))
+                                .toLowerCase(Locale.ROOT)
+                                .contains(search)))
             .filter(
                 row ->
                     p.entrySet().stream()

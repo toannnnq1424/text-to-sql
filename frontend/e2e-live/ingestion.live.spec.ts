@@ -79,7 +79,7 @@ test("registers, edits, tests and runs persisted four-layer pipelines on all eng
       await page.getByRole("button", { name: "Đăng nhập local" }).click();
       await page.getByRole("tab", { name: "Nguồn warehouse" }).click();
       await expect(
-        page.getByRole("heading", { name: "Nguồn pipeline đã đăng ký" }),
+        page.getByRole("heading", { name: "Nguồn dữ liệu đã lưu" }),
       ).toBeVisible();
       await selectLiveOption(
         page,
@@ -90,43 +90,39 @@ test("registers, edits, tests and runs persisted four-layer pipelines on all eng
       await selectLiveOption(page, "Dataset", /^nla_chinook\b/, true);
       await page.getByRole("button", { name: "Đăng ký nguồn" }).click();
       await expect(
-        page.getByRole("heading", { name: "Đăng ký nguồn pipeline" }),
+        page.getByRole("heading", { name: "Thêm nguồn dữ liệu" }),
       ).toBeVisible();
 
-      await page.getByLabel("Tên nguồn").fill(sourceName);
-      await page.getByLabel(/SELECT nguồn/).fill(sample.readSql);
-      await page.getByLabel("Schema raw").selectOption(target.schema);
-      await page.getByLabel("Bảng raw").fill(tableNames.raw);
-      await page.getByLabel("Schema staging").selectOption(target.schema);
-      await page.getByLabel("Bảng staging").fill(tableNames.stage);
-      await page.getByLabel("Schema warehouse").selectOption(target.schema);
-      await page.getByLabel("Bảng warehouse").fill(tableNames.warehouse);
-      await page.getByLabel("Schema mart").selectOption(target.schema);
-      await page.getByLabel("Bảng mart").fill(tableNames.mart);
-
-      for (let index = 0; index < sample.columns.length; index += 1) {
-        if (index > 0) {
-          await page.getByRole("button", { name: "Thêm cột" }).click();
-        }
-        const column = sample.columns[index];
+      await page.getByRole("button", { name: "Dùng SQL nâng cao" }).click();
+      await page
+        .getByLabel("SELECT nguồn", { exact: true })
+        .fill(sample.readSql);
+      await page.getByRole("button", { name: "Xem trước và tiếp tục" }).click();
+      await page.getByLabel("Tên nguồn", { exact: true }).fill(sourceName);
+      for (const [key, label] of [
+        ["raw", "Raw"],
+        ["stage", "Staging"],
+        ["warehouse", "Warehouse"],
+        ["mart", "Mart"],
+      ] as const) {
         await page
-          .getByRole("textbox", { name: `Alias ${index + 1}` })
-          .fill(column);
+          .getByRole("button", { name: `Bảng ${label}`, exact: true })
+          .click();
         await page
-          .getByLabel("Kiểu")
-          .nth(index)
-          .selectOption(sample.columnTypes[column]);
-        if (sample.requiredColumns.includes(column)) {
-          await page.getByLabel("Bắt buộc").nth(index).check();
-        }
-        if (sample.maxStringLengths[column]) {
-          await page
-            .getByLabel("Độ dài STRING")
-            .nth(index)
-            .fill(String(sample.maxStringLengths[column]));
-        }
+          .getByRole("option", {
+            name: `${target.schema}.${tableNames[key]}`,
+            exact: true,
+          })
+          .click();
       }
-      await page.getByRole("button", { name: "Lưu cấu hình" }).click();
+      await page.getByRole("button", { name: "Xem lại cấu hình" }).click();
+      await page
+        .getByRole("button", { name: "Kiểm tra nguồn và bảng đích" })
+        .click();
+      await expect(
+        page.getByRole("button", { name: "Lưu nguồn dữ liệu" }),
+      ).toBeEnabled();
+      await page.getByRole("button", { name: "Lưu nguồn dữ liệu" }).click();
       await expect(
         page.getByText(sourceName, { exact: true }).last(),
       ).toBeVisible({ timeout: 30000 });
@@ -162,10 +158,18 @@ test("registers, edits, tests and runs persisted four-layer pipelines on all eng
         .getByRole("button", { name: `Sửa ${sourceName}` })
         .click();
       await expect(
-        page.getByRole("heading", { name: "Sửa nguồn pipeline" }),
+        page.getByRole("heading", { name: "Sửa nguồn dữ liệu" }),
       ).toBeVisible();
-      await page.getByLabel("Tên nguồn").fill(editedName);
-      await page.getByRole("button", { name: "Lưu cấu hình" }).click();
+      await page.getByRole("button", { name: "Xem trước và tiếp tục" }).click();
+      await page.getByLabel("Tên nguồn", { exact: true }).fill(editedName);
+      await page.getByRole("button", { name: "Xem lại cấu hình" }).click();
+      await page
+        .getByRole("button", { name: "Kiểm tra nguồn và bảng đích" })
+        .click();
+      await expect(
+        page.getByRole("button", { name: "Lưu nguồn dữ liệu" }),
+      ).toBeEnabled();
+      await page.getByRole("button", { name: "Lưu nguồn dữ liệu" }).click();
       await expect(
         page.getByText(editedName, { exact: true }).last(),
       ).toBeVisible({ timeout: 30000 });

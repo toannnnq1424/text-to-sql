@@ -103,6 +103,169 @@ public class IngestionSourceService {
     return store.ingestionSource(sourceId);
   }
 
+  public Map<String, Object> preview(Map<String, Object> request) {
+    RegistryController.fields(
+        request, Set.of("sourceWarehouseId", "sourceDatasetId", "tableId", "columns", "readSql"));
+    RegistryController.required(request, "sourceWarehouseId", "sourceDatasetId");
+    var warehouse = store.warehouse(Json.str(request, "sourceWarehouseId"));
+    var dataset = store.dataset(Json.str(request, "sourceDatasetId"));
+    requireContext(warehouse, dataset);
+    var physical = catalog.tables(Json.str(dataset, "datasetId"));
+    var adapter = adapters.get(warehouse);
+    String sql = Json.str(request, "readSql").strip();
+    String tableId = Json.str(request, "tableId");
+    if (sql.isBlank() == tableId.isBlank() || (tableId.isBlank() && request.containsKey("columns")))
+      throw ApiException.bad("Chọn một bảng nguồn hoặc nhập một SELECT, không đồng thời.");
+    if (!tableId.isBlank()) {
+      var table =
+          physical.stream()
+              .filter(item -> tableId.equals(Json.str(item, "tableId")))
+              .findFirst()
+              .orElseThrow(ApiException::notFound);
+      var available =
+          Json.objects(table.get("columns")).stream()
+              .map(column -> Json.str(column, "name"))
+              .toList();
+      var selection = new LinkedHashMap<String, Object>();
+      selection.put("columns", request.getOrDefault("columns", available));
+      var selected = columns(selection);
+      if (!available.containsAll(selected))
+        throw ApiException.bad("Cột không thuộc bảng nguồn đã chọn.");
+      sql =
+          "SELECT "
+              + selected.stream()
+                  .map(adapter::quoteIdentifier)
+                  .collect(java.util.stream.Collectors.joining(", "))
+              + " FROM "
+              + adapter.quoteIdentifier(Json.str(table, "schema"))
+              + "."
+              + adapter.quoteIdentifier(Json.str(table, "name"));
+    }
+    if (sql.length() > 100000) throw ApiException.bad("SELECT vượt giới hạn100.000 ký tự.");
+    var checked = guard.validate(sql, Json.str(warehouse, "engine"), physical);
+    Map<String, Object> result;
+    try {
+      result =
+          adapter.executeReadOnlyQuery(
+              warehouse,
+              adapters.password(store.credential(Json.str(warehouse, "warehouseId"))),
+              checked.sql(),
+              20,
+              1048576,
+              15);
+    } catch (Exception e) {
+      throw new ApiException(
+          HttpStatus.SERVICE_UNAVAILABLE,
+          "INGESTION_SOURCE_UNAVAILABLE",
+          "Không thể xem trước nguồn. Kiểm tra kết nối, quyền đọc và SELECT.");
+    }
+    var resultColumns = Json.objects(result.get("columns"));
+    var selection = new LinkedHashMap<String, Object>();
+    selection.put(
+        "columns", resultColumns.stream().map(column -> Json.str(column, "name")).toList());
+    columns(selection);
+    Map<String, Object> types = new LinkedHashMap<>();
+    for (var column : resultColumns) {
+      String type = Json.str(column, "dataType");
+      String canonical =
+          switch (type) {
+            case "BIGINT" -> "INTEGER";
+            case "FLOAT" -> "DECIMAL";
+            default -> type;
+          };
+      if (!TYPES.contains(canonical))
+        throw ApiException.bad("Kiểu cột chưa hỗ trợ; dùng CAST trong SELECT nâng cao.");
+      types.put(Json.str(column, "name"), canonical);
+    }
+    store.audit(
+        "INGESTION_SOURCE_PREVIEWED",
+        Json.str(dataset, "datasetId"),
+        Json.obj(
+            "warehouseId", warehouse.get("warehouseId"), "datasetId", dataset.get("datasetId")));
+    return Json.obj(
+        "readSql",
+        checked.sql(),
+        "sourceEngine",
+        warehouse.get("engine"),
+        "columns",
+        resultColumns,
+        "columnTypes",
+        types,
+        "rows",
+        result.get("rows"),
+        "truncated",
+        result.get("truncated"),
+        "checkedAt",
+        Instant.now().toString());
+  }
+
+  public List<Map<String, Object>> targets(String warehouseId, String datasetId) {
+    var warehouse = store.warehouse(warehouseId);
+    var dataset = store.dataset(datasetId);
+    requireContext(warehouse, dataset);
+    String username = store.ingestionUsername(warehouseId);
+    String credential = store.ingestionCredential(warehouseId);
+    if (username == null || username.isBlank() || credential == null)
+      throw new ApiException(
+          HttpStatus.CONFLICT,
+          "INGESTION_WRITER_NOT_CONFIGURED",
+          "Warehouse chưa được cấp tài khoản nạp dữ liệu. Quản trị viên cần cấu hình ingestion"
+              + " writer trong Kết nối warehouse.");
+    var writer = new LinkedHashMap<>(warehouse);
+    writer.put("username", username);
+    var adapter = adapters.get(writer);
+    Set<String> schemas = new HashSet<>();
+    if (dataset.get("allowedSchemas") instanceof List<?> allowed)
+      allowed.forEach(value -> schemas.add(value.toString()));
+    if (schemas.isEmpty()) return List.of();
+    try (var connection = adapter.connectForWrite(writer, adapters.password(credential))) {
+      return adapter.discoverTables(connection, schemas);
+    } catch (SQLException e) {
+      throw new ApiException(
+          HttpStatus.SERVICE_UNAVAILABLE,
+          "INGESTION_TARGET_UNAVAILABLE",
+          "Không đọc được danh sách bảng đích. Kiểm tra kết nối và quyền của tài khoản nạp dữ"
+              + " liệu.");
+    }
+  }
+
+  public Map<String, Object> validateDraft(Map<String, Object> request) {
+    RegistryController.fields(request, FIELDS);
+    RegistryController.required(
+        request,
+        "name",
+        "warehouseId",
+        "datasetId",
+        "sourceWarehouseId",
+        "sourceDatasetId",
+        "readSql",
+        "raw",
+        "stage",
+        "warehouse",
+        "mart",
+        "columns",
+        "requiredColumns",
+        "columnTypes",
+        "maxRows",
+        "maxBytes",
+        "timeoutSeconds");
+    var draft = new LinkedHashMap<>(request);
+    draft.put("status", "ACTIVE");
+    validateConfig(draft);
+    var result = new LinkedHashMap<>(inspect(draft));
+    result.remove("sourceId");
+    return result;
+  }
+
+  private static void requireContext(Map<String, Object> warehouse, Map<String, Object> dataset) {
+    if (!Json.str(dataset, "warehouseId").equals(Json.str(warehouse, "warehouseId")))
+      throw ApiException.bad("Dataset không thuộc warehouse đã chọn.");
+    if (!"ACTIVE".equals(Json.str(warehouse, "status"))
+        || !"ACTIVE".equals(Json.str(dataset, "status")))
+      throw new ApiException(
+          HttpStatus.CONFLICT, "DATASET_UNAVAILABLE", "Warehouse và dataset phải đang hoạt động.");
+  }
+
   public Map<String, Object> test(String sourceId) {
     Map<String, Object> source = store.ingestionSource(sourceId);
     validateConfig(source);

@@ -22,6 +22,8 @@ Giới hạn mỗi file25MiB/100.000 dòng/200 cột; Excel chọn được shee
 
 Cách chạy đầy đủ các dịch vụ riêng tư cùng database/đăng nhập là `python3 infra/local/compose.py up`, rồi mở [ứng dụng local](http://127.0.0.1:4173). Clone mới tự tạo secret local; không cần file token của maintainer. [Các thành phần thực sự tái sử dụng](docs/platform-reuse.md) có source hashes và license đi kèm.
 
+Hướng dẫn chọn file/nguồn database và đăng ký nguồn trong ba bước: [Nạp dữ liệu](docs/ingestion-guide.md).
+
 ## Hướng dẫn khởi chạy (Quick Start)
 
 ### Yêu cầu

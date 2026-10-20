@@ -61,6 +61,11 @@
           "path": "ibis-server/app/model/metadata/object_storage.py",
           "sha256": "1140410905ba39e95f5d19c0b015e093ecb878f76c335041c4549cb3c84508c9",
           "bytes": 13151
+        },
+        {
+          "path": "wren/src/wren/mdl/__init__.py",
+          "sha256": "d60f1c97ace46ace99db0a54c2b3627928915b73229bec172dab51a631ef7042",
+          "bytes": 1154
         }
       ],
       "detectedLicense": "Apache-2.0 at root; dependencies require separate inventory on adoption.",
@@ -77,7 +82,7 @@
         }
       ],
       "runtimeIntegrated": true,
-      "integratedScope": "Dependency-free schema description/index/cache approach in AI selection and provider payload; pinned wren-core-py 0.4.0 native manifest/session planner; adapted CTE rewrite and Wren SQLGlot dialect; no upstream SDK, vector store or connectors. Local file dispatch/Arrow schema conversion adapted into authenticated bulk parser for13 extensions.",
+      "integratedScope": "Dependency-free schema description/index/cache approach in AI selection and provider payload; pinned wren-core-py 0.4.0 native manifest/session planner; adapted CTE rewrite and Wren SQLGlot dialect; no upstream SDK, vector store or connectors. Local file dispatch/Arrow schema conversion adapted into authenticated bulk parser for13 extensions. Bounded native session factory adapted from SDK mdl utilities, with per-session serialization and no SQL/result retention.",
       "integrationEvidence": "docs/integrations/semantic-planner.md"
     },
     {

@@ -596,57 +596,24 @@ describe("warehouse and job management", () => {
       await screen.findByRole("heading", { name: "Chi tiết lần nạp dữ liệu" }),
     ).toBeVisible();
   });
-  it("shows the admin source registry and submits a validated source definition", async () => {
+  it("shows the admin source wizard before asking for technical configuration", async () => {
     const user = userEvent.setup();
-    let created: unknown;
-    server.use(
-      http.post(`${api}/warehouse/ingestion/sources`, async ({ request }) => {
-        created = await request.json();
-        return HttpResponse.json(f.ingestionSource, { status: 201 });
-      }),
-    );
     renderApp("/ingestion");
     await readyDataset();
     await user.click(screen.getByRole("tab", { name: "Nguồn warehouse" }));
     await user.click(
       await screen.findByRole("button", { name: /Đăng ký nguồn/ }),
     );
-    await user.type(screen.getByLabelText("Tên nguồn"), "Daily sales load");
-    await user.type(
-      screen.getByLabelText(/SELECT nguồn/),
-      "SELECT sale_id AS sale_id FROM analytics.fact_sales",
-    );
-    await user.selectOptions(screen.getByLabelText("Schema raw"), "analytics");
-    await user.type(screen.getByLabelText("Bảng raw"), "raw_sales");
-    await user.selectOptions(
-      screen.getByLabelText("Schema staging"),
-      "analytics",
-    );
-    await user.type(screen.getByLabelText("Bảng staging"), "stage_sales");
-    await user.selectOptions(
-      screen.getByLabelText("Schema warehouse"),
-      "analytics",
-    );
-    await user.type(screen.getByLabelText("Bảng warehouse"), "warehouse_sales");
-    await user.selectOptions(screen.getByLabelText("Schema mart"), "analytics");
-    await user.type(screen.getByLabelText("Bảng mart"), "mart_sales");
-    await user.type(screen.getByLabelText("Alias 1"), "sale_id");
-    await user.click(screen.getByRole("button", { name: "Lưu cấu hình" }));
-    await waitFor(() => expect(created).toBeDefined());
-    expect(created).toMatchObject({
-      name: "Daily sales load",
-      warehouseId: f.warehouses[0].warehouseId,
-      datasetId: f.datasets[0].datasetId,
-      sourceWarehouseId: f.warehouses[0].warehouseId,
-      sourceDatasetId: f.datasets[0].datasetId,
-      raw: { schema: "analytics", name: "raw_sales" },
-      stage: { schema: "analytics", name: "stage_sales" },
-      warehouse: { schema: "analytics", name: "warehouse_sales" },
-      mart: { schema: "analytics", name: "mart_sales" },
-      columns: ["sale_id"],
-      columnTypes: { sale_id: "STRING" },
-    });
+    expect(
+      screen.getByRole("dialog", { name: "Thêm nguồn dữ liệu" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Bảng cần lấy dữ liệu" }),
+    ).toBeVisible();
+    expect(screen.queryByLabelText("Alias 1")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("SELECT nguồn")).not.toBeInTheDocument();
   });
+
   it("hides source registration actions from non-admin roles", async () => {
     renderApp("/ingestion", ["OPERATOR"]);
     await readyDataset();
