@@ -65,6 +65,10 @@ python3 infra/local/run.py ai
 
 AI service chạy tại `http://127.0.0.1:8000`. Deterministic mode dùng được ngay cho ví dụ semantic đã đăng ký; muốn dùng model API cần cấu hình provider URL/model/key trong môi trường local. Key không đưa vào Git hoặc log.
 
+File cấu hình provider riêng là `.local/compose-app/provider.env`, dùng chung cho Docker và lệnh `infra/local/run.py`. Khi đã có key, sao chép mẫu [infra/provider.env.example](infra/provider.env.example) vào đường dẫn đó nếu chưa có file, rồi điền `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`. Có thể để cả ba trống trong lúc chưa dùng provider. Không đặt key vào `VITE_*`, source code hoặc chat.
+
+Với Docker, chạy lại `python3 infra/local/compose.py up` sau khi đổi file; xem [hướng dẫn Compose](docs/docker-local.md). Với cách chạy trực tiếp, khởi động lại AI và backend bằng các lệnh Quick Start. Launcher chỉ chuyển provider key cho Python; backend nhận tên model để hiển thị, frontend không nhận key. Chưa cấu hình provider thì chọn `DETERMINISTIC` tường minh; chế độ này chỉ khớp semantic examples đã đăng ký, không phải model đã train local.
+
 ### 3. Khởi chạy Backend (Spring Boot)
 
 Trong terminal riêng:

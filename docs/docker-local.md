@@ -36,7 +36,7 @@ OIDC client `nla-compose-provisioner` là confidential service account có ADMIN
 
 ## Provider AI thật
 
-Tạo `.local/compose-app/provider.env` trên máy, đặt đủ cả ba giá trị hợp lệ:
+Tạo `.local/compose-app/provider.env` trên máy từ [mẫu không có secrets](../infra/provider.env.example), đặt đủ cả ba giá trị hợp lệ. File này cũng được launcher chạy trực tiếp `infra/local/run.py` đọc; không phải cấu hình riêng chỉ dùng được trong container:
 
 ```dotenv
 LLM_BASE_URL=https://your-provider.example/v1

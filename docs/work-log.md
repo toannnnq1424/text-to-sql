@@ -298,3 +298,9 @@ Các entry triển khai tiếp theo thêm phía dưới; không đánh dấu FE/
 - Branch: `module/integration-final`; commit subject: `merge: integrate guarded imports and ingestion backend`.
 - Merged published BE `c9ae611`, preserving history. Resolved shared contract to actual four-layer source API and retained all work logs; selected updated four-layer smoke script.
 - Checks: `git diff --check` and Python compile PASS. BE agent 52/52 backend tests and actual four-layer HTTP DB3/cross-engine checks apply to its published commit. Final integrated rebuild and UI checks remain PENDING; real provider NOT RUN because key deferred.
+
+## 2026-10-20T19:51+07:00 — Root / shared private provider configuration
+
+- Branch: `module/integration-final`; commit subject: `fix: isolate host service configuration and document provider file`.
+- Host launcher and Docker use the same ignored `.local/compose-app/provider.env`; added blank safe example and exact restart instructions. Host launcher filters provisioned configuration by consumer: Python receives service/provider values, frontend only public Vite/proxy values, Java receives runtime readers/writers/metadata and model name. Provisioning admin passwords are not distributed by this loader.
+- Checks: five launcher tests PASS for service credential boundaries, OIDC issuer agreement and absent provider; Black/isort and `git diff --check` PASS. Existing ambient OS environment remains the caller's responsibility; no key was configured or printed. User explicitly deferred real-provider verification until supplying a key.

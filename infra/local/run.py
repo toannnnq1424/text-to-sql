@@ -9,13 +9,61 @@ from urllib.parse import urlparse
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def load_environment(path: Path, target: dict[str, str]) -> None:
+def load_environment(path: Path, target: dict[str, str], allowed=None) -> None:
     if not path.is_file():
         raise SystemExit(f"Missing {path.relative_to(ROOT)}; follow README Quick Start first.")
     for line in path.read_text().splitlines():
         if line and not line.startswith("#"):
             key, value = line.split("=", 1)
-            target[key] = value
+            if allowed is None or allowed(key):
+                target[key] = value
+
+
+def service_environment(service: str, authentication: str) -> dict[str, str]:
+    """Load only the local credentials consumed by this service."""
+    env = dict(os.environ)
+
+    def allowed(key: str) -> bool:
+        if service == "ai":
+            return key == "PYTHON_AI_TOKEN" or key.startswith("LLM_")
+        if service == "frontend":
+            return key.startswith("VITE_") or key == "API_PROXY_TARGET"
+        return key.startswith(
+            ("METADATA_", "NLA_CHINOOK_", "NLA_PIPELINE_", "NLA_IMPORT_")
+        ) or key in {
+            "LOCAL_API_TOKEN",
+            "PYTHON_AI_TOKEN",
+            "PYTHON_AI_URL",
+            "CHINOOK_DOCKER",
+            "SPRING_PROFILES_ACTIVE",
+            "WAREHOUSE_ALLOWED_HOSTS",
+            "NLA_MYSQL_RSA_PUBLIC_KEY",
+            "LLM_MODEL",
+        }
+
+    load_environment(ROOT / ".local" / "docker.env", env, allowed)
+    provider = ROOT / ".local" / "compose-app" / "provider.env"
+    if service != "frontend" and provider.is_file():
+        load_environment(provider, env, allowed)
+    if authentication == "oidc":
+        load_environment(
+            ROOT / ".local" / "oidc" / "runtime.env",
+            env,
+            lambda key: (
+                key.startswith("VITE_")
+                if service == "frontend"
+                else key.startswith("OIDC_") if service == "backend" else False
+            ),
+        )
+        if service == "backend":
+            env["SPRING_PROFILES_ACTIVE"] = "oidc-local"
+        elif service == "frontend":
+            env["VITE_LOCAL_AUTH"] = "false"
+            env["VITE_ALLOW_ANONYMOUS_DEV"] = "false"
+    elif service == "frontend":
+        env["VITE_LOCAL_AUTH"] = "true"
+        env["VITE_ALLOW_ANONYMOUS_DEV"] = "true"
+    return env
 
 
 def launch() -> None:
@@ -31,16 +79,7 @@ def launch() -> None:
         parsed = urlparse(args.api_url)
         if parsed.scheme != "http" or parsed.hostname not in ("localhost", "127.0.0.1"):
             parser.error("--api-url must be a loopback HTTP URL.")
-    env = dict(os.environ)
-    load_environment(ROOT / ".local" / "docker.env", env)
-    if args.auth == "oidc":
-        load_environment(ROOT / ".local" / "oidc" / "runtime.env", env)
-        env["SPRING_PROFILES_ACTIVE"] = "oidc-local"
-        env["VITE_LOCAL_AUTH"] = "false"
-        env["VITE_ALLOW_ANONYMOUS_DEV"] = "false"
-    elif args.service == "frontend":
-        env["VITE_LOCAL_AUTH"] = "true"
-        env["VITE_ALLOW_ANONYMOUS_DEV"] = "true"
+    env = service_environment(args.service, args.auth)
     if args.service == "backend":
         jdk = Path("/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home")
         if jdk.exists():
