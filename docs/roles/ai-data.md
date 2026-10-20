@@ -13,7 +13,7 @@ Bắt buộc đọc và áp dụng [implementation-rules.md](../implementation-r
 1. Pydantic models đúng fixture shared và mock Java input; validate enum/required fields/unknown fields/errors. Không tự đổi snake_case trên wire.
 2. TextToSqlModelClient abstraction; ưu tiên OpenAICompatibleModelClient thực gọi API với LLM_BASE_URL, LLM_API_KEY, LLM_MODEL, LLM_TIMEOUT_MS. Structured JSON parse/validate, controlled errors, timeout và response redaction.
 3. DeterministicModelClient offline support ba dialect, nhiều domain qua templates khai báo trong fixtures; không if revenue/customer trong core. Mode rõ ràng, không giả production AI hoặc fallback im lặng khi provider down.
-4. Pipeline normalize → relevant context + join paths selection → few-shot cùng dialect → prompt dialect-aware → provider → strict response → candidate checks. Context/token budget có ranh giới; input là data không là chỉ thị override prompt.
+4. Pipeline normalize → relevant context + join paths selection → few-shot cùng dialect → prompt dialect-aware → provider → strict response → candidate checks. Context/token budget có ranh giới; candidate metrics/dimensions/chart references phải kiểm tra theo chính context đã gửi cho model, không theo toàn bộ request ban đầu. Deterministic chỉ tìm trong examples đã được selector chọn. Input là data không là chỉ thị override prompt.
 5. Không bịa schema khi thiếu context; trả INSUFFICIENT_CONTEXT/UNSUPPORTED_QUESTION/LOW_CONFIDENCE đúng contract. Confidence có policy dựa trên match/ambiguity, không random; Java vẫn validate độc lập.
 6. Chart recommend allowlist, reference column/metric đúng; không code executable. AI không quyết định final SQL được chạy.
 

@@ -150,3 +150,31 @@ Các entry triển khai tiếp theo thêm phía dưới; không đánh dấu FE/
 - Còn thiếu / phụ thuộc: BE đang hoàn thiện runner bốn lớp và source registry; FE browser/import/ingestion và bộ kiểm chứng trên Git SHA cuối chưa chạy trong commit Data này. Script/config Chinook vẫn chỉ là provenance-bound sample; warehouse mới dùng registry chung, không tạo data/<source> mỗi lần.
 - Việc tiếp nối: merge Data cùng BE/FE/OIDC branches rồi chạy lại API/browser/security acceptance; provider thật còn cần cấu hình server.
 - Commit/push: entry đi cùng commit; xác minh SHA local/remote sau push/pull.
+
+### 2026-10-20 12:24 UTC+07 — Hoàn thiện AI service và evaluation corpus / module AI
+- Nhánh / commit subject hoặc SHA đã biết: `module/ai-completion`; dự kiến `feat: harden AI generation and expand evaluation corpus`.
+- Phạm vi: `ai-service/app.py`, `ai-service/test_app.py`, corpus evaluation AI/Chinook, `docs/current-review.md` và tài liệu evaluation.
+- Trạng thái: VERIFIED cho strict request/context validation, deterministic candidate cases, mocked provider HTTP/error paths, safe rejection và format checks; AI acceptance tổng thể INCOMPLETE.
+- Đã làm: thay dict lồng lỏng bằng nested strict models; validate tham chiếu bảng/cột/metric/dimension/relationship/example, enum dialect và duplicate names; chọn example theo dialect; candidate checks cho multi-statement, comment, thao tác ghi, một số hàm/file/network và dialect mismatch; provider không fallback khi lỗi, bounds URL/timeout/response, lỗi trả về đã sanitize. Bổ sung provider mock cho success/unavailable/timeout/malformed/unsafe SQL, deterministic ambiguity/schema checks và corpus support tổng hợp chỉ dành evaluation. Đánh `logicalCaseId`/domain cho Chinook và support; corpus có 42 logical cases × 3 dialect = 126 case/dialect combinations theo cách đếm các bản dịch EN/VI chung intent. Không thay Java–Python contract.
+- Kiểm chứng: `python3 -m pytest ai-service -q` — 36 passed, 1 skipped; real-provider smoke skip vì không có `LLM_BASE_URL`/`LLM_API_KEY`/`LLM_MODEL`; `isort --check-only` PASS; `black --check` PASS; `compileall` PASS; JSON parse mọi corpus PASS; `git diff --check` PASS. Một warning từ Starlette về đường tương thích `httpx` của TestClient, không làm fail tests.
+- Còn thiếu / blocker / phụ thuộc: chưa smoke provider thật do chưa cấu hình env; synthetic support không có warehouse vật lý và chưa được thực thi qua Java, nên chưa chứng minh result equivalence; không tuyên bố provider-quality, Java executor integration hay full AI acceptance đã pass.
+- Việc tiếp nối: tích hợp nhánh này với BE/FE, chạy provider thật khi có cấu hình bí mật hợp lệ, và đưa evaluation qua Java executor/warehouse thật cho đủ domain trong điều kiện nguồn dữ liệu có thật.
+- Commit/push: entry này đi cùng commit; SHA sau push sẽ được đối chiếu và bàn giao riêng.
+
+### 2026-10-20 14:41 UTC+07 — Rà soát context boundary AI / module AI
+- Nhánh / commit subject hoặc SHA đã biết: `module/ai-completion`; dự kiến `fix: enforce selected AI context boundary`.
+- Phạm vi: `ai-service/app.py`, `ai-service/test_app.py`, evaluation support fixture, role/evaluation/current-review docs.
+- Trạng thái: VERIFIED cho selected-context validation, deterministic example scope, provider payload privacy regression và song ngữ corpus inventory; AI acceptance tổng thể vẫn INCOMPLETE.
+- Đã làm: candidate metrics/dimensions/chart được validate theo chính semantic context đã chọn gửi provider; deterministic lookup cũng bị giới hạn trong examples đã chọn. Thêm test xác nhận provider payload không nhận warehouse/dataset IDs hoặc credential fields, và candidate không được chọn metric ngoài selected context. Bổ sung câu hỏi tiếng Việt cho hai logical rejection cases của synthetic support để mỗi logical case có phrasing Việt/Anh trên cả ba dialect. Cập nhật hướng dẫn và ghi rõ Java vẫn phải làm identifier validation AST authoritative.
+- Kiểm chứng: `ai-service/.venv/bin/python -m pytest ai-service -q` — 38 passed, 1 skipped; isort check PASS; Black check PASS; compileall PASS; mọi evaluation JSON parse PASS; `git diff --check` PASS. Một Starlette/AnyIO deprecation warning, không làm fail tests.
+- Còn thiếu / blocker / phụ thuộc: real-provider smoke NOT RUN vì chưa có `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`; Java executor/result-equivalence cho domain support chưa chạy; Python không thay SQL AST identifier validation hoặc Java execution.
+- Việc tiếp nối: push nhánh sau commit và xác minh SHA; chạy provider thật và Java-backed evaluation khi có cấu hình provider/warehouse phù hợp.
+- Commit/push: entry này dự kiến nằm trong commit; SHA remote xác minh sau push.
+
+### 2026-10-20 16:45 UTC+07 — Ghép nhánh AI và Data / conversation chính
+- Nhánh / commit subject: `module/integration-final`; `merge: combine AI completion with verified data provisioning`.
+- Phạm vi: merge module/ai-completion và module/data-ingestion, giữ toàn bộ work-log entries của hai phía.
+- Trạng thái: INTEGRATION IN PROGRESS; không đổi claim các kiểm chứng module thành E2E đã hoàn tất.
+- Kiểm chứng: resolve append-only work log không mất entry; `git diff --check` PASS; upstream AI38PASS/1provider smokeSKIP và Data16PASS/9realHTTPimport cases được giữ trong entry gốc. Combined test/build chưa chạy, còn chờ BE/FE/OIDC.
+- Còn thiếu / tiếp nối: ghép các module còn lại và kiểm chứng trên SHA tích hợp cuối; provider thật thiếu cấu hình server.
+- Commit/push: commit merge đi cùng entry; push/SHA đối chiếu sau khi integration checks hoàn tất.
