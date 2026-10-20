@@ -206,3 +206,20 @@ Các entry triển khai tiếp theo thêm phía dưới; không đánh dấu FE/
 - Còn thiếu / phụ thuộc: Java built-in evaluation suite hiện còn Chinook-specific; combined app SHA, FE browser và deployment/OIDC final rerun đang thực hiện. Provider thật NOT RUN do thiếu cấu hình. Không claim vượt qua các mục này bằng test fixture.
 - Việc tiếp nối: ghép module branches và chạy lại caller/database tests trên code tích hợp; rà soát evaluation suite config cùng shared API.
 - Commit/push: entry đi cùng commit; push/SHA xác minh sau khi kết thúc integration.
+
+### 2026-10-20 17:22 UTC+07 — Catalogue evaluation cấu hình ngoài business core / conversation chính
+- Nhánh / commit subject: `module/data-ingestion`; `feat: configure evaluation suites outside backend core`.
+- Phạm vi: data/evaluation/suites.json, support corpora và provenance/how-to.
+- Trạng thái: VERIFIED cho catalog/corpus metadata; Java consumer 3testsPASS ở BE worktree, final merged runtime còn chờ.
+- Đã làm: catalogue server-managed ánh xạ suite/engine→case file dưới data root; count lấy từ corpus thay hardcode. Giữ Chinook48phrasings/engine và thêm synthetic support36phrasings/engine với sourceSHA; không seed fake warehouse/UI từ corpus. Supportmean dùng explicitdecimalcast khắc phục sai khác AVGinteger thật đã đo được. Suite mới là config, không ifdomain/adapter hay foldermỗiwarehouse.
+- Kiểm chứng: JSON/matching suiteId/engine/case countsPASS; generic Java EvaluationCorpusTest3PASS (configurable domain, traversaldeny, derived checked-incounts) với data root integration. Synthetic source đã có38AItestsPASS/1providersmokeSKIP và108realJavaDBcasesPASS ở integration entry trước; không coi catalog này là providerquality acceptance.
+- Còn thiếu / tiếp nối: merge BEconsumer và data catalogue, regenerate consumercontracts và rerun serviceevaluation trên finalSHA. `synthetic-support.json` gốc đã sửaAVG ở module/integration-final; khi merge phải giữ snapshot hash thống nhất.
+- Commit/push: entry đi cùng commit; đối chiếu SHA sau push/pull.
+
+### 2026-10-20 17:25 UTC+07 — Ghép evaluation catalogue / conversation chính
+- Nhánh / subject: `module/integration-final`; `merge: include configured evaluation corpus`.
+- Phạm vi: merge Data catalogue với integration đã có synthetic AVG correction.
+- Trạng thái: VERIFIED cho merge/corpus consistency; fullappintegration đang thực hiện.
+- Kiểm chứng: work-log append giữ cả hai phía; suite/engine/count và synthetic sourceSHA đối chiếuPASS; diffcheckPASS. BEgenericconsumer3testsPASS ở moduleworktree; runtime rerun chưa claim trong merge này.
+- Còn thiếu / tiếp nối: FE/BE/OIDCmerge và combinedSHAacceptance/providerconfig.
+- Commit/push: entry cùng merge; remoteSHA đối chiếu cuối.
