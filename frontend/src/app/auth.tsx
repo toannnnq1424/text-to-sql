@@ -41,13 +41,35 @@ const localAuth =
   import.meta.env.DEV && import.meta.env.VITE_LOCAL_AUTH === "true";
 let localToken: string | null = null;
 const configured = Boolean(authority && client);
+export function isOidcAuthorityAllowed(
+  value: string,
+  development: boolean,
+  allowHttpLoopback: boolean,
+  applicationHostname: string,
+) {
+  try {
+    const url = new URL(value);
+    if (url.username || url.password) return false;
+    if (url.protocol === "https:") return true;
+    const loopback = ["localhost", "127.0.0.1"];
+    return (
+      url.protocol === "http:" &&
+      loopback.includes(url.hostname) &&
+      loopback.includes(applicationHostname) &&
+      (development || allowHttpLoopback)
+    );
+  } catch {
+    return false;
+  }
+}
 if (configured) {
   try {
-    const url = new URL(authority);
     if (
-      url.protocol !== "https:" &&
-      !(
-        import.meta.env.DEV && ["localhost", "127.0.0.1"].includes(url.hostname)
+      !isOidcAuthorityAllowed(
+        authority,
+        import.meta.env.DEV,
+        import.meta.env.VITE_OIDC_ALLOW_HTTP_LOOPBACK === "true",
+        window.location.hostname,
       )
     )
       throw new Error("OIDC authority cần HTTPS.");
@@ -67,7 +89,7 @@ if (configured) {
     });
   } catch {
     configurationError =
-      "Cấu hình OIDC không hợp lệ. Authority cần HTTPS và một public client ID hợp lệ.";
+      "Cấu hình OIDC không hợp lệ. Authority cần HTTPS; HTTP loopback chỉ dành cho cấu hình phát triển local tường minh.";
   }
 }
 export function AuthProvider({ children }: { children: ReactNode }) {
