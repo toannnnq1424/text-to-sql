@@ -307,7 +307,14 @@ def register_samples() -> None:
             if not table["name"].startswith("nla_")
         ]
         semantic = json.loads((ROOT / "data" / "chinook" / f"semantic-{filename}.json").read_text())
-        found = [dataset for dataset in datasets if dataset["warehouseId"] == warehouse_id]
+        dataset_name = "Chinook / " + engine
+        found = [
+            dataset
+            for dataset in datasets
+            if dataset["warehouseId"] == warehouse_id and dataset["name"] == dataset_name
+        ]
+        if len(found) > 1:
+            raise SystemExit("Multiple matching sample datasets; resolve them in the app.")
         dataset = (
             found[0]
             if found
@@ -316,7 +323,7 @@ def register_samples() -> None:
                 token=token,
                 body={
                     "warehouseId": warehouse_id,
-                    "name": "Chinook / " + engine,
+                    "name": dataset_name,
                     "description": f"Chinook sample: {len(tables)} discovered tables on {engine}.",
                     "allowedSchemas": [schema],
                     "allowedTables": [

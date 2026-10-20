@@ -33,4 +33,4 @@ Python reason codes: PROVIDER_TIMEOUT, PROVIDER_UNAVAILABLE, INVALID_MODEL_RESPO
 
 API list lỗi trả error envelope, không trả [] giả thành công. GET Query thành công HTTP 200 vẫn có thể mang Query.status lỗi; FE phải đọc status. Timeout ở browser không chứng minh server đã hủy xong; dùng queryId/correlationId tra trạng thái, không auto submit lại.
 
-Mã SQL_IMPORT_PARSE_ERROR, SQL_IMPORT_DIALECT_MISMATCH, UNSUPPORTED_IMPORT_FEATURE chỉ dành hướng mở rộng; chưa là API công khai đang có. 429 RATE_LIMITED dành quota/rate limits khi auth được triển khai.
+SQL Import hiện có API công khai theo [public-api.md](public-api.md). Parser/validation trả các lỗi 4xx như `SQL_IMPORT_PARSE_ERROR`, `SQL_IMPORT_DIALECT_MISMATCH`, `UNSUPPORTED_IMPORT_FEATURE`; queue/deadline/interruption có trạng thái run và lỗi riêng đã mô tả trong contract. Không hiển thị chúng như chức năng mở rộng chưa tồn tại. `429 RATE_LIMITED` chỉ là mã dự kiến; chưa có bằng chứng quota/rate-limit deployment và không được suy ra từ việc OIDC đã hoạt động.

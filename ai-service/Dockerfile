@@ -8,6 +8,7 @@ RUN pip install --no-cache-dir -r requirements.txt \
     && groupadd --gid 10001 nla \
     && useradd --uid 10001 --gid nla --no-create-home nla
 COPY --chown=10001:10001 ai-service/*.py ./
+COPY --chown=10001:10001 ai-service/third-party/licenses/ /app/third-party/licenses/
 COPY --chown=10001:10001 infra/docker/ai-health.py /app/ai-health.py
 USER 10001:10001
 EXPOSE 8000

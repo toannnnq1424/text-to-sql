@@ -2,7 +2,7 @@
 
 Nền tảng Text-to-SQL đa warehouse, đa domain: đặt câu hỏi bằng tiếng Việt/Anh, nhận dữ liệu, biểu đồ, SQL, giải thích và thông tin thực thi.
 
-Repository hiện có frontend React, backend Spring Boot, Python AI service, quy trình nạp Chinook và adapter thực thi cho PostgreSQL, MySQL, SQL Server. Đây là trạng thái đang phát triển, chưa nghiệm thu toàn bộ target. SQL Import trong app cùng các lỗi UI/data-loading trong [current review](docs/current-review.md) vẫn phải đối chiếu evidence mới nhất. Đăng nhập OIDC local có cấu hình Keycloak tái tạo được và kiểm tra browser thật bên dưới; deployment production dùng IdP/HTTPS và chính sách truy cập của môi trường đó. Import validate/preview một subset SQL có kiểm soát; app không chạy tùy ý file SQL.
+Repository có frontend React, backend Spring Boot, Python AI service, SQL Import có validate/preview, registry ingestion bốn lớp và thực thi PostgreSQL, MySQL, SQL Server. Đăng nhập OIDC local dùng IdP thật; Docker Compose đóng gói cả ba app services. Các luồng đã kiểm chứng và phần còn thiếu nằm trong [đánh giá hiện tại](docs/project-status.md), [current review](docs/current-review.md) và [work log](docs/work-log.md). Chưa nghiệm thu toàn bộ target hoặc AI provider thật. Import chỉ xử lý subset SQL đã kiểm soát; app không chạy tùy ý file SQL.
 
 ```text
 React → Java Spring Boot → Python AI Service / provider API

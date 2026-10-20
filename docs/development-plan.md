@@ -1,6 +1,6 @@
 # Kế hoạch phối hợp: contract trước, ba luồng cùng bắt đầu
 
-**Hiện tại: C0 đang chuẩn bị tài liệu; chưa role review/schema validation runtime.** Không đánh dấu các gate sau hoàn thành trong phiên này. Gate là mốc kiểm chứng của một target cuối đầy đủ, không là phiên bản rút gọn. Áp dụng [implementation-rules.md](implementation-rules.md) cho mọi task: mỗi chức năng được triển khai cùng validation, error handling, security và test cần thiết; C4 tổng hợp bằng chứng, không phải lúc mới bắt đầu làm các phần đó. Không chuyển integration sang version sau.
+**Trạng thái:** kế hoạch dưới đây giữ cấu trúc phối hợp đã chốt; repository đã triển khai và có bằng chứng tích hợp qua cả ba engine. Xem [đánh giá hiện tại](project-status.md) và [work log](work-log.md) để biết acceptance nào đã chạy. C1 vẫn thiếu smoke provider thật khi chủ dự án chưa cấu hình key; C4 chưa được đánh dấu nghiệm thu toàn bộ. Gate là mốc kiểm chứng của một target cuối đầy đủ, không là phiên bản rút gọn. Áp dụng [implementation-rules.md](implementation-rules.md): implementation, validation, security, errors, tests và tích hợp thuộc cùng phạm vi công việc.
 
 ```text
 C0: CHỐT CONTRACT + semantic/demo schema + UI reference

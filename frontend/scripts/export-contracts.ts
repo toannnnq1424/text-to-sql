@@ -30,6 +30,22 @@ const schemas: Record<string, z.ZodType> = {
   Example: s.ExampleSchema,
   IngestionRun: s.IngestionSchema,
   IngestionSource: s.SourceSchema,
+  IngestionSourceDetail: s.IngestionSourceSchema,
+  IngestionSourceInput: s.IngestionSourceInputSchema,
+  IngestionSourceUpdate: z
+    .strictObject({
+      ...s.IngestionSourceInputSchema.shape,
+      status: z.enum(["ACTIVE", "DISABLED"]),
+    })
+    .partial(),
+  IngestionSourceTest: s.SourceTestSchema,
+  ImportPlan: s.ImportPlanSchema,
+  ImportRun: s.ImportRunSchema,
+  ImportRunInput: z.strictObject({
+    planId: z.string().min(1),
+    planDigest: z.string().min(1),
+    idempotencyKey: z.string().min(1),
+  }),
   EvaluationRun: s.EvaluationRunSchema,
   EvaluationCase: s.EvaluationCaseSchema,
   TestSuite: s.TestSuiteSchema,
@@ -65,6 +81,7 @@ for (const name of [
   "Example",
   "IngestionRun",
   "IngestionSource",
+  "ImportRun",
   "EvaluationRun",
   "EvaluationCase",
   "TestSuite",
@@ -215,6 +232,21 @@ add(
 );
 add(
   "post",
+  "/warehouse/ingestion/sources",
+  "IngestionSourceDetail",
+  "IngestionSourceInput",
+  "201",
+);
+add("get", "/warehouse/ingestion/sources/{id}", "IngestionSourceDetail");
+add(
+  "patch",
+  "/warehouse/ingestion/sources/{id}",
+  "IngestionSourceDetail",
+  "IngestionSourceUpdate",
+);
+add("post", "/warehouse/ingestion/sources/{id}/test", "IngestionSourceTest");
+add(
+  "post",
   "/warehouse/ingestion/run",
   "IngestionRun",
   "IngestionInput",
@@ -228,6 +260,38 @@ add("get", "/warehouse/ingestion/runs", "PageIngestionRun", undefined, "200", [
   "to",
 ]);
 add("get", "/warehouse/ingestion/runs/{id}", "IngestionRun");
+add("post", "/import/sql/validate", "ImportPlan");
+(paths["/import/sql/validate"].post as Record<string, unknown>).requestBody = {
+  required: true,
+  content: {
+    "multipart/form-data": {
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["file", "sourceDialect", "warehouseId", "targetSchema"],
+        properties: {
+          file: { type: "string", format: "binary" },
+          sourceDialect: {
+            type: "string",
+            enum: ["AUTO_DETECT", "POSTGRESQL", "MYSQL", "SQL_SERVER"],
+          },
+          warehouseId: { type: "string", minLength: 1 },
+          targetSchema: { type: "string", minLength: 1 },
+        },
+      },
+    },
+  },
+};
+add("post", "/import/sql/runs", "ImportRun", "ImportRunInput", "202");
+add("get", "/import/sql/runs", "PageImportRun", undefined, "200", [
+  ...list,
+  "warehouseId",
+  "targetEngine",
+  "status",
+  "from",
+  "to",
+]);
+add("get", "/import/sql/runs/{id}", "ImportRun");
 add("get", "/evaluation/test-suites", "PageTestSuite", undefined, "200", list);
 add("post", "/evaluation/run", "EvaluationRun", "EvaluationInput", "202");
 add("get", "/evaluation/runs", "PageEvaluationRun", undefined, "200", [
