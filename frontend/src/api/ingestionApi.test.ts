@@ -276,3 +276,15 @@ describe("file ingestion API", () => {
     expect(calls).toBe(0);
   });
 });
+
+it("discards an actor-owned upload using an empty204 response", async () => {
+  let removed = false;
+  server.use(
+    http.delete(`${api}/warehouse/ingestion/files/:id`, () => {
+      removed = true;
+      return new HttpResponse(null, { status: 204 });
+    }),
+  );
+  await ingestionApi.discardFile("file-test");
+  expect(removed).toBe(true);
+});

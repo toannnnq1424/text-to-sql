@@ -37,7 +37,7 @@ Tận dụng tối đa nghĩa là ưu tiên code hoạt động và test hữu �
 
 ## Ranh giới tích hợp
 
-Luồng AI chính là React → Java → Python AI/provider candidate → native semantic planner/rewrite in Python → Java SqlGuard → JDBC. Both Python calls use the internal token and receive no warehouse credentials. Java owns registry, OIDC, role/resource authorization, dataset allowlist, post-rewrite validation, execution decision, snapshots, history, audit, import and ingestion.
+Luồng AI chính là React → Java → Python AI/provider candidate → native semantic planner/rewrite in Python → Java SqlGuard/lineage → private native executor. Both Python calls use the internal token and receive no warehouse credentials. Java owns registry, OIDC, role/resource authorization, dataset allowlist, post-rewrite validation, execution decision, snapshots, history, audit, import and ingestion.
 
 The current planner shares the private Python AI process but has a separate authenticated endpoint and contract. Java passes a per-query allowlisted manifest and candidate SQL; the native result returns as candidate and still requires Java validation. If later adopting upstream connector/tool runtime, Java must keep private executor service auth after authorization; credentials remain in the trusted executor. Do not move warehouse credentials or execution authority to the AI service.
 
@@ -70,3 +70,11 @@ Mỗi lần tích hợp phải chọn rõ ai thực thi mỗi capability, tránh
 | Infra | Pin artifacts, private network/service auth, egress/storage allowlist, timeouts/resource limits, notices và reproducible deployment |
 
 Nguồn nhận diện để kiểm tra provenance: [semantic source](https://github.com/Canner/wren-engine), [tool runtime source](https://github.com/googleapis/mcp-toolbox). Các tên nguồn chỉ phục vụ nhận diện kỹ thuật và attribution, không dùng làm tên sản phẩm.
+
+## Tích hợp runtime mở rộng ngày2026-10-20
+
+Luồng mặc định hiện là React→Java→generation/context selection→native semantic core/CTE planning→Java AST/lineage check→private Go executor→database. Native core là dependency compiled thực0.4.0, cùng phần nguồn CTE/dialect được thích nghi từ snapshot; không tự viết một planner rỗng rồi gọi là tích hợp. Go runtime dùng nguồn driver/pool/cursor/normalization thích nghi từ bộ thứ hai, có caller Java thật và cancellation/types DB3. [Native planner](integrations/semantic-planner.md), [native executor](integrations/data-tool-runtime.md), [bulk file contract](contracts/file-ingestion.md) ghi chính xác phạm vi.
+
+File parser áp dụng local-file dispatch và Arrow conversion từ nguồn đầu, mở rộng thành13 extension có upload đầy đủ/header/type inference/preview. Java nạp batch vào bốn lớp và đăng ký dataset; không bắt thêm sample folder hoặc gõ từng dòng/cột. Nguồn dữ liệu đầu vào là bytes người dùng upload và dữ liệu lưu thực; fixtures chỉ trong kiểm thử.
+
+Phần ngoài luồng được chạy/test này (toàn bộ upstream UI/server/cloud IAM/vector store, connectors đám mây chưa cấu hình, local training) không được trình bày như đã tích hợp. Việc tận dụng source được đo bằng capability và caller thực, không bằng chép thư mục hoặc số dòng; danh mục connector mở rộng vẫn là tài liệu riêng và không thay phạm vi bắt buộc hiện tại.

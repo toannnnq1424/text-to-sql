@@ -54,7 +54,7 @@ export function apiUrl(path: string, params?: Params) {
   return url.href;
 }
 export type RequestOptions = {
-  method?: "GET" | "POST" | "PATCH" | "PUT";
+  method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   body?: unknown;
   formData?: FormData;
   params?: Params;
@@ -181,11 +181,14 @@ async function transport(
       body.set(chunk, offset);
       offset += chunk.byteLength;
     }
-    return new Response(body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: response.headers,
-    });
+    return new Response(
+      [204, 205, 304].includes(response.status) ? null : body,
+      {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+      },
+    );
   } catch (error) {
     if (error instanceof ApiError) throw error;
     if (timedOut)
@@ -211,6 +214,17 @@ async function transport(
     clearTimeout(timer);
     options.signal?.removeEventListener("abort", abort);
   }
+}
+export async function requestEmpty(
+  path: string,
+  options: RequestOptions = {},
+): Promise<void> {
+  const response = await transport(path, options);
+  if (response.status !== 204)
+    throw new ApiError(
+      "CONTRACT_MISMATCH",
+      "API không xác nhận thao tác xóa file.",
+    );
 }
 export async function downloadCsv(queryId: string, signal?: AbortSignal) {
   const response = await transport(`/query/${encodeId(queryId)}/export.csv`, {

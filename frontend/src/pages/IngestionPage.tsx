@@ -88,7 +88,7 @@ export function IngestionPage() {
           </button>
         </div>
         {mode === "file" ? (
-          <FileIngestionWorkflow key={c.warehouseId} />
+          <FileIngestionWorkflow />
         ) : (
           <IngestionContent key={`${c.warehouseId}/${c.datasetId}`} />
         )}

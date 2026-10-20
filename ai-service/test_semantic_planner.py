@@ -131,3 +131,47 @@ def test_private_endpoint_auth_correlation_and_plan(monkeypatch):
             client.post("/internal/v1/semantic-plan", json=payload, headers=mismatched).status_code
             == 400
         )
+
+
+@pytest.mark.parametrize("engine", ["POSTGRESQL", "MYSQL", "SQL_SERVER"])
+def test_original_physical_qualifier_survives_model_alias_rewrite(engine):
+    payload = request(engine)
+    payload["sql"] = {
+        "POSTGRESQL": 'SELECT "Album"."Title" FROM public."Album"',
+        "MYSQL": "SELECT `Album`.`Title` FROM `public`.`Album`",
+        "SQL_SERVER": "SELECT [Album].[Title] FROM [dbo].[Album]",
+    }[engine]
+    planned = plan_sql(PlanRequest.model_validate(payload))
+    assert planned.sourceTables[0].name == "Album"
+    assert "Title" in planned.sql
+
+
+def test_distinct_quoted_postgresql_tables_keep_exact_physical_identity():
+    payload = request("POSTGRESQL")
+    other = deepcopy(payload["manifest"]["models"][0])
+    other["name"] = "nla_model_1"
+    other["tableReference"]["table"] = "album"
+    payload["manifest"]["models"].append(other)
+    planned = plan_sql(PlanRequest.model_validate(payload))
+    assert [t.name for t in planned.sourceTables] == ["Album"]
+    payload["sql"] = "SELECT COUNT(*) FROM public.album"
+    planned = plan_sql(PlanRequest.model_validate(payload))
+    assert [t.name for t in planned.sourceTables] == ["album"]
+
+
+def test_unquoted_postgresql_case_folds_without_retargeting_quoted_table():
+    payload = request("POSTGRESQL")
+    other = deepcopy(payload["manifest"]["models"][0])
+    other["name"] = "nla_model_1"
+    other["tableReference"]["table"] = "album"
+    payload["manifest"]["models"].append(other)
+    payload["sql"] = "SELECT COUNT(*) FROM PUBLIC.ALBUM"
+    planned = plan_sql(PlanRequest.model_validate(payload))
+    assert [table.name for table in planned.sourceTables] == ["album"]
+
+
+def test_qualified_physical_table_is_not_hidden_by_same_named_cte():
+    payload = request("POSTGRESQL")
+    payload["sql"] = 'WITH "Album" AS (SELECT 1 AS n) SELECT COUNT(*) FROM public."Album"'
+    planned = plan_sql(PlanRequest.model_validate(payload))
+    assert [table.name for table in planned.sourceTables] == ["Album"]

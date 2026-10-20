@@ -68,7 +68,7 @@ class SemanticPlannerClientTest {
                 + " FROM dbo.[Album] AS __source) AS nla_model_0) SELECT COUNT(*) FROM"
                 + " [nla_model_0]");
     for (var entry : sqlByEngine.entrySet()) {
-      String schema = entry.getKey().equals("POSTGRESQL") ? "public" : "dbo";
+      String schema = entry.getKey().equals("SQL_SERVER") ? "dbo" : "public";
       List<Map<String, Object>> physical = List.of(table(schema, "Album", "INTEGER"));
       var result = new SqlGuard().validate(entry.getValue(), entry.getKey(), physical);
       assertEquals(List.of(Json.obj("schema", schema, "name", "Album")), result.sourceTables());

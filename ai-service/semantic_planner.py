@@ -11,6 +11,7 @@ import sqlglot
 import wren_core
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlglot import exp
+from sqlglot.optimizer.scope import traverse_scope
 
 from third_party.wren_semantic.cte_rewriter import CTERewriter
 
@@ -145,14 +146,14 @@ def _model_map(manifest: Manifest) -> dict[tuple[str, str], ManifestModel]:
     for model in manifest.models:
         name_key = _canonical_identifier(model.name)
         physical_key = (
-            _canonical_identifier(model.tableReference.schema_),
-            _canonical_identifier(model.tableReference.table),
+            model.tableReference.schema_,
+            model.tableReference.table,
         )
         if name_key in models_by_name or physical_key in models_by_table:
             raise PlanningFailure("SEMANTIC_MODEL_INVALID")
         if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_$#]{0,255}", model.name):
             raise PlanningFailure("SEMANTIC_MODEL_INVALID")
-        columns = [_canonical_identifier(column.name) for column in model.columns]
+        columns = [column.name for column in model.columns]
         if len(columns) != len(set(columns)):
             raise PlanningFailure("SEMANTIC_MODEL_INVALID")
         models_by_name[name_key] = model
@@ -168,24 +169,44 @@ def _logical_model_references(
     dialect: str,
     models: dict[tuple[str, str], ManifestModel],
 ) -> list[ManifestModel]:
-    cte_names = {cte.alias_or_name.casefold() for cte in ast.find_all(exp.CTE) if cte.alias_or_name}
+    # Use resolved scopes: a qualified physical table may share a name with a CTE.
+    sources = []
+    for scope in traverse_scope(ast):
+        for _, (_, source) in scope.selected_sources.items():
+            if isinstance(source, exp.Table):
+                sources.append(source)
     found: dict[str, ManifestModel] = {}
-    for table in ast.find_all(exp.Table):
+    for table in sources:
         raw_name = table.name
-        if raw_name.casefold() in cte_names:
-            continue
         if table.catalog:
             raise PlanningFailure("SQL_VALIDATION_ERROR")
         raw_schema = table.db
+        lookup_name = raw_name
+        lookup_schema = raw_schema
+        if dialect == "postgres":
+            if not table.this.args.get("quoted"):
+                lookup_name = lookup_name.lower()
+            if raw_schema and not table.args["db"].args.get("quoted"):
+                lookup_schema = lookup_schema.lower()
         candidates = [
             model
             for (schema, name), model in models.items()
-            if name == _canonical_identifier(raw_name)
-            and (not raw_schema or schema == _canonical_identifier(raw_schema))
+            if name == lookup_name and (not raw_schema or schema == lookup_schema)
         ]
+        if not candidates and dialect == "tsql":
+            candidates = [
+                model
+                for (schema, name), model in models.items()
+                if name.casefold() == raw_name.casefold()
+                and (not raw_schema or schema.casefold() == raw_schema.casefold())
+            ]
         if len(candidates) != 1:
             raise PlanningFailure("INSUFFICIENT_CONTEXT")
         model = candidates[0]
+        # Keep the physical qualifier valid when the original SQL has no alias.
+        # Replacing the table name alone would leave Album.Title unresolved.
+        if not table.alias:
+            table.set("alias", exp.TableAlias(this=table.this.copy()))
         table.set("this", exp.to_identifier(model.name, quoted=True))
         table.set("db", None)
         table.set("catalog", None)

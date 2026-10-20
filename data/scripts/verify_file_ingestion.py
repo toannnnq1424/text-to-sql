@@ -57,7 +57,44 @@ def fixtures():
     table = pa.table({h: [row[i] for row in values] for i, h in enumerate(headers)})
     parquet = pa.BufferOutputStream()
     pq.write_table(table, parquet)
-    return {"csv": csv, "xlsx": out.getvalue(), "parquet": parquet.getvalue().to_pybytes()}
+    import fastavro
+    import pyarrow.feather as feather
+    import pyarrow.orc as orc
+
+    result = {
+        "csv": csv,
+        "tsv": csv.replace(b",", b"\t"),
+        "txt": csv.replace(b",", b";"),
+        "xlsx": out.getvalue(),
+        "parquet": parquet.getvalue().to_pybytes(),
+    }
+    records = [dict(zip(headers, row)) for row in values]
+    result["json"] = json.dumps(records, ensure_ascii=False).encode()
+    result["jsonl"] = result["ndjson"] = (
+        "\n".join(json.dumps(row, ensure_ascii=False) for row in records) + "\n"
+    ).encode()
+    for extension in ("arrow", "ipc", "feather", "orc"):
+        binary = pa.BufferOutputStream()
+        if extension == "feather":
+            feather.write_feather(table, binary)
+        elif extension == "orc":
+            orc.write_table(table, binary)
+        else:
+            with pa.ipc.new_file(binary, table.schema) as writer:
+                writer.write_table(table)
+        result[extension] = binary.getvalue().to_pybytes()
+    avro = io.BytesIO()
+    fastavro.writer(
+        avro,
+        {
+            "type": "record",
+            "name": "Observation",
+            "fields": [{"name": h, "type": ["null", "string"]} for h in headers],
+        },
+        records,
+    )
+    result["avro"] = avro.getvalue()
+    return result
 
 
 def wait(client, run):
@@ -217,6 +254,13 @@ def main():
                         "DROP TABLE IF EXISTS " + target + ";",
                         db="nla_import" if engine == "MYSQL" else "nla_chinook",
                     )
+        delete = urllib.request.Request(
+            client.base + BASE + "/" + source["id"],
+            method="DELETE",
+            headers={"Authorization": "Bearer " + client.token},
+        )
+        with urllib.request.urlopen(delete, timeout=30) as response:
+            require(response.status == 204, "Upload discard did not release private bytes")
     # Large genuine upload exercises cancellation in an active JDBC batch. No rows
     # are fabricated by the app; only this explicit acceptance fixture generates them.
     content = ("id,measurement\n" + "1,123.4500\n" * 100000).encode()

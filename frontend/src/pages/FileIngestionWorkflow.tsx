@@ -33,6 +33,7 @@ import {
   Field,
   Notice,
   Resource,
+  Pagination,
 } from "../components/ui";
 
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
@@ -62,7 +63,7 @@ function safeName(value: string, fallback: string) {
     .replace(/[^a-z0-9_]+/g, "_")
     .replace(/^\d+/, "")
     .replace(/^_+|_+$/g, "")
-    .slice(0, 60);
+    .slice(0, 40);
   return base || fallback;
 }
 
@@ -85,6 +86,8 @@ export function FileIngestionWorkflow() {
   const [columns, setColumns] = useState<FileColumn[]>([]);
   const [plan, setPlan] = useState<FilePlan>();
   const [runId, setRunId] = useState("");
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historySize, setHistorySize] = useState(10);
   const [targetWarehouseId, setTargetWarehouseId] = useState(
     context.warehouseId,
   );
@@ -116,13 +119,18 @@ export function FileIngestionWorkflow() {
     enabled: Boolean(targetWarehouseId && auth.can("OPERATOR")),
   });
   const runs = useQuery({
-    queryKey: ["file-ingestion-runs", targetWarehouseId],
+    queryKey: [
+      "file-ingestion-runs",
+      targetWarehouseId,
+      historyPage,
+      historySize,
+    ],
     queryFn: ({ signal }) =>
       ingestionApi.fileRuns(
         {
           warehouseId: targetWarehouseId || context.warehouseId,
-          page: 1,
-          pageSize: 10,
+          page: historyPage,
+          pageSize: historySize,
         },
         signal,
       ),
@@ -271,7 +279,17 @@ export function FileIngestionWorkflow() {
     idempotency.current = undefined;
   }
 
+  function releaseUpload() {
+    if (upload)
+      void ingestionApi
+        .discardFile(upload.id)
+        .catch((error: Error) => setFormError(error.message));
+  }
+
   function reset() {
+    if (currentRun && ["PENDING", "RUNNING"].includes(currentRun.status))
+      return;
+    releaseUpload();
     uploadSequence.current += 1;
     uploadController.current?.abort();
     uploadMutationReset();
@@ -296,7 +314,12 @@ export function FileIngestionWorkflow() {
 
   function chooseFile(next?: File) {
     if (!next) return;
-    if (validate.isPending || start.isPending) return;
+    if (
+      validate.isPending ||
+      start.isPending ||
+      (currentRun && ["PENDING", "RUNNING"].includes(currentRun.status))
+    )
+      return;
     if (!auth.can("OPERATOR")) {
       setFormError("Bạn cần quyền Operator để nạp file vào warehouse.");
       return;
@@ -322,7 +345,12 @@ export function FileIngestionWorkflow() {
   }
 
   function changeSheet(sheet: string) {
-    if (!file) return;
+    if (
+      !file ||
+      (currentRun && ["PENDING", "RUNNING"].includes(currentRun.status))
+    )
+      return;
+    releaseUpload();
     clearPlan();
     setUpload(undefined);
     uploadFile.mutate({
@@ -334,6 +362,9 @@ export function FileIngestionWorkflow() {
   }
 
   function changeDelimiter(next: string) {
+    if (currentRun && ["PENDING", "RUNNING"].includes(currentRun.status))
+      return;
+    releaseUpload();
     setDelimiter(next);
     if (
       file &&
@@ -425,7 +456,13 @@ export function FileIngestionWorkflow() {
               accept={acceptedExtensions.join(",")}
               aria-label="Chọn file dữ liệu"
               disabled={
-                !auth.can("OPERATOR") || validate.isPending || start.isPending
+                !auth.can("OPERATOR") ||
+                validate.isPending ||
+                start.isPending ||
+                Boolean(
+                  currentRun &&
+                  ["PENDING", "RUNNING"].includes(currentRun.status),
+                )
               }
               onChange={(event) => chooseFile(event.currentTarget.files?.[0])}
             />
@@ -449,7 +486,13 @@ export function FileIngestionWorkflow() {
                 type="file"
                 accept={acceptedExtensions.join(",")}
                 disabled={
-                  !auth.can("OPERATOR") || validate.isPending || start.isPending
+                  !auth.can("OPERATOR") ||
+                  validate.isPending ||
+                  start.isPending ||
+                  Boolean(
+                    currentRun &&
+                    ["PENDING", "RUNNING"].includes(currentRun.status),
+                  )
                 }
                 onChange={(event) => chooseFile(event.currentTarget.files?.[0])}
               />
@@ -474,7 +517,13 @@ export function FileIngestionWorkflow() {
               <Button
                 onClick={reset}
                 disabled={
-                  uploadFile.isPending || validate.isPending || start.isPending
+                  uploadFile.isPending ||
+                  validate.isPending ||
+                  start.isPending ||
+                  Boolean(
+                    currentRun &&
+                    ["PENDING", "RUNNING"].includes(currentRun.status),
+                  )
                 }
               >
                 <RotateCcw size={16} /> Đặt lại
@@ -644,6 +693,7 @@ export function FileIngestionWorkflow() {
               <div className="file-ingestion-target-grid">
                 <Field label="Warehouse đích">
                   <select
+                    aria-label="Warehouse đích"
                     value={targetWarehouseId}
                     onChange={(event) => {
                       clearPlan();
@@ -666,6 +716,7 @@ export function FileIngestionWorkflow() {
                 </Field>
                 <Field label="Namespace / schema">
                   <select
+                    aria-label="Namespace / schema"
                     value={targetSchema}
                     onChange={(event) => {
                       clearPlan();
@@ -689,6 +740,7 @@ export function FileIngestionWorkflow() {
                 </Field>
                 <Field label="Bảng đích">
                   <input
+                    aria-label="Bảng đích"
                     value={targetTable}
                     maxLength={128}
                     onChange={(event) => {
@@ -700,6 +752,7 @@ export function FileIngestionWorkflow() {
                 </Field>
                 <Field label="Tên dataset">
                   <input
+                    aria-label="Tên dataset"
                     value={datasetName}
                     maxLength={120}
                     onChange={(event) => {
@@ -876,6 +929,15 @@ export function FileIngestionWorkflow() {
               </button>
             ))}
           </div>
+        )}
+        {runs.data && runs.data.totalItems > 0 && (
+          <Pagination
+            {...runs.data}
+            onChange={(page, size) => {
+              setHistoryPage(page);
+              setHistorySize(size);
+            }}
+          />
         )}
       </Card>
       {currentRun?.status === "SUCCESS" && currentRun.datasetId && (

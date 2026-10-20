@@ -14,6 +14,8 @@ RUN groupadd --gid 10001 nla \
     && chown 10001:10001 /var/lib/nla/uploads
 COPY --from=build --chown=10001:10001 /build/backend/target/analytics-backend-1.0.0.jar /app/backend.jar
 COPY --from=build --chown=10001:10001 /build/health/HttpHealth.class /app/health/HttpHealth.class
+COPY --chown=10001:10001 data/evaluation/ /app/data/evaluation/
+COPY --chown=10001:10001 data/chinook/evaluation-*.json data/chinook/LICENSE.md data/chinook/source.json /app/data/chinook/
 USER 10001:10001
 EXPOSE 8080
-ENTRYPOINT ["java", "-XX:MaxRAMPercentage=70", "-jar", "/app/backend.jar"]
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=70", "-Dnla.data.root=/app/data", "-jar", "/app/backend.jar"]

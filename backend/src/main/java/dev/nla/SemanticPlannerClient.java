@@ -231,7 +231,7 @@ public class SemanticPlannerClient {
   }
 
   static String sourceKey(Map<String, Object> table) {
-    return (Json.str(table, "schema") + "." + Json.str(table, "name")).toLowerCase(Locale.ROOT);
+    return Json.str(table, "schema") + "\u0000" + Json.str(table, "name");
   }
 
   private static ApiException invalidManifest() {

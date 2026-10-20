@@ -1,4 +1,4 @@
-import { request, encodeId, type Params } from "./client";
+import { request, requestEmpty, encodeId, type Params } from "./client";
 import {
   IngestionSchema,
   IngestionSourceInputSchema,
@@ -84,6 +84,10 @@ export const ingestionApi = {
       timeoutMs: 120000,
     });
   },
+  discardFile: (id: string) =>
+    requestEmpty(`/warehouse/ingestion/files/${encodeId(id)}`, {
+      method: "DELETE",
+    }),
   fileTargets: (warehouseId: string, signal?: AbortSignal) =>
     request("/warehouse/ingestion/files/targets", FileTargetsSchema, {
       params: { warehouseId },

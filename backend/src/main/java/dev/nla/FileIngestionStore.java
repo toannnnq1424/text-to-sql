@@ -148,6 +148,10 @@ class FileIngestionStore {
     for (var row : rows) {
       var run = Json.read(row.get("document").toString());
       run.put("status", "FAILED");
+      for (var stage : Json.objects(run.get("stages"))) {
+        if ("RUNNING".equals(stage.get("status"))) stage.put("status", "FAILED");
+        if ("PENDING".equals(stage.get("status"))) stage.put("status", "SKIPPED");
+      }
       run.put("partialFailure", true);
       run.put("completedAt", java.time.Instant.now().toString());
       run.put(

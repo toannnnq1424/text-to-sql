@@ -1,6 +1,6 @@
 # Chạy ứng dụng trong Docker Compose
 
-`infra/compose.databases.yml` + `infra/compose.application.yml` chạy PostgreSQL, MySQL, SQL Server, Java backend, Python AI service và frontend Nginx. IdP local dùng `infra/compose.auth.yml` trên project `nla-auth`. Cả hai được khởi động bằng cùng helper; SQL Server image vẫn yêu cầu host/emulation `linux/amd64` phù hợp.
+`infra/compose.databases.yml` + `infra/compose.application.yml` chạy PostgreSQL, MySQL, SQL Server, Java backend, Python AI/native semantic core, native Go data executor, file parser và frontend Nginx. IdP local dùng `infra/compose.auth.yml` trên project `nla-auth`. Cả hai được khởi động bằng cùng helper; SQL Server image vẫn yêu cầu host/emulation `linux/amd64` phù hợp.
 
 ## Khởi chạy
 
@@ -13,7 +13,7 @@ python3 infra/local/compose.py status
 
 Helper tái dùng quy trình data provisioning đã pin/checksum, không nhận SQL upload tùy ý. Nó tạo metadata database `nla_metadata_compose` riêng với owner app giới hạn quyền, build images từ source checkout hiện tại, đợi healthchecks rồi dùng OIDC client credentials để gọi API Java đăng ký ba source warehouse/dataset. Host app vẫn dùng metadata database `nla_metadata` và không bị rewrite endpoint.
 
-Mở `http://127.0.0.1:4173`. Đăng nhập qua Keycloak tại 8180 với account ứng dụng trong `.local/oidc/accounts.json`. API Java chỉ bind host loopback ở 8085; browser gọi `/api/v1` qua Nginx cùng origin. Python không publish port ra host. Bốn role dùng cùng contract và resource grants như [OIDC local](oidc-local.md).
+Mở `http://127.0.0.1:4173`. Đăng nhập qua Keycloak tại 8180 với account ứng dụng trong `.local/oidc/accounts.json`. API Java chỉ bind host loopback ở 8085; browser gọi `/api/v1` qua Nginx cùng origin. Python, native executor và file parser không publish port ra host. Bốn role dùng cùng contract và resource grants như [OIDC local](oidc-local.md).
 
 Chạy lại `up` giữ metadata, database volumes và credential; `register` có thể dùng lại để kiểm tra/discover kết nối đã đăng ký. Helper từ chối nhiều registry entry trùng endpoint; xử lý chúng qua UI quản trị trước khi chạy lại. Nó không thay đổi warehouse ngoài sample đã phân phối.
 
@@ -24,7 +24,7 @@ python3 infra/local/compose.py register
 python3 infra/local/compose.py stop
 ```
 
-`stop` chỉ dừng ba app containers; database/IdP giữ nguyên để host app tiếp tục sử dụng. Dừng IdP qua `infra/local/oidc.py stop`, dừng database theo README. Không `down -v` nếu cần giữ dữ liệu.
+`stop` dừng các app containers; database/IdP giữ nguyên để host app tiếp tục sử dụng. Dừng IdP qua `infra/local/oidc.py stop`, dừng database theo README. Không `down -v` nếu cần giữ dữ liệu.
 
 ## Private configuration
 
@@ -33,6 +33,12 @@ python3 infra/local/compose.py stop
 Backend env chỉ có metadata credential, read-only warehouse credentials, SQL Import/ingestion writer references và token Java→Python; không có provisioning admin DB password hay local API token. AI env chỉ có service token và provider config; không nhận reader/writer/metadata credential. Frontend build chỉ nhận public issuer/client settings; không có secret trong `VITE_*`.
 
 OIDC client `nla-compose-provisioner` là confidential service account có ADMIN role cho local setup, được quản lý trong IdP và secret chỉ lưu `.local/compose-app/provisioner.json`. App containers không nhận bootstrap IdP administrator password. Setup dùng account quản trị IdP riêng để cấu hình public origin/callback và service principal; API đăng ký chạy qua Java như mọi admin request.
+
+## Native execution và file upload
+
+Compose bật native Go executor mặc định sau Java guard. Executor nhận reader credentials trong request riêng tư từ Java, không nhận admin credentials; pool/key/lease/deadline/row-byte limits bảo vệ kết nối. AI service dùng pinned native semantic core trên linux/amd64; một số host ARM dùng emulation. Dịch vụ file là linux/native architecture, đọc13 extension trong container riêng không có DB credentials/network. `app-uploads` giữ canonical spool riêng cho Java qua restart; expiry/discard xóa bytes, audit/run metadata vẫn được giữ. File worker dùng token riêng, bounded tmpfs/memory/CPU và nonrootUID10001.
+
+App **Nạp dữ liệu → Nạp file** nhận toàn bộ file, tự suy cột/kiểu, preview/mapping/plan rồi thực hiện batch raw→staging→warehouse→mart. Không cần thêm folder data mỗi nguồn. Chi tiết giới hạn và API tại [file-ingestion](contracts/file-ingestion.md). Để dùng namespace riêng, DBA cấp CREATE/INSERT cho import writer và SELECT cho reader; app phát hiện quyền thật, không tự cấp admin privileges.
 
 ## Provider AI thật
 
@@ -62,6 +68,7 @@ Dockerfiles dùng immutable multi-platform digest cho Node22, Maven/Temurin21, P
 python -m pytest infra/local/test_compose.py infra/local/test_oidc.py
 python3 infra/local/compose.py verify
 node infra/local/compose-browser.mjs
+node infra/local/file-ingestion-browser.mjs
 OIDC_TEST_APP_URL=http://127.0.0.1:4173 OIDC_TEST_API_URL=http://127.0.0.1:8085/api/v1 node infra/local/oidc-browser.mjs
 ```
 

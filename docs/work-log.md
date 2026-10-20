@@ -448,3 +448,11 @@ Các entry triển khai tiếp theo thêm phía dưới; không đánh dấu FE/
 
 - Branch `module/source-platform-integration`; subject `merge: integrate native semantic planner before guarded execution`.
 - Integrated1a7a1fa actual native semantic core and upstream CTE source into candidate→planner→Java AST/lineage→native executor flow. Preserved shared contract links for file/native tool interfaces. Python52 PASS/1 provider SKIP; packaged DB3/corpus/browser and integrated Java tests PENDING.
+
+## 2026-10-20T22:15+07:00 — Root / native identity, file caller and packaged acceptance
+
+- Branch `module/source-platform-integration`; subject `fix: preserve SQL identity and complete file caller lifecycle`.
+- Preserved exact PostgreSQL quoted identity/unquoted folding, physical column qualifiers and scoped CTE references through the native planner; Java compares exact lineage keys. Added actor upload discard caller, active-run reset guards, target label accessibility, history pagination and retained cross-warehouse progress. Exported48 public paths/61schemas including all file APIs. Packaged the server-managed evaluation corpus in the backend image after live /evaluation/run exposed missing deployment data.
+- PASS:58 native Python tests/1 real-provider SKIP;18 file-parser tests;79 integrated backend tests/no skips including Docker Testcontainers and liveDB3. FE124 tests/build PASS; full mocked browser regression is running. Actual packaged core query API/browserDB3 PASS;108 support cases equivalent to independently computed SQLite values.
+- PASS on OIDC Compose:13extensions×3targets39 upload/mapping/digest/idempotency/persistence/catalog cases, plus3active100k-row cancellation cases. Browser real IdP→UI upload→Java→file parser→DB3→Catalog PASS; independent reader count2 in each generated layer and exact cleanup. Initial browser selector used an overly exact wrapped-label lookup, fixed test and explicit field aria labels; no namespace/permission data was fabricated.
+- PENDING for final committed image: quoted-case/qualifier follow-up and evaluation-corpus packaging rebuild; real provider remains deliberately NOT RUN. No claim complete upstream/cloud inventory or production/pixel/load acceptance.
