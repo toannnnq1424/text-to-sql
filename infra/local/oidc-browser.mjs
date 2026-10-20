@@ -269,6 +269,17 @@ try {
     const context = await browser.newContext();
     const page = await context.newPage();
     const user = await login(page, role, role === "VIEWER");
+    const files = await request(
+      "/warehouse/ingestion/files/runs",
+      user.access_token,
+    );
+    assert.equal(
+      files.status,
+      ["ADMIN", "OPERATOR"].includes(role) ? 200 : 403,
+      "File ingestion history role boundary differs from configured roles",
+    );
+    report.checks.fileRoleAuthorization = true;
+
     assert.equal((await request("/session", user.id_token)).status, 401);
     assert.equal(
       (await request("/session", user.access_token + "tampered")).status,

@@ -27,7 +27,7 @@ Cách chạy đầy đủ các dịch vụ riêng tư cùng database/đăng nh�
 ### Yêu cầu
 
 - Docker Desktop hoặc Docker Engine + Compose plugin.
-- Java 21, Maven 3.9+, Python 3.11+, Node.js 20+ và npm.
+- Java 21, Maven 3.9+, Python 3.11+, Node.js 22.12+ và npm.
 - Khoảng 5 GB RAM còn trống cho ba database; SQL Server container hiện dùng image `linux/amd64`.
 
 ### 1. Tạo và khởi động database Chinook
