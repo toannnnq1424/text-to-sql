@@ -115,6 +115,19 @@ node infra/local/oidc-browser.mjs
 
 Mỗi lệnh chạy service ở terminal riêng; lệnh browser chạy sau khi cả hai đã sẵn sàng. Test dùng Keycloak, React và Java thật; report an toàn ở `.local/oidc-browser-report.json`, không lưu password/token hoặc trace đăng nhập.
 
+### Chạy cả ứng dụng bằng Docker Compose
+
+Lệnh dưới đây thực hiện provisioning Chinook đã pin, khởi động IdP, sinh secret riêng cho app, build ba app images và đăng ký kết nối qua Java API:
+
+```bash
+python3 infra/local/compose.py up
+python3 infra/local/compose.py status
+```
+
+Mở `http://127.0.0.1:4173`, đăng nhập `nla-admin` với mật khẩu riêng trong `.local/oidc/accounts.json`. API Java được bind loopback `http://127.0.0.1:8085/api/v1`; Python chỉ có trong mạng container. Compose dùng metadata database riêng `nla_metadata_compose`, giữ nguyên registry của app host. Các endpoint warehouse được đăng ký bằng hostname/service port Compose, không sửa `localhost` trong code truy vấn.
+
+Build đầu cần tải base images và dependencies. Cần Docker Compose có hỗ trợ `env_file.format: raw` (v2.30+), Python 3.11+ cho script provisioning, cùng tài nguyên cho ba database và bốn app/IdP services. Hướng dẫn provider API, mạng, credential isolation, kiểm thử và dừng service ở [Docker deployment local](docs/docker-local.md). Nếu chưa cấu hình provider, app dùng `DETERMINISTIC` với semantic examples đã đăng ký; đây không phải bằng chứng model AI API thật.
+
 ## Dữ liệu và nguồn
 
 Chinook là bộ dữ liệu kiểm chứng tích hợp đầu tiên, không được mô tả như star-schema warehouse. Nguồn, release, commit, license, checksum, schema counts và quy trình tái tạo được ghi tại [data/chinook](data/chinook/README.md) và [data-sources](docs/data-sources.md). Các nguồn còn lại do người dùng cung cấp (AdventureWorksDW, TPC-DS, Pagila, Northwind PostgreSQL, Olist) vẫn được ghi trong danh mục; chúng chưa được nạp vào runtime này.

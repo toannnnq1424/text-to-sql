@@ -16,7 +16,13 @@ ISSUER = "http://127.0.0.1:8180/realms/nla"
 CLIENT_ID = "nla-web"
 AUDIENCE = "nla-api"
 ROLES = ("VIEWER", "ANALYST", "OPERATOR", "ADMIN")
-ORIGINS = ("http://localhost:5173", "http://127.0.0.1:5173", "http://127.0.0.1:5175")
+ORIGINS = (
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5175",
+    "http://127.0.0.1:4173",
+    "http://localhost:4173",
+)
 
 
 def private_write(path: Path, content: str) -> None:

@@ -26,6 +26,19 @@ for (const value of [origin, api]) {
   );
 }
 const issuer = "http://127.0.0.1:8180/realms/nla";
+const registryPath =
+  process.env.OIDC_TEST_REGISTRY ||
+  (new URL(origin).port === "4173"
+    ? path.join(root, ".local/compose-app/registry.json")
+    : null);
+const registry = registryPath
+  ? JSON.parse(await readFile(registryPath, "utf8"))
+  : null;
+const postgres = registry?.find(
+  (warehouse) => warehouse.engine === "POSTGRESQL",
+);
+const warehouseId = postgres?.warehouseId || "wh-chinook-pg";
+const datasetId = postgres?.datasetId || "ds-chinook-pg";
 const accounts = JSON.parse(
   await readFile(path.join(root, ".local/oidc/accounts.json"), "utf8"),
 );
@@ -262,7 +275,7 @@ try {
       401,
     );
     const mutation = await request(
-      "/warehouses/wh-chinook-pg/test",
+      `/warehouses/${warehouseId}/test`,
       user.access_token,
       "POST",
     );
@@ -306,7 +319,7 @@ try {
         `${role} unexpectedly has an admin capability`,
       );
       const scoped = await request(
-        "/datasets/ds-chinook-pg/catalog",
+        `/datasets/${datasetId}/catalog`,
         user.access_token,
       );
       assert.equal(
