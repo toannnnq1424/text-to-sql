@@ -126,10 +126,12 @@ Các test tích hợp cần Docker và database provisioned; test browser live c
 | [Contracts](docs/contracts/README.md) | Domain, API, errors, Java ↔ Python, semantic model |
 | [UI reference](docs/ui-reference.md) | 14 ảnh, routes và tiêu chí thị giác |
 | [Data sources](docs/data-sources.md) | Nguồn do người dùng cung cấp và cách sử dụng |
+| [Platform reuse](docs/platform-reuse.md) | Khảo sát hai bộ nguồn, phần ưu tiên tái sử dụng, ranh giới bảo mật và provenance |
+| [Future connectors](docs/future-connectors.md) | SQL engines, cloud/object storage và file sources theo định hướng mở rộng |
 | [Security](docs/security.md) | SQL, credential, auth, giới hạn thực thi |
 | [Acceptance](docs/acceptance.md) | Bằng chứng kiểm chứng |
 | [Current review gaps](docs/current-review.md) | Login, import, UI, source dữ liệu và acceptance đang mở |
 | [Future extensions](docs/future-extensions.md) | Local AI/training và nâng quy mô ngoài scope hiện tại |
 | [Work log](docs/work-log.md) | Nhật ký commit/push và handoff |
 
-Ảnh gốc được phép đưa lên GitHub lưu tại [images](images/README.md). Mã nguồn repository chưa chọn giấy phép phát hành; license của dataset bên thứ ba được ghi riêng.
+Ảnh gốc được phép đưa lên GitHub lưu tại [images](images/README.md). Mã nguồn tự viết của repository chưa chọn giấy phép phát hành; license của dataset và thành phần bên thứ ba được quản lý riêng. Hai bộ nguồn mới đã khảo sát chưa được tích hợp vào runtime; không lấy danh sách connector của chúng làm claim hỗ trợ hiện tại.

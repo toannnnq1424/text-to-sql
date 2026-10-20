@@ -16,6 +16,10 @@ flowchart TD
 
 Application metadata store lưu registry, semantic versions, query history, audit, pipeline/evaluation run; tách rõ khỏi warehouse nguồn. Chọn PostgreSQL làm metadata store cho triển khai; điều này không giới hạn engine warehouse. Flyway app chỉ migrate metadata store; không tự sửa schema warehouse đã đăng ký.
 
+## Định hướng tái sử dụng implementation
+
+Theo yêu cầu ngày 2026-10-20, ưu tiên phần semantic planner/manifest/metadata/connectors và source/tool runtime đã có trong hai snapshot được khảo sát ở [platform-reuse.md](platform-reuse.md). Các thành phần này **chưa có trong deployment hiện tại**. Java tiếp tục authorize/validate/quyết định thực thi; Python AI chỉ sinh candidate. Nếu dùng private connector executor hoặc semantic service, tách nó khỏi AI generation, chỉ nhận request nội bộ đã cấp quyền và kiểm tra lại SQL sau rewrite. Không expose MCP/admin/execute tools trực tiếp cho browser/LLM. Danh mục ngoài ba engine hiện tại ở [future-connectors.md](future-connectors.md) là định hướng do người dùng yêu cầu, cần contract migration/capability model và nghiệm thu riêng khi triển khai.
+
 | Phần | Owner | Trách nhiệm |
 |---|---|---|
 | `frontend/` | React | UX, shell, route, API client, result rendering, MSW, visual checks |

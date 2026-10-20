@@ -11,3 +11,7 @@ Chỉ cân nhắc fine-tune khi prompt/RAG/context selection/provider baseline �
 ## Nguồn data lớn / nâng quy mô
 
 TPC-DS scale lớn, Olist ELT đầy đủ, port AdventureWorksDW và multi-tenant scheduling triển khai theo task/hạ tầng thật. Danh mục nguồn vẫn giữ tại [data-sources.md](data-sources.md); điều đó không có nghĩa đã tải hoặc hỗ trợ các nguồn này.
+
+## Thêm connector, cloud storage và file sources
+
+Người dùng yêu cầu ghi định hướng mở rộng ngày 2026-10-20: Amazon S3, Apache Spark, Apache Doris, Athena, BigQuery, ClickHouse, Databricks, DuckDB, Google Cloud Storage, local files, MinIO, Oracle, Redshift, Snowflake, Trino và các nguồn khác, bên cạnh ba engine hiện tại. Danh mục/evidence và điều kiện nghiệm thu tại [future-connectors.md](future-connectors.md). Ưu tiên tận dụng hai bộ nguồn đã khảo sát theo [platform-reuse.md](platform-reuse.md), không dựng adapter placeholder, không sửa enum một phía và không gọi khả năng upstream là implementation đã chạy của app. Các phần mandatory hiện tại không chuyển sang mục này.

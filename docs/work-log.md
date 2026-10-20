@@ -140,3 +140,13 @@ Các entry triển khai tiếp theo thêm phía dưới; không đánh dấu FE/
 - Còn thiếu / blocker / phụ thuộc: đây chỉ là sửa config sample; không chứng minh ingestion app tổng quát hoặc SQL Import end-to-end.
 - Việc tiếp nối: BE cần lấy follow-up Data commit trước khi nghiệm thu/cherry-pick config mẫu mới.
 - Commit/push: entry này đi cùng commit; SHA remote xác minh sau push.
+
+### 2026-10-20 15:29 UTC+07 — Khảo sát source platform và định hướng connector / conversation chính
+- Nhánh / commit subject: `module/platform-reuse`; `docs: map reusable platform sources and future connectors`.
+- Phạm vi: AGENTS, README, architecture, data sources, decision log, tài liệu platform reuse/future connectors và inventory SHA-256 hai snapshot người dùng chỉ định trong Downloads.
+- Trạng thái: VERIFIED cho khảo sát/documentation và hashes; tích hợp/build/runtime của hai bộ nguồn NOT RUN/INCOMPLETE, không phải capability đã triển khai.
+- Đã làm: đọc README/license/manifests và code semantic planner/bindings/metadata/query connector, Go source/tool/auth/toolset; lập bảng module→consumer→acceptance và ưu tiên tái sử dụng implementation thật. Ghi đủ 18 nguồn engine/storage/file người dùng yêu cầu cùng capability/security/contract requirements. Chốt tên sản phẩm riêng, lưu tên nguồn chỉ trong provenance; root licenses kiểm tra là Apache-2.0 nên giữ notice/attribution liên quan khi phân phối, không xóa để đổi branding. Chưa thấy Git metadata hoặc thỏa thuận license riêng trong snapshot đã đọc; không bịa commit ID.
+- Kiểm chứng: JSON parse PASS; SHA-256 các file khảo sát/license khớp snapshot PASS; local Markdown links trong các tài liệu liên quan PASS; danh mục đủ 18 nguồn PASS; `git diff --check` PASS. Snapshot semantic 1,234 files, tool runtime 2,062 files; inventory hashes ghi trong JSON, không copy application source/credentials/logo vào repository.
+- Còn thiếu / phụ thuộc: chưa build/adopt upstream artifact hoặc chạy connector; cần pin artifact/dependency closure, mapping shared semantic/contracts, private service integration và acceptance trên nguồn thật trước claim support. Các phần mandatory FE/BE/import/ingestion/OIDC hiện tại tiếp tục độc lập, không bị chuyển sang future work.
+- Việc tiếp nối: áp dụng theo platform-reuse.md trong task triển khai có caller thật; đồng bộ tài liệu vào nhánh tích hợp sau khi các module agent hoàn tất.
+- Commit/push: entry đi cùng commit; đối chiếu SHA local/remote sau push và pull trong bàn giao.
