@@ -342,3 +342,28 @@ Các entry triển khai tiếp theo thêm phía dưới; không đánh dấu FE/
 - Branch: `module/integration-final`; commit subject: `merge: integrate measured AI context selection`.
 - Merged `module/ai-completion` at `081458a`, retaining decimal mean corrections. Shared reuse overview preserves source inventory and links both actual narrow runtime integrations; AI detail moved to `docs/integrations/semantic-context.md` instead of replacing the global architecture. Snapshot flags describe selected scope explicitly, not full upstream integration.
 - Checks: agent44 PASS/1 real-provider skip, including exact serialized payload and fresh referenceTime/cache boundary. Existing integrated Java cross-domain evidence108 cases supersedes component handoff's missing-warehouse note; rerun with this new selector remains PENDING until final rebuild.
+### 2026-10-20 13:33 UTC+07 — Thêm luồng SQL Import trong ứng dụng / conversation FE
+- Nhánh / commit subject: `module/frontend-polish`; `feat: add validated SQL import workflow`.
+- Phạm vi: màn SQL Import, client multipart/run APIs, schema DTO, route/sidebar, cấu hình writer credential reference write-only trên warehouse và kiểm thử FE.
+- Trạng thái: VERIFIED cho caller UI/API contract dưới test; SQL Import tổng thể vẫn INCOMPLETE vì chưa chạy caller FE với Java và warehouse thật qua upload, preview, xác nhận, persistence, history trên ba engine.
+- Đã làm: thêm validate → preview → explicit confirm → run detail/history; giới hạn file `.sql` 2 MiB; giữ idempotency key cho lần retry; chỉ submit planId/digest khi xác nhận, không gửi lại SQL gốc; hiển thị warnings/unsupported features và ngăn xác nhận plan hết hạn/không hỗ trợ. Warehouse form nhận `importCredentialReference` dạng env reference, không nhập password và không hiển thị giá trị được lưu.
+- Kiểm chứng: `npm test -- --reporter=dot` — 104 passed; `npm run test:e2e` — 21 passed với API fixture riêng cho browser tests; `npm run build` PASS; `npm run format:check` PASS; `git diff --check` PASS.
+- Còn thiếu / blocker / phụ thuộc: E2E browser ở commit này dùng mock Java, không chứng minh tích hợp hoặc persistence thật. Backend SQL Import đang ở nhánh riêng; backend agent đang sửa mapping sang writer username chuyên dụng. OIDC provider thật và đối chiếu dữ liệu/provenance mọi route vẫn chưa nghiệm thu; `docs/current-review.md` được giữ cho nhánh tích hợp để tránh xung đột giữa module.
+- Việc tiếp nối: tích hợp contract/implementation từ backend rồi chạy upload-preview-confirm thật trên PostgreSQL, MySQL và SQL Server; cấu hình OIDC provider và hoàn thiện acceptance UI còn mở.
+- Commit/push: entry này đi cùng commit; SHA local/remote được đối chiếu sau push.
+
+### 2026-10-20 20:24 UTC+07 — Hoàn thiện đăng ký pipeline và kiểm chứng luồng FE live / conversation FE
+- Nhánh / commit subject: `module/frontend-polish`; `feat: add live registered ingestion workflows`.
+- Phạm vi: giao diện quản trị nguồn ingestion đã đăng ký, chọn warehouse/dataset từ registry API thật, đăng ký/chỉnh sửa từng phần/kiểm tra/chạy/xem lịch sử; cấu hình credential reference chỉ ghi; mở rộng review SQL Import theo constraint/index/default/identity và trạng thái rollback; test browser live riêng, test responsive desktop/mobile.
+- Trạng thái: VERIFIED cho caller FE với Java và ba warehouse cục bộ trong các luồng SQL Import và ingestion. OIDC provider không thuộc bài test live này (đăng nhập bằng local admin token); không suy rộng kết quả local thành xác nhận provider production. Root xác nhận cả 12 bảng disposable có 24 dòng sau chạy và đã xóa chính xác theo manifest ở cả ba engine.
+- Đã làm: thêm registry CRUD có role/loading/empty/error states; form chứa raw, stage, warehouse, mart và typed columns; test endpoint hiển thị target/row metadata; run/history/detail gọi APIs thật. SQL Import review hiển thị đầy đủ schema, table, constraint/index, default/identity và rollback status; namespace đích nhập tường minh. Test live dùng token từ `.local/docker.env`, không ghi token vào log.
+- Kiểm chứng: `npm test -- --reporter=dot` — 110 passed; `npm run build` PASS; `npm run format:check` PASS; `npm run test:e2e` — 23 passed; browser live SQL Import trên PostgreSQL/MySQL/SQL Server — 1 passed; browser live ingestion đăng ký/chỉnh sửa/test/run/detail/history trên ba engine — 1 passed; `git diff --check` PASS trước commit. SQL Import disposable tables đã được xóa và kiểm tra còn 0. Ingestion disposable tables cần được kiểm tra row count và dọn bằng manifest bên quản trị sau khi test.
+- Còn thiếu / blocker / phụ thuộc: API export OpenAPI/contracts cần cập nhật bởi nhánh tích hợp; verify OIDC thật riêng.
+- Việc tiếp nối: tích hợp exporter/API contracts và chạy Compose/OIDC acceptance cuối.
+- Commit/push: entry này đi cùng commit; SHA local và remote được đối chiếu sau push.
+
+## 2026-10-20T20:27+07:00 — Root / frontend ingestion integration
+
+- Branch: `module/integration-final`; commit subject: `merge: integrate live frontend ingestion workflows`.
+- Merged published FE `abafbfa`; preserved both appended work logs. FE source registry create/edit/test/run/history and SQL Import use actual Java APIs, with explicit schemas and per-warehouse writer configuration.
+- Checks: FE110 unit tests,23 mocked browser checks/build/format PASS. Live browser import and ingestion PASS on PG/MySQL/MSSQL with committed BE at local8088. Root independently counted24 rows in each of12 disposable pipeline targets, then removed exact manifest-owned targets. No fixture payload was substituted in the product. Final production bundle rebuild PENDING.

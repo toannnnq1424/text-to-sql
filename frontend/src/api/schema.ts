@@ -28,6 +28,7 @@ export const WarehouseSchema = z.object({
   database: z.string().optional(),
   defaultSchema: z.string().nullable().optional(),
   username: z.string().optional(),
+  ingestionUsername: z.string().optional(),
   createdAt: time.optional(),
   updatedAt: time.optional(),
 });
@@ -283,8 +284,118 @@ export const SourceSchema = z.object({
   sourceId: id,
   name: id,
   type: id,
-  status: id,
+  status: z.enum(["ACTIVE", "DISABLED"]),
+  sourceWarehouseId: id,
+  sourceDatasetId: id,
 });
+export type Source = z.infer<typeof SourceSchema>;
+export const SourceTargetSchema = z.strictObject({
+  schema: id,
+  name: id,
+});
+export const IngestionSourceSchema = z.object({
+  ...SourceSchema.shape,
+  warehouseId: id,
+  datasetId: id,
+  readSql: z.string(),
+  raw: SourceTargetSchema,
+  stage: SourceTargetSchema,
+  warehouse: SourceTargetSchema,
+  mart: SourceTargetSchema,
+  columns: z.array(id),
+  requiredColumns: z.array(id),
+  columnTypes: z.record(
+    id,
+    z.enum(["STRING", "INTEGER", "DECIMAL", "BOOLEAN", "DATE", "TIMESTAMP"]),
+  ),
+  maxStringLengths: z.record(id, count),
+  maxRows: count.min(1),
+  maxBytes: count.min(1),
+  timeoutSeconds: count.min(1),
+  createdAt: time,
+  updatedAt: time,
+});
+export type IngestionSource = z.infer<typeof IngestionSourceSchema>;
+export const IngestionSourceInputSchema = z
+  .strictObject({
+    name: z.string().trim().min(1).max(120),
+    warehouseId: id,
+    datasetId: id,
+    sourceWarehouseId: id,
+    sourceDatasetId: id,
+    readSql: z.string().trim().min(1).max(100000),
+    raw: SourceTargetSchema,
+    stage: SourceTargetSchema,
+    warehouse: SourceTargetSchema,
+    mart: SourceTargetSchema,
+    columns: z
+      .array(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,62}$/))
+      .min(1)
+      .max(100),
+    requiredColumns: z.array(id),
+    columnTypes: z.record(
+      id,
+      z.enum(["STRING", "INTEGER", "DECIMAL", "BOOLEAN", "DATE", "TIMESTAMP"]),
+    ),
+    maxStringLengths: z.record(id, count.min(1).max(10000)),
+    maxRows: count.min(1).max(10000),
+    maxBytes: count.min(1024).max(52428800),
+    timeoutSeconds: count.min(1).max(60),
+  })
+  .superRefine((value, ctx) => {
+    if (new Set(value.columns).size !== value.columns.length) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["columns"],
+        message: "Tên cột bị trùng.",
+      });
+    }
+    if (
+      !value.columns.every((column) => column in value.columnTypes) ||
+      Object.keys(value.columnTypes).length !== value.columns.length
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["columnTypes"],
+        message: "Khai báo đúng một kiểu dữ liệu cho mỗi cột.",
+      });
+    }
+    if (
+      value.requiredColumns.some((column) => !value.columns.includes(column)) ||
+      new Set(value.requiredColumns).size !== value.requiredColumns.length
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["requiredColumns"],
+        message: "Cột bắt buộc phải là tập con không trùng của danh sách cột.",
+      });
+    }
+    for (const column of Object.keys(value.maxStringLengths)) {
+      if (
+        !value.columns.includes(column) ||
+        value.columnTypes[column] !== "STRING"
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["maxStringLengths", column],
+          message: "Chỉ đặt giới hạn độ dài cho cột STRING đã khai báo.",
+        });
+      }
+    }
+  });
+export type IngestionSourceInput = z.infer<typeof IngestionSourceInputSchema>;
+export const SourceTestSchema = z.strictObject({
+  sourceId: id,
+  reachable: z.boolean(),
+  checkedAt: time,
+  sourceEngine: EngineSchema,
+  targetEngine: EngineSchema,
+  rowCount: count,
+  truncated: z.boolean(),
+  columns: z.array(ColumnSchema),
+  targets: z.array(SourceTargetSchema),
+});
+export type SourceTest = z.infer<typeof SourceTestSchema>;
 const RunStatus = z.enum([
   "PENDING",
   "RUNNING",
@@ -423,6 +534,127 @@ export const SettingsSchema = z.object({
   modelDisplayName: z.string().nullable(),
 });
 export type Settings = z.infer<typeof SettingsSchema>;
+export const ImportDialectSchema = z.enum([
+  "AUTO_DETECT",
+  "POSTGRESQL",
+  "MYSQL",
+  "SQL_SERVER",
+]);
+export const ImportModeSchema = z.enum(["NATIVE", "CROSS_DIALECT"]);
+export const ImportRunStatusSchema = z.enum([
+  "PENDING",
+  "RUNNING",
+  "SUCCESS",
+  "PARTIAL",
+  "FAILED",
+]);
+export const ImportActionSchema = z.enum([
+  "CREATE_SCHEMA",
+  "CREATE_TABLE",
+  "INSERT",
+  "CREATE_INDEX",
+]);
+export const ImportStepStatusSchema = z.enum([
+  "PENDING",
+  "RUNNING",
+  "SUCCESS",
+  "FAILED",
+  "SKIPPED",
+  "ROLLED_BACK",
+]);
+const ImportConstraintSchema = z.strictObject({
+  kind: z.enum(["PRIMARY_KEY", "UNIQUE", "FOREIGN_KEY"]),
+  name: z.string(),
+  columns: z.array(id),
+  referenceSchema: z.string(),
+  referenceTable: z.string(),
+  referenceColumns: z.array(id),
+});
+const ImportIndexSchema = z.strictObject({
+  name: z.string(),
+  columns: z.array(id),
+  unique: z.boolean(),
+});
+export const ImportPlanSchema = z.strictObject({
+  planId: id,
+  planDigest: id,
+  warehouseId: id,
+  targetSchema: id,
+  sourceDialect: ImportDialectSchema,
+  detectedDialect: z.enum(["POSTGRESQL", "MYSQL", "SQL_SERVER"]),
+  targetEngine: EngineSchema,
+  mode: ImportModeSchema,
+  statementCount: count,
+  objectCount: count,
+  supportedActions: z.array(ImportActionSchema),
+  warnings: z.array(z.string()),
+  unsupportedFeatures: z.array(z.string()),
+  preview: z.strictObject({
+    statements: z
+      .array(
+        z.strictObject({
+          index: count.min(1),
+          kind: id,
+          objectName: z.string(),
+          summary: z.string(),
+        }),
+      )
+      .optional(),
+    schemas: z.array(
+      z.strictObject({
+        name: id,
+        tables: z.array(
+          z.strictObject({
+            name: id,
+            constraints: z.array(ImportConstraintSchema),
+            indexes: z.array(ImportIndexSchema),
+            columns: z.array(
+              z.strictObject({
+                name: id,
+                dataType: id,
+                nullable: z.boolean(),
+                primaryKey: z.boolean(),
+                identity: z.boolean(),
+                unique: z.boolean(),
+                hasDefault: z.boolean(),
+                defaultValue: z
+                  .union([z.string(), z.boolean(), z.number()])
+                  .nullable(),
+              }),
+            ),
+          }),
+        ),
+      }),
+    ),
+  }),
+  expiresAt: time,
+});
+export type ImportPlan = z.infer<typeof ImportPlanSchema>;
+const ImportStepSchema = z.strictObject({
+  index: count.min(1),
+  kind: id,
+  objectName: z.string(),
+  status: ImportStepStatusSchema,
+  rowsAffected: count,
+  error: ErrorBodySchema.nullable(),
+});
+export const ImportRunSchema = z.strictObject({
+  runId: id,
+  planId: id,
+  warehouseId: id,
+  targetSchema: id,
+  sourceDialect: ImportDialectSchema,
+  targetEngine: EngineSchema,
+  status: ImportRunStatusSchema,
+  statementCount: count,
+  completedStatements: count,
+  rowsAffected: count,
+  createdAt: time,
+  completedAt: time.nullable(),
+  steps: z.array(ImportStepSchema),
+  error: ErrorBodySchema.nullable(),
+});
+export type ImportRun = z.infer<typeof ImportRunSchema>;
 export const WarehouseInputSchema = z.strictObject({
   name: z.string().trim().min(1).max(120),
   engine: EngineSchema,
@@ -437,6 +669,17 @@ export const WarehouseInputSchema = z.strictObject({
   defaultSchema: z.string().trim().max(128).nullable(),
   username: z.string().trim().min(1).max(128),
   credentialReference: z.string().trim().min(1).max(256),
+  importCredentialReference: z.string().trim().max(256).optional(),
+  ingestionUsername: z.string().trim().max(128).optional(),
+  ingestionCredentialReference: z
+    .string()
+    .trim()
+    .max(256)
+    .refine(
+      (value) => !value || /^env:[A-Z_][A-Z0-9_]*$/.test(value),
+      "Dùng tham chiếu environment dạng env:WAREHOUSE_WRITER_PASSWORD.",
+    )
+    .optional(),
 });
 export type WarehouseInput = z.infer<typeof WarehouseInputSchema>;
 export const SavedSchema = z.object({

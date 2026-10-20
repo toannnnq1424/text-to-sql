@@ -18,6 +18,7 @@ export default defineConfig({
     reuseExistingServer: false,
     env: {
       VITE_ALLOW_ANONYMOUS_DEV: "true",
+      VITE_LOCAL_AUTH: "true",
       VITE_OIDC_AUTHORITY: "",
       VITE_OIDC_CLIENT_ID: "",
     },
