@@ -321,3 +321,9 @@ Các entry triển khai tiếp theo thêm phía dưới; không đánh dấu FE/
 - Branch: `module/integration-final`; commit subject: `merge: integrate native database context descriptions`.
 - Merged `module/metadata-context` at `b1e3e52`; adapted upstream native catalog SQL now enriches actual Java discovery and existing AI-context descriptions. Existing shared DTO and execution authorization remain in use; no new arbitrary SQL tool was added. Source hashes and required Apache notices are retained in source/JAR.
 - Checks: agent's18 targeted/live checks PASS on DB3 including Unicode descriptions/permission denial and cleanup. Merge work-log conflict retained both append histories; `git diff --check` PASS. Final stack rebuild after this merge PENDING; provider key remains deferred.
+
+## 2026-10-20T20:15+07:00 — Root / inherited credential filtering
+
+- Branch: `module/integration-final`; commit subject: `fix: filter inherited credentials by local service`.
+- Reviewer reproduced inherited shell variables bypassing file-based filtering. The launcher now filters known application credential/config namespaces in the inherited environment by consumer as well, preserving ordinary OS environment and backend OIDC configuration.
+- Checks: eight launcher tests PASS including three exported-secret regression scenarios; Black and `git diff --check` PASS. No private configuration values were logged or committed. This corrects the ambient-environment limitation recorded in the earlier launcher entry.

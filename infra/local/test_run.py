@@ -71,3 +71,25 @@ def test_oidc_host_configuration_keeps_the_same_issuer(configured):
 def test_provider_is_optional_until_the_owner_supplies_a_key(configured):
     (configured / "compose-app" / "provider.env").unlink()
     assert "LLM_API_KEY" not in RUN.service_environment("ai", "local")
+
+
+@pytest.mark.parametrize("service", ["ai", "backend", "frontend"])
+def test_inherited_application_secrets_obey_the_same_boundary(configured, monkeypatch, service):
+    monkeypatch.setenv("NLA_PG_ADMIN_PASSWORD", "exported-admin-test")
+    monkeypatch.setenv("METADATA_PASSWORD", "exported-metadata-test")
+    monkeypatch.setenv("LLM_API_KEY", "exported-provider-test")
+    monkeypatch.setenv("OIDC_CLIENT_SECRET", "exported-idp-test")
+    monkeypatch.setenv("PATH", "/test/ordinary/path")
+    env = RUN.service_environment(service, "local")
+    assert env["PATH"] == "/test/ordinary/path"
+    assert "NLA_PG_ADMIN_PASSWORD" not in env
+    if service == "ai":
+        assert "METADATA_PASSWORD" not in env
+        assert "OIDC_CLIENT_SECRET" not in env
+        assert env["LLM_API_KEY"] == "private-test-value=with-equals"
+    elif service == "backend":
+        assert "LLM_API_KEY" not in env
+    else:
+        assert "METADATA_PASSWORD" not in env
+        assert "LLM_API_KEY" not in env
+        assert "OIDC_CLIENT_SECRET" not in env

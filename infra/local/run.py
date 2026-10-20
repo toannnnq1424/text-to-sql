@@ -21,7 +21,6 @@ def load_environment(path: Path, target: dict[str, str], allowed=None) -> None:
 
 def service_environment(service: str, authentication: str) -> dict[str, str]:
     """Load only the local credentials consumed by this service."""
-    env = dict(os.environ)
 
     def allowed(key: str) -> bool:
         if service == "ai":
@@ -41,6 +40,23 @@ def service_environment(service: str, authentication: str) -> dict[str, str]:
             "LLM_MODEL",
         }
 
+    def application_setting(key: str) -> bool:
+        return key.startswith(
+            ("NLA_", "METADATA_", "LLM_", "PYTHON_AI_", "OIDC_", "VITE_", "WAREHOUSE_")
+        ) or key in {
+            "LOCAL_API_TOKEN",
+            "CHINOOK_DOCKER",
+            "SPRING_PROFILES_ACTIVE",
+            "API_PROXY_TARGET",
+        }
+
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if not application_setting(key)
+        or allowed(key)
+        or (service == "backend" and key.startswith("OIDC_"))
+    }
     load_environment(ROOT / ".local" / "docker.env", env, allowed)
     provider = ROOT / ".local" / "compose-app" / "provider.env"
     if service != "frontend" and provider.is_file():
