@@ -18,6 +18,12 @@ verify candidate SQL, selected metrics/dimensions, chart recommendation, and
 controlled error codes; they do not execute the synthetic support SQL through
 Java or claim result equivalence against a physical support warehouse.
 
+The HTTP suite exercises Vietnamese and English phrasings under shared logical case
+IDs. A provider candidate is checked against the selected semantic context sent in its
+prompt; warehouse and dataset identifiers and credential-reference fields are not part
+of that provider payload. Python checks candidate shape and unsafe SQL patterns, while
+Java remains the authoritative SQL identifier/security validator and executor.
+
 The configured real-provider smoke is part of `test_app.py` and runs only when
 `LLM_BASE_URL`, `LLM_API_KEY`, and `LLM_MODEL` are present. Provider credentials
 must be supplied through the local environment and are never printed or stored

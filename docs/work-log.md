@@ -130,3 +130,13 @@ Các entry triển khai tiếp theo thêm phía dưới; không đánh dấu FE/
 - Còn thiếu / blocker / phụ thuộc: chưa smoke provider thật do chưa cấu hình env; synthetic support không có warehouse vật lý và chưa được thực thi qua Java, nên chưa chứng minh result equivalence; không tuyên bố provider-quality, Java executor integration hay full AI acceptance đã pass.
 - Việc tiếp nối: tích hợp nhánh này với BE/FE, chạy provider thật khi có cấu hình bí mật hợp lệ, và đưa evaluation qua Java executor/warehouse thật cho đủ domain trong điều kiện nguồn dữ liệu có thật.
 - Commit/push: entry này đi cùng commit; SHA sau push sẽ được đối chiếu và bàn giao riêng.
+
+### 2026-10-20 14:41 UTC+07 — Rà soát context boundary AI / module AI
+- Nhánh / commit subject hoặc SHA đã biết: `module/ai-completion`; dự kiến `fix: enforce selected AI context boundary`.
+- Phạm vi: `ai-service/app.py`, `ai-service/test_app.py`, evaluation support fixture, role/evaluation/current-review docs.
+- Trạng thái: VERIFIED cho selected-context validation, deterministic example scope, provider payload privacy regression và song ngữ corpus inventory; AI acceptance tổng thể vẫn INCOMPLETE.
+- Đã làm: candidate metrics/dimensions/chart được validate theo chính semantic context đã chọn gửi provider; deterministic lookup cũng bị giới hạn trong examples đã chọn. Thêm test xác nhận provider payload không nhận warehouse/dataset IDs hoặc credential fields, và candidate không được chọn metric ngoài selected context. Bổ sung câu hỏi tiếng Việt cho hai logical rejection cases của synthetic support để mỗi logical case có phrasing Việt/Anh trên cả ba dialect. Cập nhật hướng dẫn và ghi rõ Java vẫn phải làm identifier validation AST authoritative.
+- Kiểm chứng: `ai-service/.venv/bin/python -m pytest ai-service -q` — 38 passed, 1 skipped; isort check PASS; Black check PASS; compileall PASS; mọi evaluation JSON parse PASS; `git diff --check` PASS. Một Starlette/AnyIO deprecation warning, không làm fail tests.
+- Còn thiếu / blocker / phụ thuộc: real-provider smoke NOT RUN vì chưa có `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`; Java executor/result-equivalence cho domain support chưa chạy; Python không thay SQL AST identifier validation hoặc Java execution.
+- Việc tiếp nối: push nhánh sau commit và xác minh SHA; chạy provider thật và Java-backed evaluation khi có cấu hình provider/warehouse phù hợp.
+- Commit/push: entry này dự kiến nằm trong commit; SHA remote xác minh sau push.

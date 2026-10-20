@@ -268,7 +268,15 @@ def normalize(s: str) -> str:
     return " ".join(unicodedata.normalize("NFKC", s).casefold().strip().rstrip("?!.").split())
 
 
-def validate(candidate: Candidate, context: Context, dialect: str) -> Candidate:
+def validate(candidate: Candidate, context: Context | dict[str, Any], dialect: str) -> Candidate:
+    if isinstance(context, Context):
+        tables = [table.model_dump(by_alias=True) for table in context.tables]
+        metrics = [metric.model_dump() for metric in context.metrics]
+        dimensions = [dimension.model_dump() for dimension in context.dimensions]
+    else:
+        tables = context["tables"]
+        metrics = context["metrics"]
+        dimensions = context["dimensions"]
     if candidate.chartRecommendation.type not in {
         "table",
         "number",
@@ -279,11 +287,9 @@ def validate(candidate: Candidate, context: Context, dialect: str) -> Candidate:
         "pie",
     }:
         raise Controlled("INVALID_MODEL_RESPONSE", 502)
-    if not set(candidate.selectedMetrics) <= {metric.name for metric in context.metrics}:
+    if not set(candidate.selectedMetrics) <= {metric["name"] for metric in metrics}:
         raise Controlled("INVALID_MODEL_RESPONSE", 502)
-    if not set(candidate.selectedDimensions) <= {
-        dimension.name for dimension in context.dimensions
-    }:
+    if not set(candidate.selectedDimensions) <= {dimension["name"] for dimension in dimensions}:
         raise Controlled("INVALID_MODEL_RESPONSE", 502)
     tokens = sql_code_tokens(candidate.sql)
     if not tokens or tokens[0] not in {"select", "with"}:
@@ -344,9 +350,9 @@ def validate(candidate: Candidate, context: Context, dialect: str) -> Candidate:
         raise Controlled("SQL_DIALECT_ERROR", 502)
     if dialect != "MYSQL" and "`" in candidate.sql:
         raise Controlled("SQL_DIALECT_ERROR", 502)
-    available_columns = {column.name for table in context.tables for column in table.columns}
-    available_columns.update(metric.name for metric in context.metrics)
-    available_columns.update(dimension.name for dimension in context.dimensions)
+    available_columns = {column["name"] for table in tables for column in table["columns"]}
+    available_columns.update(metric["name"] for metric in metrics)
+    available_columns.update(dimension["name"] for dimension in dimensions)
     output_aliases = {
         alias.strip('"`[]').casefold()
         for alias in re.findall(
@@ -370,25 +376,25 @@ class DeterministicModelClient:
     async def generate(self, request: Input, context: dict[str, Any]) -> Candidate:
         matches = [
             e
-            for e in request.semanticContext.examples
-            if e.sqlDialect == request.sqlDialect
-            and normalize(e.question) == normalize(request.question)
+            for e in context["examples"]
+            if e["sqlDialect"] == request.sqlDialect
+            and normalize(e["question"]) == normalize(request.question)
         ]
         if len(matches) > 1:
             raise Controlled("LOW_CONFIDENCE")
         if not matches:
             raise Controlled("UNSUPPORTED_QUESTION")
         e = matches[0]
-        metrics = e.selectedMetrics
-        dims = e.selectedDimensions
+        metrics = e["selectedMetrics"]
+        dims = e["selectedDimensions"]
         # Context examples may explicitly declare a chart using output aliases.
-        chart = e.chartRecommendation or {
+        chart = e.get("chartRecommendation") or {
             "type": "table",
             "title": "Kết quả truy vấn",
             "series": [],
         }
         return Candidate(
-            sql=e.sql,
+            sql=e["sql"],
             explanation="Chạy mẫu ngữ nghĩa đã khai báo khớp chính xác câu hỏi và dialect. Kết quả được Java đọc từ warehouse thật.",
             assumptions=["Deterministic offline: chỉ hỗ trợ câu hỏi mẫu đã khai báo."],
             selectedMetrics=metrics,
@@ -609,4 +615,4 @@ async def generate(
         if x_execution_mode == "DETERMINISTIC"
         else OpenAICompatibleModelClient()
     )
-    return validate(await client.generate(data, context), data.semanticContext, data.sqlDialect)
+    return validate(await client.generate(data, context), context, data.sqlDialect)

@@ -190,12 +190,15 @@ def test_chinook_evaluation_corpus_matches_expected_candidates(client, engine, s
         assert response.json()["chartRecommendation"]["type"] == case["expectedChart"]
 
 
-def provider_response(sql='SELECT COUNT(*) AS track_count FROM "public"."track"'):
+def provider_response(
+    sql='SELECT COUNT(*) AS track_count FROM "public"."track"',
+    selected_metrics=None,
+):
     content = {
         "sql": sql,
         "explanation": "Counts tracks in the selected catalog.",
         "assumptions": [],
-        "selectedMetrics": [],
+        "selectedMetrics": selected_metrics or [],
         "selectedDimensions": [],
         "chartRecommendation": {
             "type": "number",
@@ -333,8 +336,62 @@ def test_duplicate_exact_examples_are_ambiguous():
     with pytest.raises(Exception) as error:
         import anyio
 
-        anyio.run(DeterministicModelClient().generate, request, {})
+        anyio.run(
+            DeterministicModelClient().generate,
+            request,
+            SemanticContextSelector().select(request),
+        )
     assert getattr(error.value, "code", None) == "LOW_CONFIDENCE"
+
+
+def test_provider_candidate_cannot_select_unprovided_semantics(client, monkeypatch):
+    enable_provider(monkeypatch, provider_response(selected_metrics=["total_sales"]))
+
+    def selected_context_without_metrics(self, request):
+        selected = request.semanticContext.model_dump(by_alias=True)
+        selected["metrics"] = []
+        return selected
+
+    monkeypatch.setattr(
+        SemanticContextSelector,
+        "select",
+        selected_context_without_metrics,
+    )
+    response = client.post(
+        "/internal/v1/text-to-sql",
+        json=payload(),
+        headers=headers("API"),
+    )
+    assert response.status_code == 502
+    assert response.json()["error"]["code"] == "INVALID_MODEL_RESPONSE"
+
+
+def test_provider_prompt_excludes_warehouse_ids_and_credentials(client, monkeypatch):
+    monkeypatch.setenv("LLM_BASE_URL", "https://llm.example.test/v1")
+    monkeypatch.setenv("LLM_API_KEY", "provider-test-secret")
+    monkeypatch.setenv("LLM_MODEL", "configured-test-model")
+    captured = {}
+
+    def handler(request):
+        captured.update(json.loads(request.content))
+        return httpx.Response(200, json=provider_response())
+
+    app.state.provider_transport = httpx.MockTransport(handler)
+    response = client.post(
+        "/internal/v1/text-to-sql",
+        json=payload(),
+        headers=headers("API"),
+    )
+    assert response.status_code == 200, response.text
+    prompt = json.dumps(captured)
+    for private_value in (
+        "warehouseId",
+        "datasetId",
+        "credentialReference",
+        "connectionString",
+        "test-service-secret-token",
+    ):
+        assert private_value not in prompt
 
 
 def test_context_rejects_invalid_metric_column():
@@ -389,11 +446,15 @@ def test_evaluation_inventory_has_42_logical_cases_in_two_domains():
         support = json.loads((ROOT / "ai-service/evaluation/synthetic-support.json").read_text())
         corpus_cases = chinook["cases"] + support["dialects"][dialect]["cases"]
         case_ids = set()
+        languages_by_case = {}
         for case in corpus_cases:
             assert case["domain"] in {"chinook-music-store", "synthetic-support"}
             case_ids.add(case["logicalCaseId"])
+            language = "en" if case["question"].isascii() else "vi"
+            languages_by_case.setdefault(case["logicalCaseId"], set()).add(language)
             domains.add(case["domain"])
         assert len(case_ids) == 42
+        assert all(languages == {"en", "vi"} for languages in languages_by_case.values())
         logical_cases.update(case_ids)
     assert len(logical_cases) == 42
     assert domains == {"chinook-music-store", "synthetic-support"}
