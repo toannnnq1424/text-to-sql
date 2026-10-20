@@ -1,16 +1,18 @@
 {
   "sourceId": "chinook-country-sales-pg",
-  "name": "Chinook \u2192 Sales by country mart",
+  "name": "Chinook → Sales by country mart",
   "type": "REGISTERED_ELT",
   "engine": "POSTGRESQL",
   "warehouseId": "wh-chinook-pg",
   "datasetId": "ds-chinook-pg",
   "sourceWarehouseId": "wh-chinook-pg",
   "sourceDatasetId": "ds-chinook-pg",
-  "sourceObjects": [{
-    "schema": "public",
-    "name": "invoice"
-  }],
+  "sourceObjects": [
+    {
+      "schema": "public",
+      "name": "invoice"
+    }
+  ],
   "readSql": "SELECT \"billing_country\" AS country, SUM(\"total\") AS total FROM \"public\".\"invoice\" GROUP BY \"billing_country\"",
   "stage": {
     "schema": "public",
@@ -38,5 +40,13 @@
   "maxRows": 1000,
   "maxBytes": 5242880,
   "timeoutSeconds": 15,
-  "credentialReference": "env:NLA_PIPELINE_PG_PASSWORD"
+  "credentialReference": "env:NLA_PIPELINE_PG_PASSWORD",
+  "raw": {
+    "schema": "public",
+    "name": "nla_raw_sales"
+  },
+  "warehouse": {
+    "schema": "public",
+    "name": "nla_warehouse_sales"
+  }
 }

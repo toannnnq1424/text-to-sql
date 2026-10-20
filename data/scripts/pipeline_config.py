@@ -27,7 +27,9 @@ def validate_config(config: dict[str, Any], engine: str) -> dict[str, Any]:
         "sourceDatasetId",
         "sourceObjects",
         "readSql",
+        "raw",
         "stage",
+        "warehouse",
         "mart",
         "columns",
         "columnTypes",
@@ -113,7 +115,7 @@ def validate_config(config: dict[str, Any], engine: str) -> dict[str, Any]:
         if not isinstance(value, int) or isinstance(value, bool) or not minimum <= value <= maximum:
             raise ValueError(f"Pipeline {key} is outside its supported bounds.")
 
-    for target_name in ("stage", "mart"):
+    for target_name in ("raw", "stage", "warehouse", "mart"):
         target = config[target_name]
         if (
             not isinstance(target, dict)
@@ -126,6 +128,12 @@ def validate_config(config: dict[str, Any], engine: str) -> dict[str, Any]:
             raise ValueError(
                 f"Pipeline {target_name} target must use safe schema/table identifiers."
             )
+    target_names = [
+        (config[key]["schema"].casefold(), config[key]["name"].casefold())
+        for key in ("raw", "stage", "warehouse", "mart")
+    ]
+    if len(set(target_names)) != 4:
+        raise ValueError("Pipeline layers must use four distinct destination tables.")
     reference = config["credentialReference"]
     if not isinstance(reference, str) or not re.fullmatch(r"env:[A-Z][A-Z0-9_]{2,100}", reference):
         raise ValueError("Pipeline credentials must use an environment reference.")

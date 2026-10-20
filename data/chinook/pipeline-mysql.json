@@ -1,16 +1,18 @@
 {
   "sourceId": "chinook-country-sales-mysql",
-  "name": "Chinook \u2192 Sales by country mart",
+  "name": "Chinook → Sales by country mart",
   "type": "REGISTERED_ELT",
   "engine": "MYSQL",
   "warehouseId": "wh-chinook-mysql",
   "datasetId": "ds-chinook-mysql",
   "sourceWarehouseId": "wh-chinook-mysql",
   "sourceDatasetId": "ds-chinook-mysql",
-  "sourceObjects": [{
-    "schema": "nla_chinook",
-    "name": "Invoice"
-  }],
+  "sourceObjects": [
+    {
+      "schema": "nla_chinook",
+      "name": "Invoice"
+    }
+  ],
   "readSql": "SELECT `BillingCountry` AS country, SUM(`Total`) AS total FROM `nla_chinook`.`Invoice` GROUP BY `BillingCountry`",
   "stage": {
     "schema": "nla_chinook",
@@ -38,5 +40,13 @@
   "maxRows": 1000,
   "maxBytes": 5242880,
   "timeoutSeconds": 15,
-  "credentialReference": "env:NLA_PIPELINE_MYSQL_PASSWORD"
+  "credentialReference": "env:NLA_PIPELINE_MYSQL_PASSWORD",
+  "raw": {
+    "schema": "nla_chinook",
+    "name": "nla_raw_sales"
+  },
+  "warehouse": {
+    "schema": "nla_chinook",
+    "name": "nla_warehouse_sales"
+  }
 }

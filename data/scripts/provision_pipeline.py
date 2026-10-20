@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Provision writer grants and typed staging/mart tables from registered definitions."""
+"""Provision writer grants and four typed pipeline tables from sample definitions."""
 
 import json
 import secrets
@@ -84,7 +84,7 @@ def source_grants(engine: str, config: dict[str, Any]) -> list[str]:
 
 
 def target_grants(engine: str, config: dict[str, Any]) -> list[str]:
-    names = [qualified(engine, config["stage"]), qualified(engine, config["mart"])]
+    names = [qualified(engine, config[key]) for key in ("raw", "stage", "warehouse", "mart")]
     if engine == "MYSQL":
         return [f"GRANT SELECT,INSERT,DELETE ON {name} TO 'nla_writer'@'%';" for name in names]
     return [f"GRANT SELECT, INSERT, DELETE ON {name} TO nla_writer;" for name in names]
@@ -109,9 +109,10 @@ def provision():
             database = "nla_chinook"
             execute(
                 engine,
-                table_statement(engine, config["stage"], config)
-                + "\n"
-                + table_statement(engine, config["mart"], config),
+                "\n".join(
+                    table_statement(engine, config[layer], config)
+                    for layer in ("raw", "stage", "warehouse", "mart")
+                ),
                 database,
             )
             password = literal(values[key])
@@ -152,17 +153,43 @@ def provision():
                     {
                         "engine": engine,
                         "writer": "nla_writer",
-                        "tables": [config["stage"], config["mart"]],
+                        "tables": [
+                            config[layer] for layer in ("raw", "stage", "warehouse", "mart")
+                        ],
                     },
                     indent=2,
                 )
                 + "\n"
             )
+        # Existing clones gain missing sample layers without recreating users or overwriting data.
+        for layer in ("raw", "stage", "warehouse", "mart"):
+            target = config[layer]
+            statement = table_statement(engine, target, config)
+            if engine == "SQL_SERVER":
+                statement = (
+                    f"IF OBJECT_ID(N'{target['schema']}.{target['name']}',N'U') IS NULL "
+                    + statement
+                )
+            else:
+                statement = statement.replace("CREATE TABLE ", "CREATE TABLE IF NOT EXISTS ", 1)
+            execute(engine, statement, "nla_chinook")
+        execute(engine, "\n".join(target_grants(engine, config)), "nla_chinook")
+        marker.write_text(
+            json.dumps(
+                {
+                    "engine": engine,
+                    "writer": "nla_writer",
+                    "tables": [config[layer] for layer in ("raw", "stage", "warehouse", "mart")],
+                },
+                indent=2,
+            )
+            + "\n"
+        )
     runtime = dict(line.split("=", 1) for line in RUNTIME.read_text().splitlines())
     runtime.update(values)
     RUNTIME.write_text("".join(f"{name}={value}\n" for name, value in runtime.items()))
     RUNTIME.chmod(0o600)
-    print("Provisioned configured pipeline writers and typed staging/mart tables.")
+    print("Provisioned configured pipeline writers and typed raw/staging/warehouse/mart tables.")
 
 
 if __name__ == "__main__":

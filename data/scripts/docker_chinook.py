@@ -371,7 +371,7 @@ def provision_import_namespace(engine, values):
             )
         execute(
             engine,
-            "GRANT CREATE, INSERT, SELECT ON nla_import.* TO 'nla_importer'@'%';",
+            "GRANT CREATE, INSERT, SELECT, INDEX, REFERENCES ON nla_import.* TO 'nla_importer'@'%';",
         )
         return
     login_exists = execute(
@@ -410,7 +410,7 @@ def provision_import_namespace(engine, values):
     execute(
         engine,
         "GRANT CREATE TABLE TO [nla_importer];\n"
-        "GRANT ALTER, SELECT, INSERT ON SCHEMA::[nla_import] TO [nla_importer];\nGO\n",
+        "GRANT ALTER, SELECT, INSERT, REFERENCES ON SCHEMA::[nla_import] TO [nla_importer];\nGO\n",
         "nla_chinook",
     )
 

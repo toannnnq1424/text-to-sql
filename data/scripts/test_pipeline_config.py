@@ -45,7 +45,9 @@ def test_pipeline_configuration_is_not_bound_to_the_chinook_sample():
             "sourceDatasetId": "ds-market-price",
             "readSql": "SELECT observed_at, average_price FROM market.daily_prices",
             "sourceObjects": [{"schema": "market", "name": "daily_prices"}],
+            "raw": {"schema": "analytics", "name": "raw_daily_prices"},
             "stage": {"schema": "analytics", "name": "stg_daily_prices"},
+            "warehouse": {"schema": "analytics", "name": "wh_daily_prices"},
             "mart": {"schema": "analytics", "name": "daily_prices"},
             "columns": ["observed_at", "average_price"],
             "columnTypes": {"observed_at": "TIMESTAMP", "average_price": "DECIMAL"},
@@ -136,5 +138,18 @@ def test_rejects_unsafe_or_inconsistent_pipeline_configuration(field, value):
     config = deepcopy(load_sample_pipeline_configs(ROOT)["POSTGRESQL"])
     config[field] = value
 
+    with pytest.raises(ValueError):
+        validate_config(config, "POSTGRESQL")
+
+
+def test_four_layers_are_required_and_distinct():
+    config = deepcopy(load_sample_pipeline_configs(ROOT)["POSTGRESQL"])
+    assert len({config[layer]["name"] for layer in ("raw", "stage", "warehouse", "mart")}) == 4
+    for layer in ("raw", "stage", "warehouse", "mart"):
+        missing = deepcopy(config)
+        del missing[layer]
+        with pytest.raises(ValueError):
+            validate_config(missing, "POSTGRESQL")
+    config["raw"] = config["mart"]
     with pytest.raises(ValueError):
         validate_config(config, "POSTGRESQL")

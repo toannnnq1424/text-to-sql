@@ -1,16 +1,18 @@
 {
   "sourceId": "chinook-country-sales-mssql",
-  "name": "Chinook \u2192 Sales by country mart",
+  "name": "Chinook → Sales by country mart",
   "type": "REGISTERED_ELT",
   "engine": "SQL_SERVER",
   "warehouseId": "wh-chinook-mssql",
   "datasetId": "ds-chinook-mssql",
   "sourceWarehouseId": "wh-chinook-mssql",
   "sourceDatasetId": "ds-chinook-mssql",
-  "sourceObjects": [{
-    "schema": "dbo",
-    "name": "Invoice"
-  }],
+  "sourceObjects": [
+    {
+      "schema": "dbo",
+      "name": "Invoice"
+    }
+  ],
   "readSql": "SELECT [BillingCountry] AS country, SUM([Total]) AS total FROM [dbo].[Invoice] GROUP BY [BillingCountry]",
   "stage": {
     "schema": "dbo",
@@ -38,5 +40,13 @@
   "maxRows": 1000,
   "maxBytes": 5242880,
   "timeoutSeconds": 15,
-  "credentialReference": "env:NLA_PIPELINE_MSSQL_PASSWORD"
+  "credentialReference": "env:NLA_PIPELINE_MSSQL_PASSWORD",
+  "raw": {
+    "schema": "dbo",
+    "name": "nla_raw_sales"
+  },
+  "warehouse": {
+    "schema": "dbo",
+    "name": "nla_warehouse_sales"
+  }
 }
