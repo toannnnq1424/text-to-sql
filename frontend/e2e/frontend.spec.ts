@@ -80,6 +80,12 @@ async function javaTestBoundary(page: Page) {
         pageSize: Number(url.searchParams.get("pageSize") || 20),
       };
     else if (path.startsWith("/query/")) body = f.query;
+    else if (path === "/warehouse/ingestion/files/runs") body = f.page([]);
+    else if (path === "/warehouse/ingestion/files/targets")
+      body = {
+        warehouseId: url.searchParams.get("warehouseId"),
+        namespaces: [],
+      };
     else if (path === "/warehouse/ingestion/runs") body = f.page([f.ingestion]);
     else if (path.startsWith("/warehouse/ingestion/runs/")) body = f.ingestion;
     else if (path === "/warehouse/ingestion/sources") {
@@ -279,6 +285,7 @@ for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: width < 500 ? 844 : 1000 });
     await javaTestBoundary(page);
     await page.goto("/ingestion");
+    await page.getByRole("tab", { name: "Nguồn warehouse" }).click();
     await expect(
       page.getByRole("heading", { name: "Nguồn pipeline đã đăng ký" }),
     ).toBeVisible();
@@ -430,5 +437,28 @@ for (const width of [1024, 390]) {
       );
       expect(overflowing, `${path} overflows at ${width}px`).toBe(false);
     }
+  });
+}
+
+for (const width of [1440, 390]) {
+  test(`file upload entry fits the ${width}px ingestion layout`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: width < 500 ? 844 : 1000 });
+    await javaTestBoundary(page);
+    await page.goto("/ingestion");
+    await expect(
+      page.getByRole("heading", { name: "Nạp file dữ liệu" }),
+    ).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Nạp file" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await expect(
+      page.getByLabel("Chọn file dữ liệu", { exact: true }),
+    ).toBeAttached();
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(width);
   });
 }

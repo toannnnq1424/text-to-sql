@@ -27,6 +27,17 @@ def main():
         require(
             re.fullmatch(r"nla_browser_[a-f0-9]{10}", name) is not None, "Unsafe test table name"
         )
+        if item.get("runId") and not item.get("datasetId"):
+            run_id = item["runId"]
+            require(
+                re.fullmatch(r"file-run-[a-f0-9-]{36}", run_id) is not None, "Unsafe test run ID"
+            )
+            request = urllib.request.Request(
+                "http://127.0.0.1:8085/api/v1/warehouse/ingestion/files/runs/" + run_id,
+                headers={"Authorization": "Bearer " + token},
+            )
+            with urllib.request.urlopen(request, timeout=30) as response:
+                item["datasetId"] = json.load(response).get("datasetId")
         prefix = "SET NOCOUNT ON; " if engine == "SQL_SERVER" else ""
         database = "nla_import" if engine == "MYSQL" else "nla_chinook"
         for layer in ("raw", "staging", "warehouse", "mart"):
@@ -53,6 +64,12 @@ def main():
             )
             with urllib.request.urlopen(request, timeout=30) as response:
                 require(response.status == 200, "Cannot disable disposable Dataset")
+        if item.get("uploadId"):
+            upload_id = item["uploadId"]
+            require(re.fullmatch(r"file-[a-f0-9-]{36}",upload_id) is not None,"Unsafe test upload ID")
+            request=urllib.request.Request("http://127.0.0.1:8085/api/v1/warehouse/ingestion/files/"+upload_id,method="DELETE",headers={"Authorization":"Bearer "+token})
+            with urllib.request.urlopen(request,timeout=30) as response:
+                require(response.status==204,"Cannot release test upload quota")
         print("Verified and cleaned disposable file-browser targets:", engine)
     manifest_path.rename(manifest_path.with_suffix(".cleaned.json"))
 

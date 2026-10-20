@@ -55,6 +55,12 @@ try {
       JSON.stringify(manifest),
       { mode: 0o600 },
     );
+    const uploaded = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname.endsWith(
+          "/warehouse/ingestion/files",
+        ) && response.request().method() === "POST",
+    );
     await page.getByLabel("Chọn file dữ liệu", { exact: true }).setInputFiles({
       name: "browser-observations.csv",
       mimeType: "text/csv",
@@ -62,6 +68,14 @@ try {
         "Station,Measurement,Enabled\nNorth,123.4500,true\nSouth,1.0000,false\n",
       ),
     });
+    const uploadResponse = await uploaded;
+    assert.equal(uploadResponse.status(), 200);
+    item.uploadId = (await uploadResponse.json()).id;
+    await writeFile(
+      path.join(root, ".local/compose-app/file-browser-manifest.json"),
+      JSON.stringify(manifest),
+      { mode: 0o600 },
+    );
     await expect(
       page.getByRole("heading", { name: "Ánh xạ cột được phát hiện" }),
     ).toBeVisible({ timeout: 30000 });
@@ -99,15 +113,6 @@ try {
     await expect(
       page.locator(".file-run-overview").getByText("SUCCESS", { exact: true }),
     ).toBeVisible({ timeout: 60000 });
-    const finalResponse = await page
-      .waitForResponse(
-        (response) =>
-          response.url().includes("/datasets/") &&
-          /\/datasets\/[^/]+$/.test(new URL(response.url()).pathname),
-        { timeout: 5000 },
-      )
-      .catch(() => null);
-    if (finalResponse) item.datasetId = (await finalResponse.json()).datasetId;
     const datasetText = await page
       .locator(".file-ingestion-dataset-link code")
       .first()

@@ -172,7 +172,10 @@ describe("file ingestion workflow", () => {
     expect(
       screen.getByText("Bạn cần quyền Operator để nạp file vào warehouse."),
     ).toBeVisible();
-    expect(screen.getByLabelText("Chọn file dữ liệu")).toBeDisabled();
+    expect(
+      screen.queryByLabelText("Chọn file dữ liệu"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Đang tải lịch sử…")).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Nguồn warehouse" })).toBeVisible();
   });
 });

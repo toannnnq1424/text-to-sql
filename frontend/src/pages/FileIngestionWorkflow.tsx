@@ -134,7 +134,8 @@ export function FileIngestionWorkflow() {
         },
         signal,
       ),
-    enabled: Boolean(targetWarehouseId || context.warehouseId),
+    enabled:
+      auth.can("OPERATOR") && Boolean(targetWarehouseId || context.warehouseId),
     refetchInterval: (query) =>
       query.state.data?.items.some((item) =>
         ["PENDING", "RUNNING"].includes(item.status),
@@ -396,6 +397,9 @@ export function FileIngestionWorkflow() {
   );
   const canRun = auth.can("OPERATOR") && selectedWarehouse !== undefined;
   const currentRun = selectedRun.data;
+
+  if (!auth.can("OPERATOR"))
+    return <Notice>Bạn cần quyền Operator để nạp file vào warehouse.</Notice>;
 
   return (
     <section className="file-ingestion-workflow" aria-label="Nạp file dữ liệu">
