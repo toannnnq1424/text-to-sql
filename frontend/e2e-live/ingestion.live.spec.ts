@@ -77,6 +77,7 @@ test("registers, edits, tests and runs persisted four-layer pipelines on all eng
       await page.goto("/ingestion");
       await page.getByLabel("Local API token").fill(token!);
       await page.getByRole("button", { name: "Đăng nhập local" }).click();
+      await page.getByRole("tab", { name: "Nguồn warehouse" }).click();
       await expect(
         page.getByRole("heading", { name: "Nguồn pipeline đã đăng ký" }),
       ).toBeVisible();

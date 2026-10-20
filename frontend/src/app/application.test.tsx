@@ -576,6 +576,7 @@ describe("warehouse and job management", () => {
     renderApp("/ingestion");
     await readyDataset();
     const user = userEvent.setup();
+    await user.click(screen.getByRole("tab", { name: "Nguồn warehouse" }));
     await user.click(screen.getByRole("button", { name: "Nguồn dữ liệu" }));
     await user.click(
       await screen.findByRole("option", { name: /Registered CSV source/ }),
@@ -606,6 +607,7 @@ describe("warehouse and job management", () => {
     );
     renderApp("/ingestion");
     await readyDataset();
+    await user.click(screen.getByRole("tab", { name: "Nguồn warehouse" }));
     await user.click(
       await screen.findByRole("button", { name: /Đăng ký nguồn/ }),
     );
@@ -648,6 +650,9 @@ describe("warehouse and job management", () => {
   it("hides source registration actions from non-admin roles", async () => {
     renderApp("/ingestion", ["OPERATOR"]);
     await readyDataset();
+    await userEvent
+      .setup()
+      .click(screen.getByRole("tab", { name: "Nguồn warehouse" }));
     expect(
       await screen.findByText(/Chỉ quản trị viên mới được đăng ký/),
     ).toBeVisible();
