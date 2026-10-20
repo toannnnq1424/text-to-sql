@@ -1,0 +1,24 @@
+{
+  "suites": [
+    {
+      "suiteId": "chinook-core",
+      "name": "Chinook bilingual safety and result equivalence",
+      "version": "1.0.0",
+      "caseFiles": {
+        "POSTGRESQL": "chinook/evaluation-postgresql.json",
+        "MYSQL": "chinook/evaluation-mysql.json",
+        "SQL_SERVER": "chinook/evaluation-mssql.json"
+      }
+    },
+    {
+      "suiteId": "synthetic-support",
+      "name": "Synthetic support bilingual result equivalence",
+      "version": "1.0.0",
+      "caseFiles": {
+        "POSTGRESQL": "evaluation/support-postgresql.json",
+        "MYSQL": "evaluation/support-mysql.json",
+        "SQL_SERVER": "evaluation/support-mssql.json"
+      }
+    }
+  ]
+}

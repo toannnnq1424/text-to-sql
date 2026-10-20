@@ -150,3 +150,12 @@ Các entry triển khai tiếp theo thêm phía dưới; không đánh dấu FE/
 - Còn thiếu / phụ thuộc: BE đang hoàn thiện runner bốn lớp và source registry; FE browser/import/ingestion và bộ kiểm chứng trên Git SHA cuối chưa chạy trong commit Data này. Script/config Chinook vẫn chỉ là provenance-bound sample; warehouse mới dùng registry chung, không tạo data/<source> mỗi lần.
 - Việc tiếp nối: merge Data cùng BE/FE/OIDC branches rồi chạy lại API/browser/security acceptance; provider thật còn cần cấu hình server.
 - Commit/push: entry đi cùng commit; xác minh SHA local/remote sau push/pull.
+
+### 2026-10-20 17:22 UTC+07 — Catalogue evaluation cấu hình ngoài business core / conversation chính
+- Nhánh / commit subject: `module/data-ingestion`; `feat: configure evaluation suites outside backend core`.
+- Phạm vi: data/evaluation/suites.json, support corpora và provenance/how-to.
+- Trạng thái: VERIFIED cho catalog/corpus metadata; Java consumer 3testsPASS ở BE worktree, final merged runtime còn chờ.
+- Đã làm: catalogue server-managed ánh xạ suite/engine→case file dưới data root; count lấy từ corpus thay hardcode. Giữ Chinook48phrasings/engine và thêm synthetic support36phrasings/engine với sourceSHA; không seed fake warehouse/UI từ corpus. Supportmean dùng explicitdecimalcast khắc phục sai khác AVGinteger thật đã đo được. Suite mới là config, không ifdomain/adapter hay foldermỗiwarehouse.
+- Kiểm chứng: JSON/matching suiteId/engine/case countsPASS; generic Java EvaluationCorpusTest3PASS (configurable domain, traversaldeny, derived checked-incounts) với data root integration. Synthetic source đã có38AItestsPASS/1providersmokeSKIP và108realJavaDBcasesPASS ở integration entry trước; không coi catalog này là providerquality acceptance.
+- Còn thiếu / tiếp nối: merge BEconsumer và data catalogue, regenerate consumercontracts và rerun serviceevaluation trên finalSHA. `synthetic-support.json` gốc đã sửaAVG ở module/integration-final; khi merge phải giữ snapshot hash thống nhất.
+- Commit/push: entry đi cùng commit; đối chiếu SHA sau push/pull.
