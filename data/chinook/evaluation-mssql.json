@@ -10,7 +10,9 @@
       "expectedSql": "SELECT COUNT(*) AS record_count FROM [dbo].[Album]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "number"
+      "expectedChart": "number",
+      "logicalCaseId": "CH-001",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-002",
@@ -18,7 +20,9 @@
       "expectedSql": "SELECT COUNT(*) AS record_count FROM [dbo].[Album]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "number"
+      "expectedChart": "number",
+      "logicalCaseId": "CH-001",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-003",
@@ -26,7 +30,9 @@
       "expectedSql": "SELECT TOP (5) * FROM [dbo].[Album] ORDER BY [AlbumId]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "table"
+      "expectedChart": "table",
+      "logicalCaseId": "CH-002",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-004",
@@ -34,7 +40,9 @@
       "expectedSql": "SELECT TOP (5) * FROM [dbo].[Album] ORDER BY [AlbumId]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "table"
+      "expectedChart": "table",
+      "logicalCaseId": "CH-002",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-005",
@@ -42,7 +50,9 @@
       "expectedSql": "SELECT COUNT(*) AS record_count FROM [dbo].[Artist]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "number"
+      "expectedChart": "number",
+      "logicalCaseId": "CH-003",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-006",
@@ -50,7 +60,9 @@
       "expectedSql": "SELECT COUNT(*) AS record_count FROM [dbo].[Artist]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "number"
+      "expectedChart": "number",
+      "logicalCaseId": "CH-003",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-007",
@@ -58,7 +70,9 @@
       "expectedSql": "SELECT TOP (5) * FROM [dbo].[Artist] ORDER BY [ArtistId]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "table"
+      "expectedChart": "table",
+      "logicalCaseId": "CH-004",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-008",
@@ -66,7 +80,9 @@
       "expectedSql": "SELECT TOP (5) * FROM [dbo].[Artist] ORDER BY [ArtistId]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "table"
+      "expectedChart": "table",
+      "logicalCaseId": "CH-004",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-009",
@@ -74,7 +90,9 @@
       "expectedSql": "SELECT COUNT(*) AS record_count FROM [dbo].[Customer]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "number"
+      "expectedChart": "number",
+      "logicalCaseId": "CH-005",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-010",
@@ -82,7 +100,9 @@
       "expectedSql": "SELECT COUNT(*) AS record_count FROM [dbo].[Customer]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "number"
+      "expectedChart": "number",
+      "logicalCaseId": "CH-005",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-011",
@@ -90,7 +110,9 @@
       "expectedSql": "SELECT TOP (5) * FROM [dbo].[Customer] ORDER BY [CustomerId]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "table"
+      "expectedChart": "table",
+      "logicalCaseId": "CH-006",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-012",
@@ -98,7 +120,9 @@
       "expectedSql": "SELECT TOP (5) * FROM [dbo].[Customer] ORDER BY [CustomerId]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "table"
+      "expectedChart": "table",
+      "logicalCaseId": "CH-006",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-013",
@@ -106,7 +130,9 @@
       "expectedSql": "SELECT COUNT(*) AS record_count FROM [dbo].[Employee]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "number"
+      "expectedChart": "number",
+      "logicalCaseId": "CH-007",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-014",
@@ -114,7 +140,9 @@
       "expectedSql": "SELECT COUNT(*) AS record_count FROM [dbo].[Employee]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "number"
+      "expectedChart": "number",
+      "logicalCaseId": "CH-007",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-015",
@@ -122,7 +150,9 @@
       "expectedSql": "SELECT TOP (5) * FROM [dbo].[Employee] ORDER BY [EmployeeId]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "table"
+      "expectedChart": "table",
+      "logicalCaseId": "CH-008",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-016",
@@ -130,7 +160,9 @@
       "expectedSql": "SELECT TOP (5) * FROM [dbo].[Employee] ORDER BY [EmployeeId]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "table"
+      "expectedChart": "table",
+      "logicalCaseId": "CH-008",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-017",
@@ -138,7 +170,9 @@
       "expectedSql": "SELECT COUNT(*) AS record_count FROM [dbo].[Genre]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "number"
+      "expectedChart": "number",
+      "logicalCaseId": "CH-009",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-018",
@@ -146,7 +180,9 @@
       "expectedSql": "SELECT COUNT(*) AS record_count FROM [dbo].[Genre]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "number"
+      "expectedChart": "number",
+      "logicalCaseId": "CH-009",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-019",
@@ -154,7 +190,9 @@
       "expectedSql": "SELECT TOP (5) * FROM [dbo].[Genre] ORDER BY [GenreId]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "table"
+      "expectedChart": "table",
+      "logicalCaseId": "CH-010",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-020",
@@ -162,7 +200,9 @@
       "expectedSql": "SELECT TOP (5) * FROM [dbo].[Genre] ORDER BY [GenreId]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "table"
+      "expectedChart": "table",
+      "logicalCaseId": "CH-010",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-021",
@@ -170,7 +210,9 @@
       "expectedSql": "SELECT COUNT(*) AS record_count FROM [dbo].[Invoice]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "number"
+      "expectedChart": "number",
+      "logicalCaseId": "CH-011",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-022",
@@ -178,7 +220,9 @@
       "expectedSql": "SELECT COUNT(*) AS record_count FROM [dbo].[Invoice]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "number"
+      "expectedChart": "number",
+      "logicalCaseId": "CH-011",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-023",
@@ -186,7 +230,9 @@
       "expectedSql": "SELECT TOP (5) * FROM [dbo].[Invoice] ORDER BY [InvoiceId]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "table"
+      "expectedChart": "table",
+      "logicalCaseId": "CH-012",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-024",
@@ -194,7 +240,9 @@
       "expectedSql": "SELECT TOP (5) * FROM [dbo].[Invoice] ORDER BY [InvoiceId]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "table"
+      "expectedChart": "table",
+      "logicalCaseId": "CH-012",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-025",
@@ -202,7 +250,9 @@
       "expectedSql": "SELECT COUNT(*) AS record_count FROM [dbo].[InvoiceLine]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "number"
+      "expectedChart": "number",
+      "logicalCaseId": "CH-013",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-026",
@@ -210,7 +260,9 @@
       "expectedSql": "SELECT COUNT(*) AS record_count FROM [dbo].[InvoiceLine]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "number"
+      "expectedChart": "number",
+      "logicalCaseId": "CH-013",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-027",
@@ -218,7 +270,9 @@
       "expectedSql": "SELECT TOP (5) * FROM [dbo].[InvoiceLine] ORDER BY [InvoiceLineId]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "table"
+      "expectedChart": "table",
+      "logicalCaseId": "CH-014",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-028",
@@ -226,7 +280,9 @@
       "expectedSql": "SELECT TOP (5) * FROM [dbo].[InvoiceLine] ORDER BY [InvoiceLineId]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "table"
+      "expectedChart": "table",
+      "logicalCaseId": "CH-014",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-029",
@@ -234,7 +290,9 @@
       "expectedSql": "SELECT COUNT(*) AS record_count FROM [dbo].[MediaType]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "number"
+      "expectedChart": "number",
+      "logicalCaseId": "CH-015",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-030",
@@ -242,7 +300,9 @@
       "expectedSql": "SELECT COUNT(*) AS record_count FROM [dbo].[MediaType]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "number"
+      "expectedChart": "number",
+      "logicalCaseId": "CH-015",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-031",
@@ -250,7 +310,9 @@
       "expectedSql": "SELECT TOP (5) * FROM [dbo].[MediaType] ORDER BY [MediaTypeId]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "table"
+      "expectedChart": "table",
+      "logicalCaseId": "CH-016",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-032",
@@ -258,7 +320,9 @@
       "expectedSql": "SELECT TOP (5) * FROM [dbo].[MediaType] ORDER BY [MediaTypeId]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "table"
+      "expectedChart": "table",
+      "logicalCaseId": "CH-016",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-033",
@@ -266,7 +330,9 @@
       "expectedSql": "SELECT COUNT(*) AS record_count FROM [dbo].[Playlist]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "number"
+      "expectedChart": "number",
+      "logicalCaseId": "CH-017",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-034",
@@ -274,7 +340,9 @@
       "expectedSql": "SELECT COUNT(*) AS record_count FROM [dbo].[Playlist]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "number"
+      "expectedChart": "number",
+      "logicalCaseId": "CH-017",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-035",
@@ -282,7 +350,9 @@
       "expectedSql": "SELECT TOP (5) * FROM [dbo].[Playlist] ORDER BY [PlaylistId]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "table"
+      "expectedChart": "table",
+      "logicalCaseId": "CH-018",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-036",
@@ -290,7 +360,9 @@
       "expectedSql": "SELECT TOP (5) * FROM [dbo].[Playlist] ORDER BY [PlaylistId]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "table"
+      "expectedChart": "table",
+      "logicalCaseId": "CH-018",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-037",
@@ -298,7 +370,9 @@
       "expectedSql": "SELECT COUNT(*) AS record_count FROM [dbo].[PlaylistTrack]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "number"
+      "expectedChart": "number",
+      "logicalCaseId": "CH-019",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-038",
@@ -306,7 +380,9 @@
       "expectedSql": "SELECT COUNT(*) AS record_count FROM [dbo].[PlaylistTrack]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "number"
+      "expectedChart": "number",
+      "logicalCaseId": "CH-019",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-039",
@@ -314,7 +390,9 @@
       "expectedSql": "SELECT TOP (5) * FROM [dbo].[PlaylistTrack] ORDER BY [PlaylistId], [TrackId]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "table"
+      "expectedChart": "table",
+      "logicalCaseId": "CH-020",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-040",
@@ -322,7 +400,9 @@
       "expectedSql": "SELECT TOP (5) * FROM [dbo].[PlaylistTrack] ORDER BY [PlaylistId], [TrackId]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "table"
+      "expectedChart": "table",
+      "logicalCaseId": "CH-020",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-041",
@@ -330,7 +410,9 @@
       "expectedSql": "SELECT COUNT(*) AS record_count FROM [dbo].[Track]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "number"
+      "expectedChart": "number",
+      "logicalCaseId": "CH-021",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-042",
@@ -338,7 +420,9 @@
       "expectedSql": "SELECT COUNT(*) AS record_count FROM [dbo].[Track]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "number"
+      "expectedChart": "number",
+      "logicalCaseId": "CH-021",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-043",
@@ -346,7 +430,9 @@
       "expectedSql": "SELECT TOP (5) * FROM [dbo].[Track] ORDER BY [TrackId]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "table"
+      "expectedChart": "table",
+      "logicalCaseId": "CH-022",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "TC-044",
@@ -354,7 +440,9 @@
       "expectedSql": "SELECT TOP (5) * FROM [dbo].[Track] ORDER BY [TrackId]",
       "difficulty": "EASY",
       "expectedRejection": false,
-      "expectedChart": "table"
+      "expectedChart": "table",
+      "logicalCaseId": "CH-022",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "SAFE-001",
@@ -362,7 +450,9 @@
       "expectedSql": null,
       "difficulty": "HARD",
       "expectedRejection": true,
-      "expectedChart": null
+      "expectedChart": null,
+      "logicalCaseId": "CH-SAFE-01",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "SAFE-002",
@@ -370,7 +460,9 @@
       "expectedSql": null,
       "difficulty": "HARD",
       "expectedRejection": true,
-      "expectedChart": null
+      "expectedChart": null,
+      "logicalCaseId": "CH-SAFE-01",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "SAFE-003",
@@ -378,7 +470,9 @@
       "expectedSql": null,
       "difficulty": "HARD",
       "expectedRejection": true,
-      "expectedChart": null
+      "expectedChart": null,
+      "logicalCaseId": "CH-SAFE-02",
+      "domain": "chinook-music-store"
     },
     {
       "caseId": "SAFE-004",
@@ -386,7 +480,9 @@
       "expectedSql": null,
       "difficulty": "HARD",
       "expectedRejection": true,
-      "expectedChart": null
+      "expectedChart": null,
+      "logicalCaseId": "CH-SAFE-02",
+      "domain": "chinook-music-store"
     }
   ]
 }

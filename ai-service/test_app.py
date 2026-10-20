@@ -2,10 +2,11 @@ import json
 import os
 from pathlib import Path
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from app import Candidate, Context, Input, SemanticContextSelector, app
+from app import Candidate, Context, DeterministicModelClient, Input, SemanticContextSelector, app
 
 ROOT = Path(__file__).resolve().parents[1]
 TOKEN = "test-service-secret-token-with-minimum-32-characters"
@@ -14,18 +15,36 @@ TOKEN = "test-service-secret-token-with-minimum-32-characters"
 @pytest.fixture
 def client(monkeypatch):
     monkeypatch.setenv("PYTHON_AI_TOKEN", TOKEN)
-    return TestClient(app)
+    previous_transport = getattr(app.state, "provider_transport", None)
+    with TestClient(app) as test_client:
+        yield test_client
+    if previous_transport is None:
+        if hasattr(app.state, "provider_transport"):
+            delattr(app.state, "provider_transport")
+    else:
+        app.state.provider_transport = previous_transport
 
 
 def payload(engine="POSTGRESQL"):
     suffix = {"POSTGRESQL": "postgresql", "MYSQL": "mysql", "SQL_SERVER": "mssql"}[engine]
     ctx = json.loads((ROOT / f"data/chinook/semantic-{suffix}.json").read_text())
+    tables = {}
+    for metric in ctx["metrics"]:
+        for table_ref in metric["tableRefs"]:
+            key = (table_ref["schema"], table_ref["name"])
+            tables.setdefault(key, set())
+    for dimension in ctx["dimensions"]:
+        key = (dimension["table"]["schema"], dimension["table"]["name"])
+        tables.setdefault(key, set()).add(dimension["column"])
+    for schema, name in tables:
+        tables[(schema, name)].add("track_id")
     ctx["tables"] = [
         {
-            "schema": "public",
-            "name": "track",
-            "columns": [{"name": "track_id", "dataType": "INTEGER"}],
+            "schema": schema,
+            "name": name,
+            "columns": [{"name": column, "dataType": "STRING"} for column in sorted(columns)],
         }
+        for (schema, name), columns in tables.items()
     ]
     return {
         "correlationId": "test-corr",
@@ -98,6 +117,28 @@ def test_unknown_request_fields(client):
     assert r.status_code == 422
 
 
+def test_unknown_nested_context_fields_are_rejected(client):
+    body = payload()
+    body["semanticContext"]["tables"][0]["connectionString"] = "must-not-be-accepted"
+    response = client.post(
+        "/internal/v1/text-to-sql",
+        json=body,
+        headers=headers(),
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "INVALID_REQUEST"
+
+
+def test_unknown_sql_dialect_has_contract_error(client):
+    response = client.post(
+        "/internal/v1/text-to-sql",
+        json={**payload(), "sqlDialect": "ORACLE"},
+        headers=headers(),
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "SQL_DIALECT_ERROR"
+
+
 def test_invalid_mode(client):
     assert (
         client.post("/internal/v1/text-to-sql", json=payload(), headers=headers("FAKE")).status_code
@@ -118,3 +159,256 @@ def test_full_evaluation_examples(client, engine):
         body["question"] = example["question"]
         response = client.post("/internal/v1/text-to-sql", json=body, headers=headers())
         assert response.status_code == 200, (engine, example["question"], response.text)
+
+
+@pytest.mark.parametrize(
+    ("engine", "suffix"),
+    [
+        ("POSTGRESQL", "postgresql"),
+        ("MYSQL", "mysql"),
+        ("SQL_SERVER", "mssql"),
+    ],
+)
+def test_chinook_evaluation_corpus_matches_expected_candidates(client, engine, suffix):
+    corpus = json.loads((ROOT / f"data/chinook/evaluation-{suffix}.json").read_text())
+    body = payload(engine)
+    for case in corpus["cases"]:
+        request = {**body, "question": case["question"]}
+        response = client.post(
+            "/internal/v1/text-to-sql",
+            json=request,
+            headers=headers(),
+        )
+        if case["expectedRejection"]:
+            assert response.status_code == 422, (case["caseId"], response.text)
+            assert response.json()["error"]["code"] == case.get(
+                "expectedReason", "UNSUPPORTED_QUESTION"
+            )
+            continue
+        assert response.status_code == 200, (case["caseId"], response.text)
+        assert response.json()["sql"] == case["expectedSql"]
+        assert response.json()["chartRecommendation"]["type"] == case["expectedChart"]
+
+
+def provider_response(sql='SELECT COUNT(*) AS track_count FROM "public"."track"'):
+    content = {
+        "sql": sql,
+        "explanation": "Counts tracks in the selected catalog.",
+        "assumptions": [],
+        "selectedMetrics": [],
+        "selectedDimensions": [],
+        "chartRecommendation": {
+            "type": "number",
+            "title": "Track count",
+            "series": [{"column": "track_count", "label": "Tracks"}],
+        },
+        "confidence": 0.95,
+        "model": "provider-must-not-override-configured-name",
+    }
+    return {"choices": [{"message": {"content": json.dumps(content)}}]}
+
+
+def enable_provider(monkeypatch, response_body=None, status=200):
+    monkeypatch.setenv("LLM_BASE_URL", "https://llm.example.test/v1")
+    monkeypatch.setenv("LLM_API_KEY", "provider-test-secret")
+    monkeypatch.setenv("LLM_MODEL", "configured-test-model")
+
+    def handler(request):
+        assert request.url.path == "/v1/chat/completions"
+        assert request.headers["authorization"] == "Bearer provider-test-secret"
+        payload = json.loads(request.content)
+        assert payload["model"] == "configured-test-model"
+        assert payload["temperature"] == 0
+        return httpx.Response(status, json=response_body or provider_response())
+
+    app.state.provider_transport = httpx.MockTransport(handler)
+
+
+def test_provider_api_returns_strict_candidate(client, monkeypatch):
+    enable_provider(monkeypatch)
+    response = client.post(
+        "/internal/v1/text-to-sql",
+        json=payload(),
+        headers=headers("API"),
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["model"] == "configured-test-model"
+
+
+@pytest.mark.parametrize(
+    ("sql", "code"),
+    [
+        ("SELECT * FROM track; DROP TABLE track", "INVALID_MODEL_RESPONSE"),
+        ("SELECT pg_sleep(10)", "INVALID_MODEL_RESPONSE"),
+        ("SELECT * FROM track -- comment", "INVALID_MODEL_RESPONSE"),
+        ("SELECT * FROM track # hidden comment", "INVALID_MODEL_RESPONSE"),
+        ("SELECT * FROM OPENROWSET('provider', 'source')", "INVALID_MODEL_RESPONSE"),
+        ("SELECT * FROM `track`", "SQL_DIALECT_ERROR"),
+        ("SELECT TOP (5) * FROM track", "SQL_DIALECT_ERROR"),
+    ],
+)
+def test_provider_candidate_checks_are_enforced(client, monkeypatch, sql, code):
+    enable_provider(monkeypatch, provider_response(sql))
+    response = client.post(
+        "/internal/v1/text-to-sql",
+        json=payload(),
+        headers=headers("API"),
+    )
+    assert response.status_code == 502
+    assert response.json()["error"]["code"] == code
+
+
+def test_provider_error_has_no_fallback(client, monkeypatch):
+    enable_provider(monkeypatch, {"error": "provider details must not leak"}, status=503)
+    response = client.post(
+        "/internal/v1/text-to-sql",
+        json=payload(),
+        headers=headers("API"),
+    )
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "PROVIDER_UNAVAILABLE"
+    assert "provider details" not in response.text
+
+
+def test_provider_timeout_is_controlled(client, monkeypatch):
+    monkeypatch.setenv("LLM_BASE_URL", "https://llm.example.test/v1")
+    monkeypatch.setenv("LLM_API_KEY", "provider-test-secret")
+    monkeypatch.setenv("LLM_MODEL", "configured-test-model")
+
+    def timeout(request):
+        raise httpx.ReadTimeout("private provider detail")
+
+    app.state.provider_transport = httpx.MockTransport(timeout)
+    response = client.post(
+        "/internal/v1/text-to-sql",
+        json=payload(),
+        headers=headers("API"),
+    )
+    assert response.status_code == 504
+    assert response.json()["error"]["code"] == "PROVIDER_TIMEOUT"
+    assert "private provider detail" not in response.text
+
+
+def test_malformed_provider_payload_is_sanitized(client, monkeypatch):
+    enable_provider(monkeypatch, ["not", "an", "object"])
+    response = client.post(
+        "/internal/v1/text-to-sql",
+        json=payload(),
+        headers=headers("API"),
+    )
+    assert response.status_code == 502
+    assert response.json()["error"]["code"] == "INVALID_MODEL_RESPONSE"
+
+
+def test_invalid_provider_url_is_rejected(client, monkeypatch):
+    monkeypatch.setenv("LLM_BASE_URL", "https://user:password@llm.example.test/v1")
+    monkeypatch.setenv("LLM_API_KEY", "provider-test-secret")
+    monkeypatch.setenv("LLM_MODEL", "configured-test-model")
+    response = client.post(
+        "/internal/v1/text-to-sql",
+        json=payload(),
+        headers=headers("API"),
+    )
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "PROVIDER_UNAVAILABLE"
+
+
+def test_provider_declared_low_confidence_is_controlled(client, monkeypatch):
+    enable_provider(
+        monkeypatch, {"choices": [{"message": {"content": '{"error":"LOW_CONFIDENCE"}'}}]}
+    )
+    response = client.post(
+        "/internal/v1/text-to-sql",
+        json=payload(),
+        headers=headers("API"),
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "LOW_CONFIDENCE"
+
+
+def test_duplicate_exact_examples_are_ambiguous():
+    body = payload()
+    body["semanticContext"]["examples"].append(body["semanticContext"]["examples"][0])
+    request = Input.model_validate(body)
+    with pytest.raises(Exception) as error:
+        import anyio
+
+        anyio.run(DeterministicModelClient().generate, request, {})
+    assert getattr(error.value, "code", None) == "LOW_CONFIDENCE"
+
+
+def test_context_rejects_invalid_metric_column():
+    body = payload()
+    body["semanticContext"]["dimensions"][0]["column"] = "missing_column"
+    with pytest.raises(ValueError):
+        Input.model_validate(body)
+
+
+def test_synthetic_second_domain_corpus_covers_all_dialects(client):
+    suite = json.loads((ROOT / "ai-service/evaluation/synthetic-support.json").read_text())
+    assert suite["synthetic"] is True
+    assert set(suite["dialects"]) == {"POSTGRESQL", "MYSQL", "SQL_SERVER"}
+    for dialect, definition in suite["dialects"].items():
+        context = definition["semanticContext"]
+        for case in definition["cases"]:
+            body = {
+                "correlationId": "test-corr",
+                "warehouseId": "synthetic-evaluation-only",
+                "datasetId": "synthetic-evaluation-only",
+                "sqlDialect": dialect,
+                "question": case["question"],
+                "semanticContext": context,
+            }
+            response = client.post(
+                "/internal/v1/text-to-sql",
+                json=body,
+                headers=headers(),
+            )
+            if case["expectedRejection"]:
+                assert response.status_code == 422
+                assert response.json()["error"]["code"] == case["expectedReason"]
+                continue
+            assert response.status_code == 200, (case["caseId"], response.text)
+            result = response.json()
+            assert result["sql"] == case["expectedSql"]
+            assert result["chartRecommendation"]["type"] == case["expectedChart"]
+            assert result["selectedMetrics"] == case["selectedMetrics"]
+            assert result["selectedDimensions"] == case["selectedDimensions"]
+
+
+def test_evaluation_inventory_has_42_logical_cases_in_two_domains():
+    engines = {
+        "POSTGRESQL": "postgresql",
+        "MYSQL": "mysql",
+        "SQL_SERVER": "mssql",
+    }
+    logical_cases = set()
+    domains = set()
+    for dialect, suffix in engines.items():
+        chinook = json.loads((ROOT / f"data/chinook/evaluation-{suffix}.json").read_text())
+        support = json.loads((ROOT / "ai-service/evaluation/synthetic-support.json").read_text())
+        corpus_cases = chinook["cases"] + support["dialects"][dialect]["cases"]
+        case_ids = set()
+        for case in corpus_cases:
+            assert case["domain"] in {"chinook-music-store", "synthetic-support"}
+            case_ids.add(case["logicalCaseId"])
+            domains.add(case["domain"])
+        assert len(case_ids) == 42
+        logical_cases.update(case_ids)
+    assert len(logical_cases) == 42
+    assert domains == {"chinook-music-store", "synthetic-support"}
+
+
+@pytest.mark.skipif(
+    not all(os.getenv(name) for name in ("LLM_BASE_URL", "LLM_API_KEY", "LLM_MODEL")),
+    reason="Set LLM_BASE_URL, LLM_API_KEY and LLM_MODEL to run the real-provider smoke test.",
+)
+def test_configured_real_provider_smoke(client):
+    body = payload()
+    response = client.post(
+        "/internal/v1/text-to-sql",
+        json=body,
+        headers=headers("API"),
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["sql"].lstrip().casefold().startswith(("select", "with"))

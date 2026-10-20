@@ -6,12 +6,13 @@ import os
 import re
 import unicodedata
 from enum import Enum
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
+from urllib.parse import urlsplit
 
 import httpx
 from fastapi import FastAPI, Header, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 
 class Dialect(str, Enum):
@@ -21,51 +22,175 @@ class Dialect(str, Enum):
 
 
 class Strict(BaseModel):
-    model_config = ConfigDict(extra="forbid", strict=True)
+    model_config = ConfigDict(extra="forbid", strict=True, validate_by_name=True)
+
+
+class TableRef(Strict):
+    schema_: str = Field(alias="schema", min_length=1, max_length=256)
+    name: str = Field(min_length=1, max_length=256)
+
+
+class Column(Strict):
+    name: str = Field(min_length=1, max_length=256)
+    dataType: str = Field(min_length=1, max_length=100)
+    nullable: bool | None = None
+    description: str = ""
+    synonyms: list[str] = Field(default_factory=list, max_length=100)
+
+
+class Table(Strict):
+    tableId: str | None = None
+    schema_: str = Field(alias="schema", min_length=1, max_length=256)
+    name: str = Field(min_length=1, max_length=256)
+    logicalName: str | None = None
+    description: str = ""
+    grain: str = ""
+    columns: list[Column] = Field(min_length=1, max_length=1000)
+    queryable: bool | None = None
+    category: str | None = None
+    status: str | None = None
+    primaryKey: list[str] = Field(default_factory=list)
+    foreignKeys: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class Metric(Strict):
+    name: str = Field(min_length=1, max_length=256)
+    description: str = ""
+    expression: str = Field(min_length=1, max_length=4000)
+    unit: str = ""
+    tableRefs: list[TableRef] = Field(min_length=1, max_length=100)
+    compatibleDimensions: list[str] = Field(default_factory=list, max_length=100)
+    synonyms: list[str] = Field(default_factory=list, max_length=100)
+    category: str | None = None
+
+
+class Dimension(Strict):
+    name: str = Field(min_length=1, max_length=256)
+    description: str = ""
+    table: TableRef
+    column: str = Field(min_length=1, max_length=256)
+    dataType: str = Field(min_length=1, max_length=100)
+    synonyms: list[str] = Field(default_factory=list, max_length=100)
+    category: str | None = None
+
+
+class Relationship(Strict):
+    from_: "RelationshipEndpoint" = Field(alias="from")
+    to: "RelationshipEndpoint"
+    cardinality: (
+        Literal[
+            "ONE_TO_ONE",
+            "MANY_TO_ONE",
+            "ONE_TO_MANY",
+            "MANY_TO_MANY",
+        ]
+        | None
+    ) = None
+
+
+class RelationshipEndpoint(Strict):
+    table: TableRef
+    column: str = Field(min_length=1, max_length=256)
+
+
+class Example(Strict):
+    question: str = Field(min_length=1, max_length=1000)
+    sqlDialect: str
+    sql: str = Field(min_length=1, max_length=100000)
+    selectedMetrics: list[str] = Field(default_factory=list, max_length=100)
+    selectedDimensions: list[str] = Field(default_factory=list, max_length=100)
+    chartRecommendation: dict[str, Any] | None = None
+    language: str | None = None
+    category: str | None = None
 
 
 class Series(Strict):
-    column: str
-    label: str
+    column: str = Field(min_length=1, max_length=256)
+    label: str = Field(min_length=1, max_length=500)
 
 
 class Chart(Strict):
-    type: str
-    title: str = "Kết quả truy vấn"
-    x: str | None = None
-    series: list[Series] = Field(default_factory=list)
-    reason: str | None = None
+    type: str = Field(min_length=1, max_length=40)
+    title: str = Field(default="Kết quả truy vấn", max_length=500)
+    x: str | None = Field(default=None, max_length=256)
+    series: list[Series] = Field(default_factory=list, max_length=50)
+    reason: str | None = Field(default=None, max_length=1000)
 
 
 class Candidate(Strict):
     sql: str = Field(min_length=1, max_length=100000)
-    explanation: str
-    assumptions: list[str]
-    selectedMetrics: list[str]
-    selectedDimensions: list[str]
+    explanation: str = Field(max_length=10000)
+    assumptions: list[str] = Field(max_length=100)
+    selectedMetrics: list[str] = Field(max_length=100)
+    selectedDimensions: list[str] = Field(max_length=100)
     chartRecommendation: Chart
     confidence: float = Field(ge=0, le=1)
-    model: str = Field(min_length=1)
+    model: str = Field(min_length=1, max_length=500)
 
 
 class Context(Strict):
-    tables: list[dict[str, Any]]
-    metrics: list[dict[str, Any]]
-    dimensions: list[dict[str, Any]]
-    relationships: list[dict[str, Any]]
-    examples: list[dict[str, Any]]
-    businessRules: list[str]
-    semanticVersion: str
-    schemaVersion: str
-    timezone: str
-    referenceTime: str
+    tables: list[Table] = Field(max_length=1000)
+    metrics: list[Metric] = Field(max_length=1000)
+    dimensions: list[Dimension] = Field(max_length=1000)
+    relationships: list[Relationship] = Field(max_length=5000)
+    examples: list[Example] = Field(max_length=5000)
+    businessRules: list[str] = Field(max_length=1000)
+    semanticVersion: str = Field(min_length=1, max_length=100)
+    schemaVersion: str = Field(min_length=1, max_length=100)
+    timezone: str = Field(min_length=1, max_length=100)
+    referenceTime: str = Field(min_length=1, max_length=100)
+
+    @model_validator(mode="after")
+    def validate_references(self):
+        if not self.tables:
+            return self
+        table_columns = {
+            (table.schema_, table.name): {column.name for column in table.columns}
+            for table in self.tables
+        }
+        if len(table_columns) != len(self.tables):
+            raise ValueError("Duplicate tables in semantic context")
+        if any(
+            len(columns) != len(table.columns)
+            for table, columns in zip(self.tables, table_columns.values())
+        ):
+            raise ValueError("Duplicate columns in semantic context")
+
+        metric_names = {metric.name for metric in self.metrics}
+        dimension_names = {dimension.name for dimension in self.dimensions}
+        if len(metric_names) != len(self.metrics) or len(dimension_names) != len(self.dimensions):
+            raise ValueError("Duplicate semantic names")
+        for metric in self.metrics:
+            if any((ref.schema_, ref.name) not in table_columns for ref in metric.tableRefs):
+                raise ValueError("Metric references an unknown table")
+            if not set(metric.compatibleDimensions) <= dimension_names:
+                raise ValueError("Metric references an unknown dimension")
+        for dimension in self.dimensions:
+            if dimension.column not in table_columns.get(
+                (dimension.table.schema_, dimension.table.name), set()
+            ):
+                raise ValueError("Dimension references an unknown column")
+        for relationship in self.relationships:
+            for endpoint in (relationship.from_, relationship.to):
+                if endpoint.column not in table_columns.get(
+                    (endpoint.table.schema_, endpoint.table.name), set()
+                ):
+                    raise ValueError("Relationship references an unknown column")
+        for example in self.examples:
+            if example.sqlDialect not in {dialect.value for dialect in Dialect}:
+                raise ValueError("Example uses an unsupported SQL dialect")
+            if not set(example.selectedMetrics) <= metric_names:
+                raise ValueError("Example references an unknown metric")
+            if not set(example.selectedDimensions) <= dimension_names:
+                raise ValueError("Example references an unknown dimension")
+        return self
 
 
 class Input(Strict):
     correlationId: str = Field(min_length=1, max_length=100)
-    warehouseId: str = Field(min_length=1)
-    datasetId: str = Field(min_length=1)
-    sqlDialect: str
+    warehouseId: str = Field(min_length=1, max_length=200)
+    datasetId: str = Field(min_length=1, max_length=200)
+    sqlDialect: Dialect = Field(strict=False)
     question: str = Field(min_length=1, max_length=1000)
     semanticContext: Context
 
@@ -74,6 +199,65 @@ class Controlled(Exception):
     def __init__(self, code: str, status: int = 422):
         self.code = code
         self.status = status
+
+
+def sql_code_tokens(sql: str) -> list[str]:
+    """Return unquoted SQL tokens while rejecting comments and extra statements."""
+    tokens: list[str] = []
+    index = 0
+    quote: str | None = None
+    bracket = False
+    semicolon_seen = False
+    while index < len(sql):
+        char = sql[index]
+        following = sql[index + 1] if index + 1 < len(sql) else ""
+        if quote:
+            if char == quote:
+                if following == quote:
+                    index += 2
+                    continue
+                quote = None
+            index += 1
+            continue
+        if bracket:
+            if char == "]":
+                if following == "]":
+                    index += 2
+                    continue
+                bracket = False
+            index += 1
+            continue
+        if char in {"'", '"', "`"}:
+            quote = char
+            index += 1
+            continue
+        if char == "[":
+            bracket = True
+            index += 1
+            continue
+        if char == "-" and following == "-" or char == "/" and following == "*":
+            raise Controlled("INVALID_MODEL_RESPONSE", 502)
+        if char == "#":
+            raise Controlled("INVALID_MODEL_RESPONSE", 502)
+        if char == ";":
+            if semicolon_seen or sql[index + 1 :].strip():
+                raise Controlled("INVALID_MODEL_RESPONSE", 502)
+            semicolon_seen = True
+            index += 1
+            continue
+        if semicolon_seen and not char.isspace():
+            raise Controlled("INVALID_MODEL_RESPONSE", 502)
+        if char.isalpha() or char == "_":
+            end = index + 1
+            while end < len(sql) and (sql[end].isalnum() or sql[end] in "_$#"):
+                end += 1
+            tokens.append(sql[index:end].casefold())
+            index = end
+            continue
+        index += 1
+    if quote or bracket:
+        raise Controlled("INVALID_MODEL_RESPONSE", 502)
+    return tokens
 
 
 class TextToSqlModelClient(Protocol):
@@ -95,14 +279,88 @@ def validate(candidate: Candidate, context: Context, dialect: str) -> Candidate:
         "pie",
     }:
         raise Controlled("INVALID_MODEL_RESPONSE", 502)
-    if not set(candidate.selectedMetrics) <= {m.get("name") for m in context.metrics}:
+    if not set(candidate.selectedMetrics) <= {metric.name for metric in context.metrics}:
         raise Controlled("INVALID_MODEL_RESPONSE", 502)
-    if not set(candidate.selectedDimensions) <= {d.get("name") for d in context.dimensions}:
+    if not set(candidate.selectedDimensions) <= {
+        dimension.name for dimension in context.dimensions
+    }:
         raise Controlled("INVALID_MODEL_RESPONSE", 502)
-    if not re.match(r"^\s*(SELECT|WITH)\b", candidate.sql, re.I):
+    tokens = sql_code_tokens(candidate.sql)
+    if not tokens or tokens[0] not in {"select", "with"}:
         raise Controlled("INVALID_MODEL_RESPONSE", 502)
-    if dialect == "SQL_SERVER" and re.search(r"\bLIMIT\b|`", candidate.sql, re.I):
+    forbidden = {
+        "alter",
+        "attach",
+        "backup",
+        "call",
+        "copy",
+        "create",
+        "delete",
+        "detach",
+        "drop",
+        "execute",
+        "exec",
+        "grant",
+        "insert",
+        "into",
+        "merge",
+        "openquery",
+        "openrowset",
+        "opendatasource",
+        "outfile",
+        "prepare",
+        "read",
+        "reconfigure",
+        "restore",
+        "revoke",
+        "shutdown",
+        "truncate",
+        "update",
+        "use",
+        "vacuum",
+        "write",
+    }
+    forbidden_functions = {
+        "benchmark",
+        "load_file",
+        "pg_read_file",
+        "pg_read_binary_file",
+        "pg_sleep",
+        "sleep",
+        "xp_cmdshell",
+        "xp_dirtree",
+        "sys_exec",
+        "dblink",
+        "lo_import",
+        "load_extension",
+        "utl_http",
+        "utl_file",
+    }
+    if forbidden.intersection(tokens) or forbidden_functions.intersection(tokens):
+        raise Controlled("INVALID_MODEL_RESPONSE", 502)
+    if dialect == "SQL_SERVER" and "limit" in tokens:
         raise Controlled("SQL_DIALECT_ERROR", 502)
+    if dialect != "SQL_SERVER" and re.search(r"\bSELECT\s+TOP(?:\s|\()", candidate.sql, re.I):
+        raise Controlled("SQL_DIALECT_ERROR", 502)
+    if dialect != "MYSQL" and "`" in candidate.sql:
+        raise Controlled("SQL_DIALECT_ERROR", 502)
+    available_columns = {column.name for table in context.tables for column in table.columns}
+    available_columns.update(metric.name for metric in context.metrics)
+    available_columns.update(dimension.name for dimension in context.dimensions)
+    output_aliases = {
+        alias.strip('"`[]').casefold()
+        for alias in re.findall(
+            r"\bAS\s+(\[[^]]+\]|`[^`]+`|\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_$#]*)",
+            candidate.sql,
+            re.IGNORECASE,
+        )
+    }
+    available_columns.update(output_aliases)
+    chart = candidate.chartRecommendation
+    if chart.x is not None and chart.x not in available_columns:
+        raise Controlled("INVALID_MODEL_RESPONSE", 502)
+    if any(series.column not in available_columns for series in chart.series):
+        raise Controlled("INVALID_MODEL_RESPONSE", 502)
     if candidate.confidence < 0.5:
         raise Controlled("LOW_CONFIDENCE")
     return candidate
@@ -113,20 +371,24 @@ class DeterministicModelClient:
         matches = [
             e
             for e in request.semanticContext.examples
-            if e.get("sqlDialect") == request.sqlDialect
-            and normalize(str(e.get("question", ""))) == normalize(request.question)
+            if e.sqlDialect == request.sqlDialect
+            and normalize(e.question) == normalize(request.question)
         ]
-        if len(matches) != 1:
+        if len(matches) > 1:
+            raise Controlled("LOW_CONFIDENCE")
+        if not matches:
             raise Controlled("UNSUPPORTED_QUESTION")
         e = matches[0]
-        metrics = e.get("selectedMetrics", [])
-        dims = e.get("selectedDimensions", [])
+        metrics = e.selectedMetrics
+        dims = e.selectedDimensions
         # Context examples may explicitly declare a chart using output aliases.
-        chart = e.get(
-            "chartRecommendation", {"type": "table", "title": "Kết quả truy vấn", "series": []}
-        )
+        chart = e.chartRecommendation or {
+            "type": "table",
+            "title": "Kết quả truy vấn",
+            "series": [],
+        }
         return Candidate(
-            sql=e["sql"],
+            sql=e.sql,
             explanation="Chạy mẫu ngữ nghĩa đã khai báo khớp chính xác câu hỏi và dialect. Kết quả được Java đọc từ warehouse thật.",
             assumptions=["Deterministic offline: chỉ hỗ trợ câu hỏi mẫu đã khai báo."],
             selectedMetrics=metrics,
@@ -139,7 +401,7 @@ class DeterministicModelClient:
 
 class SemanticContextSelector:
     def select(self, request: Input) -> dict[str, Any]:
-        ctx = request.semanticContext.model_dump()
+        ctx = request.semanticContext.model_dump(by_alias=True)
         budget = int(os.getenv("LLM_CONTEXT_CHARS", "48000"))
         if budget < 1000:
             raise Controlled("INSUFFICIENT_CONTEXT")
@@ -193,6 +455,16 @@ class OpenAICompatibleModelClient:
         model = os.getenv("LLM_MODEL", "")
         if not base or not key or not model:
             raise Controlled("PROVIDER_UNAVAILABLE", 503)
+        parsed_base = urlsplit(base)
+        if (
+            parsed_base.scheme not in {"http", "https"}
+            or not parsed_base.netloc
+            or parsed_base.username is not None
+            or parsed_base.password is not None
+            or parsed_base.query
+            or parsed_base.fragment
+        ):
+            raise Controlled("PROVIDER_UNAVAILABLE", 503)
         system = " ".join(
             [
                 "Return exactly one JSON object matching the provided response schema.",
@@ -231,8 +503,16 @@ class OpenAICompatibleModelClient:
             ],
         }
         try:
+            try:
+                timeout_ms = int(os.getenv("LLM_TIMEOUT_MS", "30000"))
+            except ValueError:
+                raise Controlled("PROVIDER_UNAVAILABLE", 503)
+            if timeout_ms < 100 or timeout_ms > 120000:
+                raise Controlled("PROVIDER_UNAVAILABLE", 503)
             async with httpx.AsyncClient(
-                timeout=int(os.getenv("LLM_TIMEOUT_MS", "30000")) / 1000, follow_redirects=False
+                timeout=timeout_ms / 1000,
+                follow_redirects=False,
+                transport=getattr(app.state, "provider_transport", None),
             ) as client:
                 async with client.stream(
                     "POST",
@@ -247,9 +527,18 @@ class OpenAICompatibleModelClient:
                         data.extend(chunk)
                         if len(data) > 1048576:
                             raise Controlled("INVALID_MODEL_RESPONSE", 502)
-            output = json.loads(data)["choices"][0]["message"]["content"]
+            envelope = json.loads(data)
+            output = envelope["choices"][0]["message"]["content"]
+            if not isinstance(output, str):
+                raise Controlled("INVALID_MODEL_RESPONSE", 502)
             obj = json.loads(output)
-            if obj.get("error") in {"INSUFFICIENT_CONTEXT", "UNSUPPORTED_QUESTION"}:
+            if not isinstance(obj, dict):
+                raise Controlled("INVALID_MODEL_RESPONSE", 502)
+            if obj.get("error") in {
+                "INSUFFICIENT_CONTEXT",
+                "UNSUPPORTED_QUESTION",
+                "LOW_CONFIDENCE",
+            }:
                 raise Controlled(obj["error"])
             candidate = Candidate.model_validate(obj)
             candidate.model = model
@@ -260,7 +549,7 @@ class OpenAICompatibleModelClient:
             raise Controlled("PROVIDER_TIMEOUT", 504)
         except httpx.HTTPError:
             raise Controlled("PROVIDER_UNAVAILABLE", 503)
-        except (KeyError, TypeError, ValueError, ValidationError):
+        except (AttributeError, KeyError, IndexError, TypeError, ValueError, ValidationError):
             raise Controlled("INVALID_MODEL_RESPONSE", 502)
 
 
@@ -299,11 +588,17 @@ async def generate(
     if len(body) > 1048576:
         raise Controlled("INVALID_REQUEST", 413)
     try:
-        data = Input.model_validate_json(body)
+        decoded = json.loads(body)
+    except (UnicodeDecodeError, ValueError):
+        raise Controlled("INVALID_REQUEST", 422)
+    if isinstance(decoded, dict) and decoded.get("sqlDialect") not in {
+        dialect.value for dialect in Dialect
+    }:
+        raise Controlled("SQL_DIALECT_ERROR", 422)
+    try:
+        data = Input.model_validate(decoded)
     except ValidationError:
         raise Controlled("INVALID_REQUEST", 422)
-    if data.sqlDialect not in {d.value for d in Dialect}:
-        raise Controlled("SQL_DIALECT_ERROR", 422)
     if req.headers.get("x-correlation-id") != data.correlationId:
         raise Controlled("INVALID_REQUEST", 400)
     if not data.semanticContext.tables:
