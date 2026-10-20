@@ -4,9 +4,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1
 WORKDIR /app
 COPY ai-service/requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt \
+COPY ai-service/sdk-requirements.txt ./sdk-requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt -r sdk-requirements.txt \
     && groupadd --gid 10001 nla \
     && useradd --uid 10001 --gid nla --no-create-home nla
+COPY vendor/upstream/semantic-engine/wren/ /opt/upstream/semantic-sdk/
+COPY vendor/upstream/semantic-engine/LICENSE /app/third-party/licenses/semantic-sdk/LICENSE
+RUN pip install --no-cache-dir --no-deps /opt/upstream/semantic-sdk
 COPY --chown=10001:10001 ai-service/*.py ./
 COPY --chown=10001:10001 ai-service/third_party/wren_semantic/ ./third_party/wren_semantic/
 COPY --chown=10001:10001 ai-service/third-party/licenses/ /app/third-party/licenses/

@@ -12,7 +12,7 @@ React → Java Spring Boot → Python AI Service / provider API
      Registered read-only warehouses
 ```
 
-React chỉ gọi Java. Java xác thực người dùng, kiểm tra SQL trước khi giao executor đọc warehouse. Python sinh candidate rồi dùng native semantic core/CTE rewrite và lineage; Java kiểm tra lại SQL sau rewrite. Dịch vụ đọc file nhận upload riêng, không nhận credential hay truy cập warehouse.
+React chỉ gọi Java. Java xác thực người dùng, kiểm tra SQL trước khi giao executor đọc warehouse. Python sinh candidate rồi gọi SDK semantic từ source đã đưa vào repo để lập kế hoạch/rewrite và trả lineage; Java kiểm tra lại SQL sau rewrite. Dịch vụ đọc file nhận upload riêng, không nhận credential hay truy cập warehouse.
 
 ## Nạp file từ giao diện
 
@@ -21,6 +21,8 @@ Mở **Nạp dữ liệu → Nạp file**, chọn CSV/TSV/TXT, XLSX, JSON/JSONL/
 Giới hạn mỗi file25MiB/100.000 dòng/200 cột; Excel chọn được sheet, công thức cần chuyển thành giá trị. `.sql` dùng màn **SQL Import** có parser/preview riêng. Cần role ADMIN/OPERATOR và import writer trên warehouse; namespace được API phát hiện từ quyền thật, không mặc định một database mẫu. Dữ liệu query/metadata đến từ database; ngữ nghĩa nghiệp vụ và provider vẫn phải được cấu hình phù hợp. Chi tiết [file ingestion](docs/contracts/file-ingestion.md).
 
 Cách chạy đầy đủ các dịch vụ riêng tư cùng database/đăng nhập là `python3 infra/local/compose.py up`, rồi mở [ứng dụng local](http://127.0.0.1:4173). Clone mới tự tạo secret local; không cần file token của maintainer. [Các thành phần thực sự tái sử dụng](docs/platform-reuse.md) có source hashes và license đi kèm.
+
+Hai bộ source trong Downloads đã được đưa vào [vendor/upstream](vendor/upstream/README.md), tổng 417.117 dòng code theo inventory. SDK semantic được fork với planner theo dataset, kiểm tra lineage sau rewrite và chế độ chỉ lập kế hoạch; app cài trực tiếp source fork này; native executor gọi trực tiếp source factories của ba engine. Bảng caller, phần chưa kích hoạt và kiểm chứng ở [full source adoption](docs/integrations/full-source-adoption.md). Số dòng đã nhập không phải số tính năng đã nghiệm thu.
 
 Hướng dẫn chọn file/nguồn database và đăng ký nguồn trong ba bước: [Nạp dữ liệu](docs/ingestion-guide.md).
 
@@ -69,13 +71,13 @@ Không dùng `down -v` nếu muốn giữ database volumes.
 
 ```bash
 python3 -m venv ai-service/.venv
-ai-service/.venv/bin/pip install -r ai-service/requirements.txt
+python3 infra/upstream/install_ai.py
 python3 infra/local/run.py ai
 ```
 
 AI service chạy tại `http://127.0.0.1:8000`. Deterministic mode dùng được ngay cho ví dụ semantic đã đăng ký; muốn dùng model API cần cấu hình provider URL/model/key trong môi trường local. Key không đưa vào Git hoặc log.
 
-File cấu hình provider riêng là `.local/compose-app/provider.env`, dùng chung cho Docker và lệnh `infra/local/run.py`. Khi đã có key, sao chép mẫu [infra/provider.env.example](infra/provider.env.example) vào đường dẫn đó nếu chưa có file, rồi điền `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`. Có thể để cả ba trống trong lúc chưa dùng provider. Không đặt key vào `VITE_*`, source code hoặc chat.
+File cấu hình provider riêng là `.local/compose-app/provider.env`, dùng chung cho Docker và lệnh `infra/local/run.py`. Khi đã có key, sao chép mẫu [infra/provider.env.example](infra/provider.env.example) vào đường dẫn đó nếu chưa có file, rồi điền `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`. Có thể để cả ba trống trong lúc chưa dùng provider. Để chạy model local qua Ollama, xem [cấu hình model local/API](docs/llm-provider.md); source Engine không chứa toàn bộ Wren AI Service. Không đặt key vào `VITE_*`, source code hoặc chat.
 
 Với Docker, chạy lại `python3 infra/local/compose.py up` sau khi đổi file; xem [hướng dẫn Compose](docs/docker-local.md). Với cách chạy trực tiếp, khởi động lại AI và backend bằng các lệnh Quick Start. Launcher chỉ chuyển provider key cho Python; backend nhận tên model để hiển thị, frontend không nhận key. Chưa cấu hình provider thì chọn `DETERMINISTIC` tường minh; chế độ này chỉ khớp semantic examples đã đăng ký, không phải model đã train local.
 

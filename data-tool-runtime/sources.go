@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Adapted for the application's private Java-approved read-only query executor.
-// Cloud auth, tool registration and SQL logging are deliberately excluded.
+// Actual upstream source factories are called below; Java owns user authorization.
 package main
 
 import (
@@ -24,16 +24,19 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"net"
-	"net/url"
 	"os"
 	"strconv"
 	"time"
 
 	mysql "github.com/go-sql-driver/mysql"
+	upstreamMSSQL "github.com/googleapis/mcp-toolbox/internal/sources/mssql"
+	upstreamMySQL "github.com/googleapis/mcp-toolbox/internal/sources/mysql"
+	upstreamPg "github.com/googleapis/mcp-toolbox/internal/sources/postgres"
+	upstreamUtil "github.com/googleapis/mcp-toolbox/internal/util"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/microsoft/go-mssqldb"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 type Connection struct {
@@ -51,98 +54,123 @@ type Source struct {
 	database *sql.DB
 }
 
-// BuildPostgresURL is adapted from the upstream PostgreSQL source. URL encoding
+// BuildPostgresURL delegates to the upstream PostgreSQL source. URL encoding
 // prevents credentials or database names from being interpreted as DSN options.
 func BuildPostgresURL(connection Connection) string {
-	options := url.Values{}
-	options.Set("application_name", "nla-data-runtime")
-	options.Set("sslmode", "disable")
+	sslMode := "disable"
 	if connection.TLS {
-		options.Set("sslmode", "verify-full")
+		sslMode = "verify-full"
 	}
-	location := url.URL{
-		Scheme:   "postgres",
-		User:     url.UserPassword(connection.Username, connection.Password),
-		Host:     net.JoinHostPort(connection.Host, strconv.Itoa(connection.Port)),
-		Path:     connection.Database,
-		RawQuery: options.Encode(),
-	}
-	return location.String()
+	return upstreamPg.BuildPostgresURL(
+		connection.Host,
+		strconv.Itoa(connection.Port),
+		connection.Username,
+		connection.Password,
+		connection.Database,
+		map[string]string{
+			"application_name": "nla-data-runtime",
+			"sslmode":          sslMode,
+		},
+	)
 }
 
-// OpenSource retains the native pgx/database/sql pool constructors from the three
-// upstream source implementations, with bounded lifetimes and no IAM/cloud deps.
+// OpenSource calls the actual vendored upstream source implementations.
+// The application still owns host/auth guards, read-only queries and result bounds.
 func OpenSource(ctx context.Context, engine string, connection Connection) (*Source, error) {
 	source := &Source{engine: engine}
+	ctx = upstreamUtil.WithUserAgent(ctx, "nla-data-runtime")
+	tracer := noop.NewTracerProvider().Tracer("nla-data-runtime")
 	switch engine {
 	case "POSTGRESQL":
-		config, err := pgxpool.ParseConfig(BuildPostgresURL(connection))
+		sslMode := "disable"
+		if connection.TLS {
+			sslMode = "verify-full"
+		}
+		timeout := 5
+		enabled := false
+		config := upstreamPg.Config{
+			Name:           "nla-data-runtime",
+			Type:           "postgres",
+			Host:           connection.Host,
+			Port:           strconv.Itoa(connection.Port),
+			User:           connection.Username,
+			Password:       connection.Password,
+			Database:       connection.Database,
+			ConnectTimeout: &timeout,
+			QueryExecMode:  "exec",
+			SQLCommenter:   &enabled,
+			QueryParams: map[string]string{
+				"sslmode":                 sslMode,
+				"application_name":        "nla-data-runtime",
+				"pool_max_conns":          "4",
+				"pool_min_conns":          "0",
+				"pool_max_conn_idle_time": "1m",
+				"pool_max_conn_lifetime":  "15m",
+			},
+		}
+		native, err := config.Initialize(ctx, tracer)
 		if err != nil {
 			return nil, err
 		}
-		config.MaxConns = 4
-		config.MinConns = 0
-		config.MaxConnIdleTime = time.Minute
-		config.MaxConnLifetime = 15 * time.Minute
-		config.ConnConfig.ConnectTimeout = 5 * time.Second
-		// Avoid retaining statement text and schema-specific prepared plans.
-		config.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeExec
-		source.postgres, err = pgxpool.NewWithConfig(ctx, config)
-		if err != nil {
-			return nil, err
-		}
-		if err = source.postgres.Ping(ctx); err != nil {
+		source.postgres = native.(*upstreamPg.Source).PostgresPool()
+		if err := source.postgres.Ping(ctx); err != nil {
 			source.Close()
 			return nil, err
 		}
 	case "MYSQL":
-		config := mysql.NewConfig()
-		config.Addr = net.JoinHostPort(connection.Host, strconv.Itoa(connection.Port))
-		config.Net = "tcp"
-		config.User = connection.Username
-		config.Passwd = connection.Password
-		config.DBName = connection.Database
-		config.ParseTime = true
-		config.Params = map[string]string{"time_zone": "'+00:00'"}
-		config.Loc = time.UTC
-		config.Timeout = 5 * time.Second
-		config.ReadTimeout = 125 * time.Second
-		config.WriteTimeout = 5 * time.Second
-		config.MultiStatements = false
-		config.AllowNativePasswords = true
-		config.ConnectionAttributes = "program_name:nla-data-runtime"
+		params := map[string]string{
+			"parseTime":       "true",
+			"loc":             "UTC",
+			"time_zone":       "'+00:00'",
+			"timeout":         "5s",
+			"writeTimeout":    "5s",
+			"multiStatements": "false",
+		}
 		if connection.TLS {
-			config.TLSConfig = "true"
+			params["tls"] = "true"
 		}
 		if os.Getenv("DATA_TOOL_MYSQL_PUBLIC_KEY") != "" && !connection.TLS {
-			config.ServerPubKey = "nla-runtime"
+			params["serverPubKey"] = "nla-runtime"
 		}
-		connector, err := mysql.NewConnector(config)
+		enabled := false
+		config := upstreamMySQL.Config{
+			Name:         "nla-data-runtime",
+			Type:         "mysql",
+			Host:         connection.Host,
+			Port:         strconv.Itoa(connection.Port),
+			User:         connection.Username,
+			Password:     connection.Password,
+			Database:     connection.Database,
+			QueryTimeout: "125s",
+			QueryParams:  params,
+			SQLCommenter: &enabled,
+		}
+		native, err := config.Initialize(ctx, tracer)
 		if err != nil {
 			return nil, err
 		}
-		source.database = sql.OpenDB(connector)
+		source.database = native.(*upstreamMySQL.Source).MySQLPool()
 	case "SQL_SERVER":
-		options := url.Values{}
-		options.Set("app name", "nla-data-runtime")
-		options.Set("database", connection.Database)
-		options.Set("connection timeout", "5")
-		options.Set("encrypt", "disable")
+		encrypt := "disable"
 		if connection.TLS {
-			options.Set("encrypt", "true")
+			encrypt = "true"
 		}
-		options.Set("TrustServerCertificate", "false")
-		location := url.URL{
-			Scheme:   "sqlserver",
-			User:     url.UserPassword(connection.Username, connection.Password),
-			Host:     net.JoinHostPort(connection.Host, strconv.Itoa(connection.Port)),
-			RawQuery: options.Encode(),
+		config := upstreamMSSQL.Config{
+			Name:           "nla-data-runtime",
+			Type:           "mssql",
+			Host:           connection.Host,
+			Port:           strconv.Itoa(connection.Port),
+			User:           connection.Username,
+			Password:       connection.Password,
+			Database:       connection.Database,
+			Encrypt:        encrypt,
+			ConnectTimeout: 5,
 		}
-		var err error
-		source.database, err = sql.Open("sqlserver", location.String())
+		native, err := config.Initialize(ctx, tracer)
 		if err != nil {
 			return nil, err
 		}
+		source.database = native.(*upstreamMSSQL.Source).Db
 	default:
 		return nil, errors.New("unsupported engine")
 	}

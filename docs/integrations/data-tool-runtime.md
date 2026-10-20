@@ -4,9 +4,11 @@ The application reuses actual PostgreSQL/MySQL/SQL Server native source
 implementations from the supplied database-tools snapshot. See
 [data-tool-runtime/NOTICE.md](../../data-tool-runtime/NOTICE.md),
 [provenance hashes](data-tool-runtime-provenance.json) and the
-[private contract](../contracts/data-tool-runtime.md). The small Go module builds
-only three native driver closures rather than importing the upstream cloud-wide
-server. Go dependencies are pinned by go.mod/go.sum and Docker images by digest.
+[private contract](../contracts/data-tool-runtime.md). The supplied source is fully present under `vendor/upstream/data-tool-platform`.
+The private Go module uses a local `replace` and directly calls the actual
+PostgreSQL/MySQL/SQL Server `Config.Initialize` factories. It builds their dependency
+closure, including common telemetry/auth libraries with noop tracing; the upstream
+MCP/HTTP tool server and arbitrary execution tools are not started. Go dependencies are pinned by go.mod/go.sum and Docker images by digest.
 
 Compose starts the native executor by default and Java delegates approved query
 execution to it. The executor shares a dedicated private network with Java and a
@@ -39,5 +41,8 @@ DB3 results, cancellation/recovery, pool reuse/rotation/active leases/eviction,
 authentication, host deny, UTF-8 and row bounds. Java client/guard tests cover
 transport bounds, failure/timeout mapping and no executor call before SqlGuard.
 
-This is reuse of the listed native execution and pool code, not a claim that all
-upstream MCP tools, connectors, auth providers or deployment targets are present.
+Full source is present. Only the listed native factories and their guarded app
+callers are active. Other tools/connectors/auth providers/deployments have not
+been enabled or verified merely by importing their source. Exact current source
+and the SQL Server connection patch are recorded in the
+[full source adoption](full-source-adoption.md) and patch manifest.

@@ -175,3 +175,102 @@ def test_qualified_physical_table_is_not_hidden_by_same_named_cte():
     payload["sql"] = 'WITH "Album" AS (SELECT 1 AS n) SELECT COUNT(*) FROM public."Album"'
     planned = plan_sql(PlanRequest.model_validate(payload))
     assert [table.name for table in planned.sourceTables] == ["Album"]
+
+
+def test_full_vendored_sdk_facade_is_called_without_any_connector(monkeypatch):
+    import wren.engine as sdk
+
+    original = sdk.WrenEngine.dry_plan
+    calls = []
+
+    def traced(self, sql, properties=None):
+        calls.append(sql)
+        assert self.connection_info == {}
+        assert self._session_context_override is not None
+        assert self._config.strict_mode is True
+        assert self._planning_only is True
+        return original(self, sql, properties)
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("The AI planner must never create a database connector")
+
+    monkeypatch.setattr(sdk.WrenEngine, "dry_plan", traced)
+    monkeypatch.setattr(sdk, "get_connector", forbidden)
+    for dialect in ("POSTGRESQL", "MYSQL", "SQL_SERVER"):
+        response = plan_sql(PlanRequest.model_validate(request(dialect)))
+        assert response.sourceTables[0].name == "Album"
+    assert len(calls) == 3
+
+
+def test_sdk_type_parser_normalizes_parameterized_physical_types():
+    body = request("POSTGRESQL")
+    body["manifest"]["models"][0]["columns"][1]["type"] = "character varying(255)"
+    body["sql"] = 'SELECT "Title" FROM public."Album"'
+    result = plan_sql(PlanRequest.model_validate(body))
+    assert "Title" in result.sql
+
+
+@pytest.mark.parametrize(
+    "sql",
+    [
+        'SELECT * INTO public.new_album FROM public."Album"',
+        'WITH changed AS (DELETE FROM public."Album" RETURNING *) SELECT * FROM changed',
+        'SELECT * FROM public."Album"; DELETE FROM public."Album"',
+    ],
+)
+def test_fork_rejects_writes_even_with_select_root(sql):
+    payload = request("POSTGRESQL")
+    payload["sql"] = sql
+    with pytest.raises(PlanningFailure) as error:
+        plan_sql(PlanRequest.model_validate(payload))
+    assert error.value.code == "SQL_VALIDATION_ERROR"
+
+
+def test_fork_rejects_rewrite_that_switches_to_another_authorized_table(monkeypatch):
+    from wren.engine import WrenEngine
+
+    payload = request("POSTGRESQL")
+    other = deepcopy(payload["manifest"]["models"][0])
+    other["name"] = "nla_model_1"
+    other["tableReference"]["table"] = "AnotherAlbum"
+    payload["manifest"]["models"].append(other)
+    monkeypatch.setattr(
+        WrenEngine,
+        "dry_plan",
+        lambda *args: 'SELECT COUNT(*) FROM public."AnotherAlbum"',
+    )
+    with pytest.raises(PlanningFailure) as error:
+        plan_sql(PlanRequest.model_validate(payload))
+    assert error.value.code == "SQL_VALIDATION_ERROR"
+
+
+def test_fork_preserves_manifest_and_rejects_ambiguous_unqualified_table():
+    payload = request("POSTGRESQL")
+    original = deepcopy(payload)
+    plan_sql(PlanRequest.model_validate(payload))
+    assert payload == original
+    other = deepcopy(payload["manifest"]["models"][0])
+    other["name"] = "nla_model_1"
+    other["tableReference"]["schema"] = "another_schema"
+    payload["manifest"]["models"].append(other)
+    payload["sql"] = 'SELECT COUNT(*) FROM "Album"'
+    with pytest.raises(PlanningFailure) as error:
+        plan_sql(PlanRequest.model_validate(payload))
+    assert error.value.code == "INSUFFICIENT_CONTEXT"
+
+
+@pytest.mark.parametrize("method", ["query", "dry_run"])
+def test_fork_planning_only_engine_cannot_open_any_connector(monkeypatch, method):
+    import wren.engine as sdk
+    from wren.model.error import ErrorCode, WrenError
+
+    monkeypatch.setattr(sdk.WrenEngine, "dry_plan", lambda *args: "SELECT 1")
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("A planning service must not create a connector")
+
+    monkeypatch.setattr(sdk, "get_connector", forbidden)
+    with sdk.WrenEngine("e30=", "postgres", {}, planning_only=True) as engine:
+        with pytest.raises(WrenError) as error:
+            getattr(engine, method)("SELECT 1")
+    assert error.value.error_code == ErrorCode.INVALID_CONNECTION_INFO

@@ -1,0 +1,107 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: "CF: Deploy Dev Docs"
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - '.github/workflows/docs*_cf.yaml'
+      - '.github/workflows/deploy*_cf.yaml'
+      - '.hugo/**'
+
+  # Allow triggering manually.
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: .hugo
+    # This shared concurrency group ensures only one docs deployment runs at a time.
+    concurrency:
+      group: cf-docs-update
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@2752ce1d29631191ea3f27c23495fa06139a5b78 # v3
+        with:
+          hugo-version: "0.163.3"
+          extended: true
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "22"
+
+      - name: Cache dependencies
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - run: npm ci
+      - run: hugo --minify --config hugo.cloudflare.toml
+        env:
+          HUGO_BASEURL: https://mcp-toolbox.dev/dev/
+          HUGO_RELATIVEURLS: false
+
+      - name: Build Pagefind Search Index
+        run: npx pagefind --site public
+
+      - name: Create Staging Directory
+        run: |
+          mkdir staging
+          mv public staging/dev
+          mv staging/dev/releases.releases staging/releases.releases
+
+      - name: Checkout Cloudflare Branch
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: cloudflare-pages
+          path: cf-pages-temp
+          persist-credentials: false
+
+      - name: Push to Cloudflare Branch
+        env:
+            COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          cd $GITHUB_WORKSPACE/cf-pages-temp
+          rm -rf dev
+          
+          # copy over the dev build and releases file from staging
+          cp -r ../.hugo/staging/dev ./dev
+          cp ../.hugo/staging/releases.releases ./releases.releases || true
+          
+          # Commit and push the clean build
+          git config user.name "release-please[bot]"
+          git config user.email "55107282+release-please[bot]@users.noreply.github.com"
+          git add .
+          
+          git diff-index --quiet HEAD || git commit -m "deploy dev docs: $COMMIT_MESSAGE" && git push origin cloudflare-pages

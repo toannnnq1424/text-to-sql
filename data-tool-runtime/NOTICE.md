@@ -5,7 +5,7 @@ Databases source snapshot supplied by the user, Copyright 2024–2026 Google LLC
 licensed under Apache License 2.0 (see LICENSE). Product/runtime names use this
 project's branding; upstream names here identify provenance only.
 
-Adapted implementation:
+Original adaptations retained in the guarded executor:
 
 - `internal/sources/postgres/postgres.go`: PostgreSQL URL encoding, pgx pool
   initialization, native query/field/value cursor handling.
@@ -19,14 +19,20 @@ Adapted implementation:
 - `internal/sources/cache.go`: synchronized source caching/expiry, extended with
   finite source count, active leases, concurrent initialization and shutdown.
 
-Changes: extracted the three native SQL sources from the cloud-wide dependency
-closure; omitted upstream arbitrary execute-tool/UI/SQL debug logging and external
-OIDC authentication because Java owns user authorization. Added private service
-authentication, explicit host allowlist, read-only transactions, reader credentials,
-request cancellation, global concurrency, connection lifetimes, byte/row bounds,
-canonical DECIMAL/BIGINT strings and deterministic duplicate-column handling.
+Current source integration: the full snapshot is included in
+`vendor/upstream/data-tool-platform`. `go.mod` uses a local module replacement;
+`OpenSource` directly invokes the actual PostgreSQL, MySQL and MSSQL
+`Config.Initialize` implementations and acquires their native pools. The previous
+local DSN/source-initialization copies have been replaced by these calls.
+Application-owned bounded pool leases, canonical cursor conversion, private
+authentication, host allowlist, read-only transactions, cancellation,
+concurrency/time/row/byte limits remain. SQLCommenter is disabled and tracer is
+noop; the upstream arbitrary execution-tool server is not exposed.
 
-Upstream's source names, license and original file hashes are recorded in
-`docs/integrations/data-tool-runtime-provenance.json`. This is a maintained adapted
-fork of the listed implementation, not a claim that the entire upstream Go server
-or its cloud connectors are installed.
+The MSSQL source has a recorded patch for bounded connection timeout, explicit
+certificate verification and IPv6-safe host formatting. Source baseline and
+before/after hashes are in `docs/integrations/full-source-inventory.json` and
+`full-source-patches.json`. The earlier adapted-file provenance remains in
+`data-tool-runtime-provenance.json`. Apache-2.0 LICENSE is retained in both the
+full snapshot and this runtime image. Source availability does not assert all
+upstream connectors or tools are active in the application.
