@@ -105,6 +105,7 @@ public abstract class JdbcWarehouseAdapter implements WarehouseAdapter {
     List<Map<String, Object>> tables = new ArrayList<>();
     for (String schema : discoverSchemas(c)) {
       if (!requested.isEmpty() && !requested.contains(schema)) continue;
+      var descriptions = NativeMetadataDescriptions.load(c, engine(), schema);
       try (ResultSet rs =
           c.getMetaData()
               .getTables(
@@ -132,11 +133,11 @@ public abstract class JdbcWarehouseAdapter implements WarehouseAdapter {
                   "logicalName",
                   name,
                   "description",
-                  Objects.toString(rs.getString("REMARKS"), ""),
+                  descriptions.table(name, rs.getString("REMARKS")),
                   "grain",
                   pk.isEmpty() ? "Physical table/view" : "One row per " + String.join(", ", pk),
                   "columns",
-                  discoverColumns(c, schema, name),
+                  discoverColumns(c, schema, name, descriptions),
                   "queryable",
                   true,
                   "category",
@@ -155,6 +156,12 @@ public abstract class JdbcWarehouseAdapter implements WarehouseAdapter {
 
   public List<Map<String, Object>> discoverColumns(Connection c, String schema, String table)
       throws SQLException {
+    return discoverColumns(c, schema, table, NativeMetadataDescriptions.load(c, engine(), schema));
+  }
+
+  private List<Map<String, Object>> discoverColumns(
+      Connection c, String schema, String table, NativeMetadataDescriptions descriptions)
+      throws SQLException {
     List<Map<String, Object>> columns = new ArrayList<>();
     try (ResultSet rs =
         c.getMetaData().getColumns(catalog(c, schema), schemaPattern(schema), table, "%")) {
@@ -168,7 +175,7 @@ public abstract class JdbcWarehouseAdapter implements WarehouseAdapter {
                 "nullable",
                 rs.getInt("NULLABLE") != DatabaseMetaData.columnNoNulls,
                 "description",
-                Objects.toString(rs.getString("REMARKS"), ""),
+                descriptions.column(table, rs.getString("COLUMN_NAME"), rs.getString("REMARKS")),
                 "synonyms",
                 List.of()));
     }
