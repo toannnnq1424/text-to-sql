@@ -6,6 +6,8 @@
 
 Lưu đầy đủ sáu nguồn người dùng đã cung cấp. Chinook đã tải/provision/kiểm chứng trong môi trường Docker local; năm nguồn khác vẫn là danh mục đầu vào, chưa tải hoặc seed. Không phải nguồn nào cũng là data warehouse star schema. Trước khi dùng thêm, pin release/commit, kiểm tra license, ghi checksum, giới hạn dung lượng và hướng dẫn tái tạo; không mặc định được redistribute dữ liệu vì mã nguồn có trên GitHub.
 
+Phân biệt sample dataset ở đây với connector platform. Hai bộ mã nguồn mới do người dùng chỉ định ngày 2026-10-20 được khảo sát tại [platform-reuse.md](platform-reuse.md), inventory hash tại [reviewed-snapshots.json](integrations/reviewed-snapshots.json); danh mục engine/storage/file mở rộng nằm ở [future-connectors.md](future-connectors.md). Khảo sát source code không có nghĩa đã tải dữ liệu hoặc kết nối được các dịch vụ đó.
+
 | Nguồn | Link gốc | Loại và cách dùng dự kiến | Lưu ý |
 |---|---|---|---|
 | AdventureWorksDW | [README Microsoft](https://github.com/microsoft/sql-server-samples/blob/master/samples/databases/adventure-works/README.md), [thư mục AdventureWorks](https://github.com/microsoft/sql-server-samples/tree/master/samples/databases/adventure-works) | Warehouse mẫu Microsoft có fact/dimension; dùng chứng minh analytical queries trên SQL Server | Phân biệt AdventureWorks OLTP với AdventureWorksDW. Nếu port PostgreSQL/MySQL phải viết mapping/seed và kiểm chứng result equivalence, không chỉ đổi tên file. |
