@@ -101,6 +101,17 @@ Các entry triển khai tiếp theo thêm phía dưới; không đánh dấu FE/
 - Việc tiếp nối: cập nhật PR #2 và tiếp tục triển khai các workflow bắt buộc; code style không thay thế acceptance chức năng.
 - Commit/push: entry này đi cùng commit; SHA remote xác minh sau push.
 
+### 2026-10-20 15:38 UTC+07 — Runtime OIDC / subagent runtime_auth
+- Nhánh / commit subject: `module/runtime-auth`; `feat: add reproducible local OIDC identity provider`.
+- Phạm vi: Keycloak Docker local, realm/public client/role/audience mapping, private credential generation, launcher/profile OIDC, README/OIDC guide và browser acceptance script.
+- Trạng thái: VERIFIED cho IdP runtime, discovery và login callback/token thực; OIDC acceptance tổng thể INCOMPLETE do kiểm tra permission trên BE baseline cũ phát hiện HTTP 500 thay vì 403. Đã gửi reproduction tới BE agent, sẽ chạy lại trên BE đã tích hợp.
+- Đã làm: pin Keycloak 26.8.1, bind loopback 8180 và persistent volume riêng; sinh mật khẩu ngẫu nhiên vào `.local/oidc/` ignored với permission 0600; public client authorization code + PKCE S256 bắt buộc, tắt implicit/password grant, map `roles` trong access/ID token và audience `nla-api`. Profile `oidc-local` dùng xác thực JWT thật với issuer/audience; launcher `--auth oidc` tắt local token/anonymous mode. Format ba script infra Python cũ bằng Black/isort, không nén nhiều statement trên một dòng.
+- Kiểm chứng PASS: unit `pytest infra/local/test_oidc.py` — 3 passed; Black/isort check, compileall, Prettier cho browser script/Compose, Compose config, `git diff --check`; Keycloak Docker health và discovery issuer chính xác; browser React tại 5175 đăng nhập Keycloak thật và callback về `/query`; Java 8083 nhận access token thật, reject anonymous API và password sai ở IdP.
+- Kiểm chứng FAIL: browser suite không mock phát hiện VIEWER gọi API quản trị `/warehouses/wh-chinook-pg/test` nhận 500 ở BE baseline cũ (phải 403); report `.local/oidc-browser-report.json`, không token/password. Chưa chạy hết logout/renewal/expiry/resource-denial suite sau điểm fail này. Không coi cấu hình hoặc login happy path là nghiệm thu đủ.
+- Còn thiếu / phụ thuộc: cần BE hiện tại với error mapping chuẩn để chạy hết browser suite; full application-container deployment và production HTTPS/IdP chưa được nghiệm thu bởi local check. Cấu hình dev IdP không thay thế các controls production.
+- Việc tiếp nối: tích hợp commit runtime với BE mới, chạy lại browser suite thật bốn roles/401/403/renewal/expiry/signout; giữ secrets ngoài Git và cập nhật evidence riêng.
+- Commit/push: entry dùng subject + branch cho chính commit; SHA local/remote xác minh sau push/pull trong handoff.
+
 ### 2026-10-20 02:11 UTC+07 — Chuẩn hóa AI/Data code / conversation chính
 - Nhánh / commit subject: `module/ai-data`; `style: format AI and data source code`.
 - Phạm vi: format Python AI service, tests và data scripts; chia system prompt thành các dòng đọc được; thêm cấu hình/hướng dẫn formatter.
