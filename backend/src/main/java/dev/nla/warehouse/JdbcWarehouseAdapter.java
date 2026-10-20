@@ -7,6 +7,7 @@ import java.util.*;
 
 public abstract class JdbcWarehouseAdapter implements WarehouseAdapter {
   protected final boolean tls;
+  private final DataToolRuntimeClient dataRuntime = DataToolRuntimeClient.configured();
 
   protected JdbcWarehouseAdapter(boolean tls) {
     this.tls = tls;
@@ -86,7 +87,14 @@ public abstract class JdbcWarehouseAdapter implements WarehouseAdapter {
   public List<String> discoverSchemas(Connection c) throws SQLException {
     List<String> names = new ArrayList<>();
     if (engine().equals("MYSQL")) {
-      names.add(c.getCatalog());
+      try (ResultSet catalogs = c.getMetaData().getCatalogs()) {
+        while (catalogs.next()) {
+          String name = catalogs.getString("TABLE_CAT");
+          if (!Set.of("information_schema", "mysql", "performance_schema", "sys").contains(name)) {
+            names.add(name);
+          }
+        }
+      }
       return names;
     }
     try (ResultSet rs = c.getMetaData().getSchemas()) {
@@ -214,6 +222,10 @@ public abstract class JdbcWarehouseAdapter implements WarehouseAdapter {
   public Map<String, Object> executeReadOnlyQuery(
       Map<String, Object> w, String password, String sql, int maxRows, int maxBytes, int timeout)
       throws SQLException {
+    if (dataRuntime != null) {
+      return dataRuntime.execute(
+          w, password, tls, applySafeLimit(sql, maxRows + 1), maxRows, maxBytes, timeout);
+    }
     try (Connection c = connect(w, password)) {
       c.setReadOnly(true);
       c.setAutoCommit(false);

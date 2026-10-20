@@ -59,6 +59,15 @@ public class Errors {
             Json.obj("error", body("FORBIDDEN", "Không có quyền thực hiện thao tác.", Json.obj())));
   }
 
+  @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+  ResponseEntity<?> uploadTooLarge(Exception e) {
+    return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+        .body(
+            Json.obj(
+                "error",
+                body("PAYLOAD_TOO_LARGE", "File vượt giới hạn dung lượng cho phép.", Json.obj())));
+  }
+
   @ExceptionHandler(Exception.class)
   ResponseEntity<?> other(Exception e) {
     org.slf4j.LoggerFactory.getLogger(Errors.class)

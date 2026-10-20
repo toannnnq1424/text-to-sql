@@ -32,9 +32,9 @@ public class CatalogService {
     var adapter = adapters.get(w);
     try (Connection connection =
         adapter.connect(w, adapters.password(store.credential(warehouseId)))) {
-      Set<String> schemas = new HashSet<>();
-      String schema = Json.str(w, "defaultSchema");
-      if (!schema.isBlank()) schemas.add(schema);
+      // defaultSchema resolves unqualified SQL; access grants and Dataset allowlists
+      // bound discovery. File imports may create tables in a separate writer namespace.
+      Set<String> schemas = new HashSet<>(adapter.discoverSchemas(connection));
       var tables = adapter.discoverTables(connection, schemas);
       snapshots.put(warehouseId, new Snapshot(System.currentTimeMillis(), tables));
       return tables;

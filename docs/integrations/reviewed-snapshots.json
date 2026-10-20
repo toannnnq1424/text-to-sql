@@ -56,6 +56,11 @@
           "path": "mcp-server/README.md",
           "sha256": "d072ea41cfbfc2cb398ab1ee76febaf0d2f3e52c338b1054a137660369ed6ebf",
           "bytes": 8783
+        },
+        {
+          "path": "ibis-server/app/model/metadata/object_storage.py",
+          "sha256": "1140410905ba39e95f5d19c0b015e093ecb878f76c335041c4549cb3c84508c9",
+          "bytes": 13151
         }
       ],
       "detectedLicense": "Apache-2.0 at root; dependencies require separate inventory on adoption.",
@@ -72,8 +77,8 @@
         }
       ],
       "runtimeIntegrated": true,
-      "integratedScope": "Dependency-free schema description/index/cache approach adapted into AI context selection and provider request payload; no upstream planner, SDK, vector store or connectors.",
-      "integrationEvidence": "docs/integrations/semantic-context.md"
+      "integratedScope": "Dependency-free schema description/index/cache approach in AI selection and provider payload; pinned wren-core-py 0.4.0 native manifest/session planner; adapted CTE rewrite and Wren SQLGlot dialect; no upstream SDK, vector store or connectors. Local file dispatch/Arrow schema conversion adapted into authenticated bulk parser for13 extensions.",
+      "integrationEvidence": "docs/integrations/semantic-planner.md"
     },
     {
       "role": "data-tool-runtime",
@@ -129,8 +134,8 @@
         }
       ],
       "runtimeIntegrated": true,
-      "integratedScope": "Description-only native catalog SQL adapted into Java discovery on PostgreSQL, MySQL and SQL Server; no upstream Go server or arbitrary execution tools.",
-      "integrationEvidence": "docs/integrations/native-metadata.md"
+      "integratedScope": "Native metadata plus adapted PostgreSQL/pgx, MySQL and SQLServer source drivers, pooled connection lifecycle, cancellation and canonical result serialization in private Go executor. Java owns authorization/SQL guard; no public arbitrary execution tools or cloud connectors.",
+      "integrationEvidence": "docs/integrations/data-tool-runtime.md"
     }
   ]
 }

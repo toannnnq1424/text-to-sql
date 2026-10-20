@@ -1,11 +1,18 @@
-import { request, encodeId, type Params } from "./client";
+import { request, requestEmpty, encodeId, type Params } from "./client";
 import {
   IngestionSchema,
   IngestionSourceInputSchema,
   IngestionSourceSchema,
   SourceSchema,
   SourceTestSchema,
+  FileUploadSchema,
+  FilePlanSchema,
+  FileRunSchema,
+  FilePlanInputSchema,
+  FileRunRequestSchema,
+  FileTargetsSchema,
   pageSchema,
+  type FilePlanInput,
   type IngestionSourceInput,
 } from "./schema";
 export const ingestionApi = {
@@ -62,4 +69,59 @@ export const ingestionApi = {
     request(`/warehouse/ingestion/runs/${encodeId(id)}`, IngestionSchema, {
       signal,
     }),
+  uploadFile: (
+    input: { file: File; sheet?: string; delimiter?: string },
+    signal?: AbortSignal,
+  ) => {
+    const formData = new FormData();
+    formData.set("file", input.file);
+    if (input.sheet) formData.set("sheet", input.sheet);
+    if (input.delimiter) formData.set("delimiter", input.delimiter);
+    return request("/warehouse/ingestion/files", FileUploadSchema, {
+      method: "POST",
+      formData,
+      signal,
+      timeoutMs: 120000,
+    });
+  },
+  discardFile: (id: string) =>
+    requestEmpty(`/warehouse/ingestion/files/${encodeId(id)}`, {
+      method: "DELETE",
+    }),
+  fileTargets: (warehouseId: string, signal?: AbortSignal) =>
+    request("/warehouse/ingestion/files/targets", FileTargetsSchema, {
+      params: { warehouseId },
+      signal,
+    }),
+  validateFile: (uploadId: string, body: FilePlanInput) =>
+    request(
+      `/warehouse/ingestion/files/${encodeId(uploadId)}/validate`,
+      FilePlanSchema,
+      {
+        method: "POST",
+        body: FilePlanInputSchema.parse(body),
+        timeoutMs: 120000,
+      },
+    ),
+  runFile: (body: { planId: string; digest: string; idempotencyKey: string }) =>
+    request("/warehouse/ingestion/files/runs", FileRunSchema, {
+      method: "POST",
+      body: FileRunRequestSchema.parse(body),
+      timeoutMs: 120000,
+    }),
+  fileRuns: (params?: Params, signal?: AbortSignal) =>
+    request("/warehouse/ingestion/files/runs", pageSchema(FileRunSchema), {
+      params,
+      signal,
+    }),
+  getFileRun: (id: string, signal?: AbortSignal) =>
+    request(`/warehouse/ingestion/files/runs/${encodeId(id)}`, FileRunSchema, {
+      signal,
+    }),
+  cancelFileRun: (id: string) =>
+    request(
+      `/warehouse/ingestion/files/runs/${encodeId(id)}/cancel`,
+      FileRunSchema,
+      { method: "POST" },
+    ),
 };

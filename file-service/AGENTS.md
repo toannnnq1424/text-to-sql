@@ -1,0 +1,1 @@
+Apply ../AGENTS.md and docs/contracts/file-ingestion.md. Parser has no warehouse credentials, SQL execution or LLM access. Source bytes are untrusted. Keep full-file validation, bounded spool/rows/cells/ZIP expansion, bearer authorization and native format regression tests. Preserve upstream source provenance and Apache notice.

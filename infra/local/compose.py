@@ -127,6 +127,21 @@ def configure() -> None:
             "Configure provider URL, model and key together in the private provider.env."
         )
     write_environment(LOCAL / "ai.env", ai)
+    for filename, token_name in (
+        ("data-runtime.env", "DATA_TOOL_RUNTIME_TOKEN"),
+        ("file-service.env", "FILE_SERVICE_TOKEN"),
+    ):
+        private_path = LOCAL / filename
+        existing = environment(private_path) if private_path.exists() else {}
+        private = {token_name: existing.get(token_name, secrets.token_urlsafe(48))}
+        if len(private[token_name]) < 32:
+            raise SystemExit("Private worker service token is missing or too short.")
+        if token_name == "DATA_TOOL_RUNTIME_TOKEN":
+            private["WAREHOUSE_ALLOWED_HOSTS"] = "postgres,mysql,sqlserver"
+            private["DATA_TOOL_MYSQL_PUBLIC_KEY"] = "/run/nla/mysql-public-key.pem"
+        write_environment(private_path, private)
+    data_runtime = environment(LOCAL / "data-runtime.env")
+    file_service = environment(LOCAL / "file-service.env")
     backend = {
         key: value
         for key, value in runtime.items()
@@ -149,6 +164,13 @@ def configure() -> None:
             "SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI": public["OIDC_ISSUER_URI"],
             "SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI": public["OIDC_JWK_SET_URI"],
             "SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES": "nla-api",
+            "DATA_TOOL_RUNTIME_URL": "http://data-tool-runtime:8090",
+            "DATA_TOOL_RUNTIME_TOKEN": data_runtime["DATA_TOOL_RUNTIME_TOKEN"],
+            "FILE_SERVICE_URL": "http://file-service:8011",
+            "FILE_SERVICE_TOKEN": file_service["FILE_SERVICE_TOKEN"],
+            "FILE_UPLOAD_DIRECTORY": "/var/lib/nla/uploads",
+            "SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE": "25MB",
+            "SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE": "27MB",
             "PYTHON_AI_URL": "http://python-ai:8000",
             "PYTHON_AI_TOKEN": ai["PYTHON_AI_TOKEN"],
             "NLA_MYSQL_RSA_PUBLIC_KEY": "/run/nla/mysql-public-key.pem",
@@ -406,7 +428,7 @@ def main() -> None:
         configure()
     elif args.action == "build":
         configure()
-        compose("build", "backend", "python-ai", "frontend")
+        compose("build", "backend", "python-ai", "data-tool-runtime", "file-service", "frontend")
     elif args.action == "register":
         configure()
         register_samples()
@@ -416,7 +438,7 @@ def main() -> None:
     elif args.action == "status":
         compose("ps")
     elif args.action == "stop":
-        compose("stop", "frontend", "backend", "python-ai")
+        compose("stop", "frontend", "backend", "python-ai", "data-tool-runtime", "file-service")
 
 
 if __name__ == "__main__":

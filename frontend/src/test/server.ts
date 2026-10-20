@@ -152,6 +152,16 @@ export const handlers = [
   http.get(`${base}/warehouse/ingestion/runs/:id`, () =>
     HttpResponse.json(f.ingestion),
   ),
+  http.get(`${base}/warehouse/ingestion/files/targets`, ({ request }) => {
+    const warehouseId = new URL(request.url).searchParams.get("warehouseId");
+    return HttpResponse.json({
+      warehouseId,
+      namespaces: ["analytics"],
+    });
+  }),
+  http.get(`${base}/warehouse/ingestion/files/runs`, () =>
+    HttpResponse.json(f.page([])),
+  ),
   http.post(`${base}/import/sql/validate`, () =>
     HttpResponse.json({
       planId: "plan-test-001",

@@ -33,3 +33,7 @@ Nguồn bên ngoài không tự động thành “dataset trong app”. Quy trì
 ## Hồ sơ provenance
 
 `source URL`, release/commit, license/redistribution terms, file checksums, row counts, schema/grain, transformation per engine, data-quality checks, timezone/currency, sensitivity and retention. Chinook provenance and expected row counts are recorded in `data/chinook/source.json`; upstream SQL payloads and database credentials are excluded from Git. The remaining listed sources have not been downloaded or provisioned.
+
+## File người dùng tải lên ứng dụng
+
+Nguồn file không cần một folder trong repo. Trong Nạp dữ liệu→Nạp file, upload CSV/TSV/TXT, XLSX, JSON/JSONL/NDJSON, Parquet, Arrow/Feather/IPC, ORC hoặc Avro. App tự đọc header và suy kiểu từ toàn bộ bản ghi, cho chọn sheet/delimiter và chỉnh mapping, preview rồi xác nhận kế hoạch vào một namespace đã cấp quyền. Java dùng prepared batches, kiểm chứng mart bằng reader, đăng ký Dataset có provenance/hash; không execute nội dung file như SQL. Chi tiết bounds/lifecycle tại [file contract](contracts/file-ingestion.md). Source registry DB→DB vẫn dành cho query/pipeline đã được quản trị; không thay flow upload bằng việc nhập thủ công từng dòng/cột.

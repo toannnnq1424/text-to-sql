@@ -1,0 +1,35 @@
+{
+  "id": "file-00000000-0000-0000-0000-000000000001",
+  "fileName": "observations.csv",
+  "fileType": "CSV",
+  "fileSize": 42,
+  "rowCount": 2,
+  "columnCount": 2,
+  "columns": [
+    {
+      "sourceName": "station",
+      "name": "station",
+      "dataType": "STRING",
+      "nullable": false
+    },
+    {
+      "sourceName": "measurement",
+      "name": "measurement",
+      "dataType": "DECIMAL",
+      "nullable": true
+    }
+  ],
+  "previewRows": [
+    [
+      "North",
+      "12.5000"
+    ],
+    [
+      "South",
+      null
+    ]
+  ],
+  "warnings": [],
+  "sheets": [],
+  "expiresAt": "2026-10-21T12:00:00Z"
+}

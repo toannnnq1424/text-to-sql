@@ -2,7 +2,7 @@
 
 Nền tảng Text-to-SQL đa warehouse, đa domain: đặt câu hỏi bằng tiếng Việt/Anh, nhận dữ liệu, biểu đồ, SQL, giải thích và thông tin thực thi.
 
-Repository có frontend React, backend Spring Boot, Python AI service, SQL Import có validate/preview, registry ingestion bốn lớp và thực thi PostgreSQL, MySQL, SQL Server. Đăng nhập OIDC local dùng IdP thật; Docker Compose đóng gói cả ba app services. Các luồng đã kiểm chứng và phần còn thiếu nằm trong [đánh giá hiện tại](docs/project-status.md), [current review](docs/current-review.md) và [work log](docs/work-log.md). Chưa nghiệm thu toàn bộ target hoặc AI provider thật. Import chỉ xử lý subset SQL đã kiểm soát; app không chạy tùy ý file SQL.
+Repository có frontend React, backend Spring Boot, Python AI service, SQL Import có validate/preview, registry ingestion bốn lớp và thực thi PostgreSQL, MySQL, SQL Server. Đăng nhập OIDC local dùng IdP thật; Docker Compose đóng gói frontend, Java, AI planner, native data executor và file parser. Các luồng đã kiểm chứng và phần còn thiếu nằm trong [đánh giá hiện tại](docs/project-status.md), [current review](docs/current-review.md) và [work log](docs/work-log.md). Chưa nghiệm thu toàn bộ target hoặc AI provider thật. Import chỉ xử lý subset SQL đã kiểm soát; app không chạy tùy ý file SQL.
 
 ```text
 React → Java Spring Boot → Python AI Service / provider API
@@ -12,14 +12,22 @@ React → Java Spring Boot → Python AI Service / provider API
      Registered read-only warehouses
 ```
 
-React chỉ gọi Java. Java xác thực người dùng, kiểm tra SQL và thực thi truy vấn; Python tạo candidate SQL nhưng không nhận credential hay truy cập warehouse.
+React chỉ gọi Java. Java xác thực người dùng, kiểm tra SQL trước khi giao executor đọc warehouse. Python sinh candidate rồi dùng native semantic core/CTE rewrite và lineage; Java kiểm tra lại SQL sau rewrite. Dịch vụ đọc file nhận upload riêng, không nhận credential hay truy cập warehouse.
+
+## Nạp file từ giao diện
+
+Mở **Nạp dữ liệu → Nạp file**, chọn CSV/TSV/TXT, XLSX, JSON/JSONL/NDJSON, Parquet, Arrow/Feather/IPC, ORC hoặc Avro. App đọc toàn bộ file, tự nhận diện header/cột/kiểu dữ liệu, cho xem trước20 dòng và chỉnh mapping. Chọn warehouse cùng namespace được tài khoản import cấp quyền CREATE, đặt tên bảng/dataset rồi **Kiểm tra và tạo kế hoạch → Xác nhận và nạp dữ liệu**. Không phải nhập từng cột hoặc từng INSERT; các bản ghi được nạp theo batch qua bốn lớp và mart được đăng ký thành Dataset trong Catalog.
+
+Giới hạn mỗi file25MiB/100.000 dòng/200 cột; Excel chọn được sheet, công thức cần chuyển thành giá trị. `.sql` dùng màn **SQL Import** có parser/preview riêng. Cần role ADMIN/OPERATOR và import writer trên warehouse; namespace được API phát hiện từ quyền thật, không mặc định một database mẫu. Dữ liệu query/metadata đến từ database; ngữ nghĩa nghiệp vụ và provider vẫn phải được cấu hình phù hợp. Chi tiết [file ingestion](docs/contracts/file-ingestion.md).
+
+Cách chạy đầy đủ các dịch vụ riêng tư cùng database/đăng nhập là `python3 infra/local/compose.py up`, rồi mở [ứng dụng local](http://127.0.0.1:4173). Clone mới tự tạo secret local; không cần file token của maintainer. [Các thành phần thực sự tái sử dụng](docs/platform-reuse.md) có source hashes và license đi kèm.
 
 ## Hướng dẫn khởi chạy (Quick Start)
 
 ### Yêu cầu
 
 - Docker Desktop hoặc Docker Engine + Compose plugin.
-- Java 21, Maven 3.9+, Python 3.11+, Node.js 20+ và npm.
+- Java 21, Maven 3.9+, Python 3.11+, Node.js 22.12+ và npm.
 - Khoảng 5 GB RAM còn trống cho ba database; SQL Server container hiện dùng image `linux/amd64`.
 
 ### 1. Tạo và khởi động database Chinook

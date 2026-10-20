@@ -39,6 +39,12 @@ const schemas: Record<string, z.ZodType> = {
     })
     .partial(),
   IngestionSourceTest: s.SourceTestSchema,
+  FileUpload: s.FileUploadSchema,
+  FilePlan: s.FilePlanSchema,
+  FilePlanInput: s.FilePlanInputSchema,
+  FileRun: s.FileRunSchema,
+  FileRunInput: s.FileRunRequestSchema,
+  FileTargets: s.FileTargetsSchema,
   ImportPlan: s.ImportPlanSchema,
   ImportRun: s.ImportRunSchema,
   ImportRunInput: z.strictObject({
@@ -82,6 +88,7 @@ for (const name of [
   "IngestionRun",
   "IngestionSource",
   "ImportRun",
+  "FileRun",
   "EvaluationRun",
   "EvaluationCase",
   "TestSuite",
@@ -260,6 +267,64 @@ add("get", "/warehouse/ingestion/runs", "PageIngestionRun", undefined, "200", [
   "to",
 ]);
 add("get", "/warehouse/ingestion/runs/{id}", "IngestionRun");
+add("post", "/warehouse/ingestion/files", "FileUpload");
+(
+  paths["/warehouse/ingestion/files"].post as Record<string, unknown>
+).requestBody = {
+  required: true,
+  content: {
+    "multipart/form-data": {
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["file"],
+        properties: {
+          file: { type: "string", format: "binary" },
+          sheet: { type: "string" },
+          delimiter: { type: "string", enum: [",", "\t", ";", "|"] },
+        },
+      },
+    },
+  },
+};
+add(
+  "get",
+  "/warehouse/ingestion/files/targets",
+  "FileTargets",
+  undefined,
+  "200",
+  ["warehouseId"],
+);
+add("get", "/warehouse/ingestion/files/{id}", "FileUpload");
+add(
+  "delete",
+  "/warehouse/ingestion/files/{id}",
+  "FileUpload",
+  undefined,
+  "204",
+);
+(
+  paths["/warehouse/ingestion/files/{id}"].delete as Record<string, unknown>
+).responses = { "204": { description: "Private upload discarded" } };
+add(
+  "post",
+  "/warehouse/ingestion/files/{id}/validate",
+  "FilePlan",
+  "FilePlanInput",
+);
+add(
+  "post",
+  "/warehouse/ingestion/files/runs",
+  "FileRun",
+  "FileRunInput",
+  "202",
+);
+add("get", "/warehouse/ingestion/files/runs", "PageFileRun", undefined, "200", [
+  ...list,
+  "warehouseId",
+]);
+add("get", "/warehouse/ingestion/files/runs/{id}", "FileRun");
+add("post", "/warehouse/ingestion/files/runs/{id}/cancel", "FileRun");
 add("post", "/import/sql/validate", "ImportPlan");
 (paths["/import/sql/validate"].post as Record<string, unknown>).requestBody = {
   required: true,

@@ -1,0 +1,46 @@
+{
+  "sourceSnapshot": "user-supplied mcp-toolbox-main; no Git revision available in archive",
+  "upstream": "https://github.com/googleapis/genai-toolbox",
+  "license": "Apache-2.0",
+  "adaptedFiles": [
+    {
+      "path": "internal/sources/postgres/postgres.go",
+      "sha256": "28d1bd1ae18e384eb10b7d538755b23c75c0cc0693391614ba132ccffb27a135"
+    },
+    {
+      "path": "internal/sources/mysql/mysql.go",
+      "sha256": "7ee6653a2d74aefd875064e87f1a42642dd1a933d03bbbd8606eb546b08f68bc"
+    },
+    {
+      "path": "internal/sources/mssql/mssql.go",
+      "sha256": "08e6a8a576bc798dde222520987856f92e2a20794eeee8ac6dc5859d78a5252d"
+    },
+    {
+      "path": "internal/sources/cache.go",
+      "sha256": "ef2839db129a4473b905c09aa191b54c0ed3193f18aa88a923c9d19fb4c603ff"
+    },
+    {
+      "path": "internal/tools/mysql/mysqlcommon/mysqlcommon.go",
+      "sha256": "9eb2181f891af399fd54055483ce8a30c936dc90826e544edf4ccfcd4e2a81d6"
+    },
+    {
+      "path": "internal/sources/util.go",
+      "sha256": "459edcf416d67bccd51d3f2e279a89179a47d0c7c34246adb37794d69b19ba1e"
+    }
+  ],
+  "localImplementation": [
+    "data-tool-runtime/sources.go",
+    "data-tool-runtime/pools.go",
+    "data-tool-runtime/results.go"
+  ],
+  "newApplicationCode": [
+    "data-tool-runtime/main.go",
+    "data-tool-runtime/server.go"
+  ],
+  "excluded": [
+    "cloud connectors/IAM",
+    "public MCP arbitrary-execute route",
+    "upstream SQL query debug logging",
+    "upstream product UI"
+  ]
+}

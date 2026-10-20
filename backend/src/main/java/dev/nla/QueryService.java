@@ -14,13 +14,21 @@ public class QueryService {
   private final Adapters adapters;
   private final SqlGuard guard;
   private final AiClient ai;
+  private final SemanticPlannerClient planner;
 
-  public QueryService(Store s, CatalogService c, Adapters a, SqlGuard g, AiClient ai) {
+  public QueryService(
+      Store s,
+      CatalogService c,
+      Adapters a,
+      SqlGuard g,
+      AiClient ai,
+      SemanticPlannerClient planner) {
     store = s;
     catalog = c;
     adapters = a;
     guard = g;
     this.ai = ai;
+    this.planner = planner;
   }
 
   public Map<String, Object> run(Map<String, Object> b) {
@@ -101,7 +109,7 @@ public class QueryService {
           ai.generate(
               Json.obj(
                   "correlationId",
-                  Errors.correlation(),
+                  Json.str(q, "correlationId"),
                   "warehouseId",
                   w.get("warehouseId"),
                   "datasetId",
@@ -113,7 +121,6 @@ public class QueryService {
                   "semanticContext",
                   context),
               mode);
-      q.put("generatedSql", candidate.get("sql"));
       q.put("model", candidate.get("model"));
       for (String field : List.of("selectedMetrics", "selectedDimensions")) {
         String category = field.equals("selectedMetrics") ? "metrics" : "dimensions";
@@ -127,11 +134,29 @@ public class QueryService {
               "SQL_VALIDATION_ERROR",
               "AI chọn metric hoặc dimension ngoài semantic context.");
       }
+      var planned =
+          planner.plan(
+              Json.str(q, "correlationId"),
+              Json.str(w, "engine"),
+              Json.str(candidate, "sql"),
+              context);
+      q.put("generatedSql", planned.sql());
       var validated =
           guard.validate(
-              Json.str(candidate, "sql"),
-              Json.str(w, "engine"),
-              catalog.tables(Json.str(d, "datasetId")));
+              planned.sql(), Json.str(w, "engine"), catalog.tables(Json.str(d, "datasetId")));
+      Set<String> plannedSources =
+          planned.sourceTables().stream()
+              .map(SemanticPlannerClient::sourceKey)
+              .collect(java.util.stream.Collectors.toSet());
+      Set<String> guardedSources =
+          validated.sourceTables().stream()
+              .map(SemanticPlannerClient::sourceKey)
+              .collect(java.util.stream.Collectors.toSet());
+      if (!plannedSources.equals(guardedSources))
+        throw new ApiException(
+            HttpStatus.UNPROCESSABLE_ENTITY,
+            "SQL_VALIDATION_ERROR",
+            "Nguồn vật lý của SQL candidate không khớp với semantic planner.");
       q.put("sourceTables", validated.sourceTables());
       var limits = Json.map(store.settings().get("limits"));
       var result =
