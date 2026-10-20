@@ -39,7 +39,7 @@ execution path by leaving that private endpoint unconfigured.
   `columns`, object-valued `rows`, `returnedRowCount`, `page`, `pageSize`,
   `truncated`. BIGINT and DECIMAL remain strings; BOOLEAN remains boolean; DATE
   uses ISO date and TIMESTAMP uses UTC. Duplicate labels have stable suffixes.
-- Limits: 128KiB input, SQL100000 bytes,10000 rows,10MiB row JSON,1000 columns,
+- Limits: 128KiB input, SQL100000 bytes,10000 rows,50MiB row JSON,1000 columns,
   128KiB column metadata, timeout100–120000ms. Caller can select smaller bounds.
 - Private errors expose only `{ "code": "..." }` with401 UNAUTHENTICATED,
   400 INVALID_REQUEST,503 RUNTIME_BUSY,504 QUERY_TIMEOUT,502 QUERY_ERROR.
@@ -47,7 +47,7 @@ execution path by leaving that private endpoint unconfigured.
   Driver text, connection fields and SQL text do not appear in errors.
 - Native source pool fingerprint includes warehouse ID, engine, endpoint, TLS,
   username and credential. Rotation cannot reuse old credentials. Maximum32
-  cached sources,4 connections/source,8 concurrent requests; active sources are
+  cached sources,4 connections/source,8 concurrent requests with64MiB aggregate reserved row budgets; active sources are
   leased and cannot be evicted. Idle source TTL5minutes, idle connection1minute,
   connection lifetime15minutes. Cancellation flows through native drivers and
   transaction rollback. PG/MySQL use read-only transactions; SQL Server uses the

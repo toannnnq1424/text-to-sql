@@ -9,6 +9,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
+	mssql "github.com/microsoft/go-mssqldb"
 	"math"
 	"strconv"
 	"strings"
@@ -16,6 +18,7 @@ import (
 )
 
 type Column struct {
+	NativeType   string `json:"-"`
 	Name         string `json:"name"`
 	Label        string `json:"label"`
 	DataType     string `json:"dataType"`
@@ -56,12 +59,25 @@ func NewColumn(label string, nativeType string) Column {
 	} else if canonical == "DATE" || canonical == "TIMESTAMP" {
 		role = "TIME"
 	}
-	return Column{Name: label, Label: label, DataType: canonical, SemanticRole: role}
+	return Column{Name: label, Label: label, DataType: canonical, SemanticRole: role, NativeType: typeName}
 }
 
-func canonicalValue(value any, dataType string) (any, error) {
+func canonicalValue(value any, column Column) (any, error) {
+	dataType := column.DataType
 	if value == nil {
 		return nil, nil
+	}
+	if column.NativeType == "UUID" {
+		if bytes, ok := value.([16]byte); ok {
+			return uuid.UUID(bytes).String(), nil
+		}
+	}
+	if column.NativeType == "UNIQUEIDENTIFIER" {
+		var identifier mssql.UniqueIdentifier
+		if err := identifier.Scan(value); err != nil {
+			return nil, err
+		}
+		return strings.ToLower(identifier.String()), nil
 	}
 	if valuer, ok := value.(driver.Valuer); ok {
 		var err error
@@ -138,7 +154,7 @@ func CollectRows(columns []Column, next func() bool, values func() ([]any, error
 		}
 		row := make(map[string]any, len(columns))
 		for index, column := range columns {
-			row[column.Name], err = canonicalValue(raw[index], column.DataType)
+			row[column.Name], err = canonicalValue(raw[index], column)
 			if err != nil {
 				return Result{}, err
 			}

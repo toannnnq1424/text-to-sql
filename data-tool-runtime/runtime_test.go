@@ -186,9 +186,9 @@ func TestNativeEnginesTypedResultsAndCancellation(t *testing.T) {
 		sql    string
 		slow   string
 	}{
-		{"POSTGRESQL", 55432, "PG", "SELECT CAST(9007199254740993 AS BIGINT) AS large_id, CAST(1234.5000 AS DECIMAL(20,4)) AS amount, TRUE AS enabled, CAST(NULL AS VARCHAR) AS empty_value, TIMESTAMPTZ '2026-10-20 12:34:56+07' AS moment, DATE '2026-10-20' AS day", "SELECT pg_sleep(5)"},
-		{"MYSQL", 53306, "MYSQL", "SELECT CAST(9007199254740993 AS SIGNED) AS large_id, CAST(1234.5000 AS DECIMAL(20,4)) AS amount, b'1' AS enabled, CAST(NULL AS CHAR) AS empty_value, CAST('2026-10-20 05:34:56' AS DATETIME) AS moment, CAST('2026-10-20' AS DATE) AS day", "SELECT SLEEP(5)"},
-		{"SQL_SERVER", 51433, "MSSQL", "SELECT CAST(9007199254740993 AS BIGINT) AS large_id, CAST(1234.5000 AS DECIMAL(20,4)) AS amount, CAST(1 AS BIT) AS enabled, CAST(NULL AS VARCHAR) AS empty_value, CAST('2026-10-20T12:34:56+07:00' AS DATETIMEOFFSET) AS moment, CAST('2026-10-20' AS DATE) AS day", "SELECT COUNT_BIG(*) FROM sys.all_objects a CROSS JOIN sys.all_objects b CROSS JOIN sys.all_objects c"},
+		{"POSTGRESQL", 55432, "PG", "SELECT CAST(9007199254740993 AS BIGINT) AS large_id, CAST(1234.5000 AS DECIMAL(20,4)) AS amount, TRUE AS enabled, CAST(NULL AS VARCHAR) AS empty_value, TIMESTAMPTZ '2026-10-20 12:34:56+07' AS moment, DATE '2026-10-20' AS day, UUID '01234567-89ab-cdef-0123-456789abcdef' AS guid", "SELECT pg_sleep(5)"},
+		{"MYSQL", 53306, "MYSQL", "SELECT CAST(9007199254740993 AS SIGNED) AS large_id, CAST(1234.5000 AS DECIMAL(20,4)) AS amount, b'1' AS enabled, CAST(NULL AS CHAR) AS empty_value, CAST('2026-10-20 05:34:56' AS DATETIME) AS moment, CAST('2026-10-20' AS DATE) AS day, '01234567-89ab-cdef-0123-456789abcdef' AS guid", "SELECT SLEEP(5)"},
+		{"SQL_SERVER", 51433, "MSSQL", "SELECT CAST(9007199254740993 AS BIGINT) AS large_id, CAST(1234.5000 AS DECIMAL(20,4)) AS amount, CAST(1 AS BIT) AS enabled, CAST(NULL AS VARCHAR) AS empty_value, CAST('2026-10-20T12:34:56+07:00' AS DATETIMEOFFSET) AS moment, CAST('2026-10-20' AS DATE) AS day, CAST('01234567-89ab-cdef-0123-456789abcdef' AS UNIQUEIDENTIFIER) AS guid", "SELECT COUNT_BIG(*) FROM sys.all_objects a CROSS JOIN sys.all_objects b CROSS JOIN sys.all_objects c"},
 	} {
 		t.Run(spec.engine, func(t *testing.T) {
 			request := validRequest()
@@ -230,7 +230,7 @@ func TestNativeEnginesTypedResultsAndCancellation(t *testing.T) {
 				t.Fatal("typed query failed", err)
 			}
 			row := result.Rows[0]
-			if row["large_id"] != "9007199254740993" || row["amount"] != "1234.5000" || row["enabled"] != true || row["empty_value"] != nil || row["moment"] != "2026-10-20T05:34:56Z" || row["day"] != "2026-10-20" {
+			if row["large_id"] != "9007199254740993" || row["amount"] != "1234.5000" || row["enabled"] != true || row["empty_value"] != nil || row["moment"] != "2026-10-20T05:34:56Z" || row["day"] != "2026-10-20" || row["guid"] != "01234567-89ab-cdef-0123-456789abcdef" {
 				t.Fatalf("typed values differ: %#v", row)
 			}
 			slow, stop := context.WithTimeout(context.Background(), 100*time.Millisecond)
@@ -246,5 +246,32 @@ func TestNativeEnginesTypedResultsAndCancellation(t *testing.T) {
 				t.Fatal("pool did not recover after cancellation")
 			}
 		})
+	}
+}
+
+func TestExistingFiftyMiBPipelineBudgetAndAggregateMemoryAdmission(t *testing.T) {
+	input := validRequest()
+	input.MaxBytes = 50 * 1024 * 1024
+	manager := NewPoolManager(2, time.Minute)
+	var opened atomic.Int32
+	manager.opener = func(context.Context, string, Connection) (*Source, error) {
+		opened.Add(1)
+		return nil, errors.New("admission must reject before connection")
+	}
+	executor := &Executor{Token: strings.Repeat("t", 48), AllowedHosts: map[string]bool{"127.0.0.1": true}, Pools: manager, Slots: make(chan struct{}, 8)}
+	if !executor.valid(input) {
+		t.Fatal("valid existing50MiB pipeline budget was reduced")
+	}
+	executor.reservedBytes = 20 * 1024 * 1024
+	body, _ := json.Marshal(input)
+	request := httptest.NewRequest("POST", "/internal/v1/query", bytes.NewReader(body))
+	request.Header.Set("Authorization", "Bearer "+executor.Token)
+	response := httptest.NewRecorder()
+	executor.ServeHTTP(response, request)
+	if response.Code != 503 || opened.Load() != 0 {
+		t.Fatal("aggregate memory budget was not enforced")
+	}
+	if len(executor.Slots) != 0 {
+		t.Fatal("rejected admission leaked concurrency slot")
 	}
 }

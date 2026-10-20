@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -26,10 +27,12 @@ type QueryRequest struct {
 }
 
 type Executor struct {
-	Token        string
-	AllowedHosts map[string]bool
-	Pools        *PoolManager
-	Slots        chan struct{}
+	Token         string
+	AllowedHosts  map[string]bool
+	Pools         *PoolManager
+	Slots         chan struct{}
+	budgetMutex   sync.Mutex
+	reservedBytes int
 }
 
 func (executor *Executor) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
@@ -66,6 +69,19 @@ func (executor *Executor) ServeHTTP(writer http.ResponseWriter, request *http.Re
 		privateError(writer, http.StatusServiceUnavailable, "RUNTIME_BUSY")
 		return
 	}
+	executor.budgetMutex.Lock()
+	if executor.reservedBytes+input.MaxBytes > 64*1024*1024 {
+		executor.budgetMutex.Unlock()
+		privateError(writer, http.StatusServiceUnavailable, "RUNTIME_BUSY")
+		return
+	}
+	executor.reservedBytes += input.MaxBytes
+	executor.budgetMutex.Unlock()
+	defer func() {
+		executor.budgetMutex.Lock()
+		executor.reservedBytes -= input.MaxBytes
+		executor.budgetMutex.Unlock()
+	}()
 	ctx, cancel := context.WithTimeout(request.Context(), time.Duration(input.TimeoutMs)*time.Millisecond)
 	defer cancel()
 	source, release, err := executor.Pools.Acquire(ctx, input)
@@ -100,7 +116,7 @@ func (executor *Executor) valid(input QueryRequest) bool {
 	if connection.Database == "" || len(connection.Database) > 253 || connection.Username == "" || len(connection.Username) > 253 || connection.Password == "" || len(connection.Password) > 4096 {
 		return false
 	}
-	if input.TimeoutMs < 100 || input.TimeoutMs > 120000 || input.MaxRows < 1 || input.MaxRows > 10000 || input.MaxBytes < 1 || input.MaxBytes > 10485760 || len(input.SQL) > 100000 {
+	if input.TimeoutMs < 100 || input.TimeoutMs > 120000 || input.MaxRows < 1 || input.MaxRows > 10000 || input.MaxBytes < 1 || input.MaxBytes > 52428800 || len(input.SQL) > 100000 {
 		return false
 	}
 	fields := strings.Fields(input.SQL)

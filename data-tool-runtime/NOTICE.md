@@ -15,6 +15,7 @@ Adapted implementation:
   initialization and native result iteration.
 - `internal/tools/mysql/mysqlcommon/mysqlcommon.go`: byte/string conversion for
   typed native results, extended for the app's canonical JSON contract.
+- `internal/sources/util.go`: native UUID result normalization.
 - `internal/sources/cache.go`: synchronized source caching/expiry, extended with
   finite source count, active leases, concurrent initialization and shutdown.
 

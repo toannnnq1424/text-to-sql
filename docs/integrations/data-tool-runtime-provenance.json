@@ -22,6 +22,10 @@
     {
       "path": "internal/tools/mysql/mysqlcommon/mysqlcommon.go",
       "sha256": "9eb2181f891af399fd54055483ce8a30c936dc90826e544edf4ccfcd4e2a81d6"
+    },
+    {
+      "path": "internal/sources/util.go",
+      "sha256": "459edcf416d67bccd51d3f2e279a89179a47d0c7c34246adb37794d69b19ba1e"
     }
   ],
   "localImplementation": [
