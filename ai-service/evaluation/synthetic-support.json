@@ -89,7 +89,7 @@
           {
             "name": "avg_resolution_minutes",
             "description": "Average synthetic ticket resolution duration",
-            "expression": "AVG(support_ticket.resolution_minutes)",
+            "expression": "AVG(CAST(support_ticket.resolution_minutes AS DECIMAL(38,10)))",
             "unit": "minutes",
             "tableRefs": [
               {
@@ -243,7 +243,7 @@
           {
             "question": "What is the average resolution time in minutes?",
             "sqlDialect": "POSTGRESQL",
-            "sql": "SELECT AVG(\"resolution_minutes\") AS avg_resolution_minutes FROM \"public\".\"support_ticket\"",
+            "sql": "SELECT AVG(CAST(\"resolution_minutes\" AS DECIMAL(38,10))) AS avg_resolution_minutes FROM \"public\".\"support_ticket\"",
             "selectedMetrics": [
               "avg_resolution_minutes"
             ],
@@ -263,7 +263,7 @@
           {
             "question": "Thời gian xử lý trung bình là bao nhiêu phút?",
             "sqlDialect": "POSTGRESQL",
-            "sql": "SELECT AVG(\"resolution_minutes\") AS avg_resolution_minutes FROM \"public\".\"support_ticket\"",
+            "sql": "SELECT AVG(CAST(\"resolution_minutes\" AS DECIMAL(38,10))) AS avg_resolution_minutes FROM \"public\".\"support_ticket\"",
             "selectedMetrics": [
               "avg_resolution_minutes"
             ],
@@ -415,7 +415,7 @@
           {
             "question": "What is the average resolution time by category?",
             "sqlDialect": "POSTGRESQL",
-            "sql": "SELECT \"category\" AS ticket_category, AVG(\"resolution_minutes\") AS avg_resolution_minutes FROM \"public\".\"support_ticket\" GROUP BY \"category\" ORDER BY \"category\"",
+            "sql": "SELECT \"category\" AS ticket_category, AVG(CAST(\"resolution_minutes\" AS DECIMAL(38,10))) AS avg_resolution_minutes FROM \"public\".\"support_ticket\" GROUP BY \"category\" ORDER BY \"category\"",
             "selectedMetrics": [
               "avg_resolution_minutes"
             ],
@@ -438,7 +438,7 @@
           {
             "question": "Thời gian xử lý trung bình theo danh mục là bao nhiêu?",
             "sqlDialect": "POSTGRESQL",
-            "sql": "SELECT \"category\" AS ticket_category, AVG(\"resolution_minutes\") AS avg_resolution_minutes FROM \"public\".\"support_ticket\" GROUP BY \"category\" ORDER BY \"category\"",
+            "sql": "SELECT \"category\" AS ticket_category, AVG(CAST(\"resolution_minutes\" AS DECIMAL(38,10))) AS avg_resolution_minutes FROM \"public\".\"support_ticket\" GROUP BY \"category\" ORDER BY \"category\"",
             "selectedMetrics": [
               "avg_resolution_minutes"
             ],
@@ -461,7 +461,7 @@
           {
             "question": "What is the average resolution time by status?",
             "sqlDialect": "POSTGRESQL",
-            "sql": "SELECT \"status\" AS ticket_status, AVG(\"resolution_minutes\") AS avg_resolution_minutes FROM \"public\".\"support_ticket\" GROUP BY \"status\" ORDER BY \"status\"",
+            "sql": "SELECT \"status\" AS ticket_status, AVG(CAST(\"resolution_minutes\" AS DECIMAL(38,10))) AS avg_resolution_minutes FROM \"public\".\"support_ticket\" GROUP BY \"status\" ORDER BY \"status\"",
             "selectedMetrics": [
               "avg_resolution_minutes"
             ],
@@ -484,7 +484,7 @@
           {
             "question": "Thời gian xử lý trung bình theo trạng thái là bao nhiêu?",
             "sqlDialect": "POSTGRESQL",
-            "sql": "SELECT \"status\" AS ticket_status, AVG(\"resolution_minutes\") AS avg_resolution_minutes FROM \"public\".\"support_ticket\" GROUP BY \"status\" ORDER BY \"status\"",
+            "sql": "SELECT \"status\" AS ticket_status, AVG(CAST(\"resolution_minutes\" AS DECIMAL(38,10))) AS avg_resolution_minutes FROM \"public\".\"support_ticket\" GROUP BY \"status\" ORDER BY \"status\"",
             "selectedMetrics": [
               "avg_resolution_minutes"
             ],
@@ -897,7 +897,7 @@
         {
           "caseId": "SUP-003-EN",
           "question": "What is the average resolution time in minutes?",
-          "expectedSql": "SELECT AVG(\"resolution_minutes\") AS avg_resolution_minutes FROM \"public\".\"support_ticket\"",
+          "expectedSql": "SELECT AVG(CAST(\"resolution_minutes\" AS DECIMAL(38,10))) AS avg_resolution_minutes FROM \"public\".\"support_ticket\"",
           "selectedMetrics": [
             "avg_resolution_minutes"
           ],
@@ -910,7 +910,7 @@
         {
           "caseId": "SUP-003-VI",
           "question": "Thời gian xử lý trung bình là bao nhiêu phút?",
-          "expectedSql": "SELECT AVG(\"resolution_minutes\") AS avg_resolution_minutes FROM \"public\".\"support_ticket\"",
+          "expectedSql": "SELECT AVG(CAST(\"resolution_minutes\" AS DECIMAL(38,10))) AS avg_resolution_minutes FROM \"public\".\"support_ticket\"",
           "selectedMetrics": [
             "avg_resolution_minutes"
           ],
@@ -1041,7 +1041,7 @@
         {
           "caseId": "SUP-007-EN",
           "question": "What is the average resolution time by category?",
-          "expectedSql": "SELECT \"category\" AS ticket_category, AVG(\"resolution_minutes\") AS avg_resolution_minutes FROM \"public\".\"support_ticket\" GROUP BY \"category\" ORDER BY \"category\"",
+          "expectedSql": "SELECT \"category\" AS ticket_category, AVG(CAST(\"resolution_minutes\" AS DECIMAL(38,10))) AS avg_resolution_minutes FROM \"public\".\"support_ticket\" GROUP BY \"category\" ORDER BY \"category\"",
           "selectedMetrics": [
             "avg_resolution_minutes"
           ],
@@ -1056,7 +1056,7 @@
         {
           "caseId": "SUP-007-VI",
           "question": "Thời gian xử lý trung bình theo danh mục là bao nhiêu?",
-          "expectedSql": "SELECT \"category\" AS ticket_category, AVG(\"resolution_minutes\") AS avg_resolution_minutes FROM \"public\".\"support_ticket\" GROUP BY \"category\" ORDER BY \"category\"",
+          "expectedSql": "SELECT \"category\" AS ticket_category, AVG(CAST(\"resolution_minutes\" AS DECIMAL(38,10))) AS avg_resolution_minutes FROM \"public\".\"support_ticket\" GROUP BY \"category\" ORDER BY \"category\"",
           "selectedMetrics": [
             "avg_resolution_minutes"
           ],
@@ -1071,7 +1071,7 @@
         {
           "caseId": "SUP-008-EN",
           "question": "What is the average resolution time by status?",
-          "expectedSql": "SELECT \"status\" AS ticket_status, AVG(\"resolution_minutes\") AS avg_resolution_minutes FROM \"public\".\"support_ticket\" GROUP BY \"status\" ORDER BY \"status\"",
+          "expectedSql": "SELECT \"status\" AS ticket_status, AVG(CAST(\"resolution_minutes\" AS DECIMAL(38,10))) AS avg_resolution_minutes FROM \"public\".\"support_ticket\" GROUP BY \"status\" ORDER BY \"status\"",
           "selectedMetrics": [
             "avg_resolution_minutes"
           ],
@@ -1086,7 +1086,7 @@
         {
           "caseId": "SUP-008-VI",
           "question": "Thời gian xử lý trung bình theo trạng thái là bao nhiêu?",
-          "expectedSql": "SELECT \"status\" AS ticket_status, AVG(\"resolution_minutes\") AS avg_resolution_minutes FROM \"public\".\"support_ticket\" GROUP BY \"status\" ORDER BY \"status\"",
+          "expectedSql": "SELECT \"status\" AS ticket_status, AVG(CAST(\"resolution_minutes\" AS DECIMAL(38,10))) AS avg_resolution_minutes FROM \"public\".\"support_ticket\" GROUP BY \"status\" ORDER BY \"status\"",
           "selectedMetrics": [
             "avg_resolution_minutes"
           ],
@@ -1391,7 +1391,7 @@
           {
             "name": "avg_resolution_minutes",
             "description": "Average synthetic ticket resolution duration",
-            "expression": "AVG(support_ticket.resolution_minutes)",
+            "expression": "AVG(CAST(support_ticket.resolution_minutes AS DECIMAL(38,10)))",
             "unit": "minutes",
             "tableRefs": [
               {
@@ -1545,7 +1545,7 @@
           {
             "question": "What is the average resolution time in minutes?",
             "sqlDialect": "MYSQL",
-            "sql": "SELECT AVG(`resolution_minutes`) AS avg_resolution_minutes FROM `nla_synthetic`.`support_ticket`",
+            "sql": "SELECT AVG(CAST(`resolution_minutes` AS DECIMAL(38,10))) AS avg_resolution_minutes FROM `nla_synthetic`.`support_ticket`",
             "selectedMetrics": [
               "avg_resolution_minutes"
             ],
@@ -1565,7 +1565,7 @@
           {
             "question": "Thời gian xử lý trung bình là bao nhiêu phút?",
             "sqlDialect": "MYSQL",
-            "sql": "SELECT AVG(`resolution_minutes`) AS avg_resolution_minutes FROM `nla_synthetic`.`support_ticket`",
+            "sql": "SELECT AVG(CAST(`resolution_minutes` AS DECIMAL(38,10))) AS avg_resolution_minutes FROM `nla_synthetic`.`support_ticket`",
             "selectedMetrics": [
               "avg_resolution_minutes"
             ],
@@ -1717,7 +1717,7 @@
           {
             "question": "What is the average resolution time by category?",
             "sqlDialect": "MYSQL",
-            "sql": "SELECT `category` AS ticket_category, AVG(`resolution_minutes`) AS avg_resolution_minutes FROM `nla_synthetic`.`support_ticket` GROUP BY `category` ORDER BY `category`",
+            "sql": "SELECT `category` AS ticket_category, AVG(CAST(`resolution_minutes` AS DECIMAL(38,10))) AS avg_resolution_minutes FROM `nla_synthetic`.`support_ticket` GROUP BY `category` ORDER BY `category`",
             "selectedMetrics": [
               "avg_resolution_minutes"
             ],
@@ -1740,7 +1740,7 @@
           {
             "question": "Thời gian xử lý trung bình theo danh mục là bao nhiêu?",
             "sqlDialect": "MYSQL",
-            "sql": "SELECT `category` AS ticket_category, AVG(`resolution_minutes`) AS avg_resolution_minutes FROM `nla_synthetic`.`support_ticket` GROUP BY `category` ORDER BY `category`",
+            "sql": "SELECT `category` AS ticket_category, AVG(CAST(`resolution_minutes` AS DECIMAL(38,10))) AS avg_resolution_minutes FROM `nla_synthetic`.`support_ticket` GROUP BY `category` ORDER BY `category`",
             "selectedMetrics": [
               "avg_resolution_minutes"
             ],
@@ -1763,7 +1763,7 @@
           {
             "question": "What is the average resolution time by status?",
             "sqlDialect": "MYSQL",
-            "sql": "SELECT `status` AS ticket_status, AVG(`resolution_minutes`) AS avg_resolution_minutes FROM `nla_synthetic`.`support_ticket` GROUP BY `status` ORDER BY `status`",
+            "sql": "SELECT `status` AS ticket_status, AVG(CAST(`resolution_minutes` AS DECIMAL(38,10))) AS avg_resolution_minutes FROM `nla_synthetic`.`support_ticket` GROUP BY `status` ORDER BY `status`",
             "selectedMetrics": [
               "avg_resolution_minutes"
             ],
@@ -1786,7 +1786,7 @@
           {
             "question": "Thời gian xử lý trung bình theo trạng thái là bao nhiêu?",
             "sqlDialect": "MYSQL",
-            "sql": "SELECT `status` AS ticket_status, AVG(`resolution_minutes`) AS avg_resolution_minutes FROM `nla_synthetic`.`support_ticket` GROUP BY `status` ORDER BY `status`",
+            "sql": "SELECT `status` AS ticket_status, AVG(CAST(`resolution_minutes` AS DECIMAL(38,10))) AS avg_resolution_minutes FROM `nla_synthetic`.`support_ticket` GROUP BY `status` ORDER BY `status`",
             "selectedMetrics": [
               "avg_resolution_minutes"
             ],
@@ -2199,7 +2199,7 @@
         {
           "caseId": "SUP-003-EN",
           "question": "What is the average resolution time in minutes?",
-          "expectedSql": "SELECT AVG(`resolution_minutes`) AS avg_resolution_minutes FROM `nla_synthetic`.`support_ticket`",
+          "expectedSql": "SELECT AVG(CAST(`resolution_minutes` AS DECIMAL(38,10))) AS avg_resolution_minutes FROM `nla_synthetic`.`support_ticket`",
           "selectedMetrics": [
             "avg_resolution_minutes"
           ],
@@ -2212,7 +2212,7 @@
         {
           "caseId": "SUP-003-VI",
           "question": "Thời gian xử lý trung bình là bao nhiêu phút?",
-          "expectedSql": "SELECT AVG(`resolution_minutes`) AS avg_resolution_minutes FROM `nla_synthetic`.`support_ticket`",
+          "expectedSql": "SELECT AVG(CAST(`resolution_minutes` AS DECIMAL(38,10))) AS avg_resolution_minutes FROM `nla_synthetic`.`support_ticket`",
           "selectedMetrics": [
             "avg_resolution_minutes"
           ],
@@ -2343,7 +2343,7 @@
         {
           "caseId": "SUP-007-EN",
           "question": "What is the average resolution time by category?",
-          "expectedSql": "SELECT `category` AS ticket_category, AVG(`resolution_minutes`) AS avg_resolution_minutes FROM `nla_synthetic`.`support_ticket` GROUP BY `category` ORDER BY `category`",
+          "expectedSql": "SELECT `category` AS ticket_category, AVG(CAST(`resolution_minutes` AS DECIMAL(38,10))) AS avg_resolution_minutes FROM `nla_synthetic`.`support_ticket` GROUP BY `category` ORDER BY `category`",
           "selectedMetrics": [
             "avg_resolution_minutes"
           ],
@@ -2358,7 +2358,7 @@
         {
           "caseId": "SUP-007-VI",
           "question": "Thời gian xử lý trung bình theo danh mục là bao nhiêu?",
-          "expectedSql": "SELECT `category` AS ticket_category, AVG(`resolution_minutes`) AS avg_resolution_minutes FROM `nla_synthetic`.`support_ticket` GROUP BY `category` ORDER BY `category`",
+          "expectedSql": "SELECT `category` AS ticket_category, AVG(CAST(`resolution_minutes` AS DECIMAL(38,10))) AS avg_resolution_minutes FROM `nla_synthetic`.`support_ticket` GROUP BY `category` ORDER BY `category`",
           "selectedMetrics": [
             "avg_resolution_minutes"
           ],
@@ -2373,7 +2373,7 @@
         {
           "caseId": "SUP-008-EN",
           "question": "What is the average resolution time by status?",
-          "expectedSql": "SELECT `status` AS ticket_status, AVG(`resolution_minutes`) AS avg_resolution_minutes FROM `nla_synthetic`.`support_ticket` GROUP BY `status` ORDER BY `status`",
+          "expectedSql": "SELECT `status` AS ticket_status, AVG(CAST(`resolution_minutes` AS DECIMAL(38,10))) AS avg_resolution_minutes FROM `nla_synthetic`.`support_ticket` GROUP BY `status` ORDER BY `status`",
           "selectedMetrics": [
             "avg_resolution_minutes"
           ],
@@ -2388,7 +2388,7 @@
         {
           "caseId": "SUP-008-VI",
           "question": "Thời gian xử lý trung bình theo trạng thái là bao nhiêu?",
-          "expectedSql": "SELECT `status` AS ticket_status, AVG(`resolution_minutes`) AS avg_resolution_minutes FROM `nla_synthetic`.`support_ticket` GROUP BY `status` ORDER BY `status`",
+          "expectedSql": "SELECT `status` AS ticket_status, AVG(CAST(`resolution_minutes` AS DECIMAL(38,10))) AS avg_resolution_minutes FROM `nla_synthetic`.`support_ticket` GROUP BY `status` ORDER BY `status`",
           "selectedMetrics": [
             "avg_resolution_minutes"
           ],
@@ -2693,7 +2693,7 @@
           {
             "name": "avg_resolution_minutes",
             "description": "Average synthetic ticket resolution duration",
-            "expression": "AVG(support_ticket.resolution_minutes)",
+            "expression": "AVG(CAST(support_ticket.resolution_minutes AS DECIMAL(38,10)))",
             "unit": "minutes",
             "tableRefs": [
               {
@@ -2847,7 +2847,7 @@
           {
             "question": "What is the average resolution time in minutes?",
             "sqlDialect": "SQL_SERVER",
-            "sql": "SELECT AVG([resolution_minutes]) AS avg_resolution_minutes FROM [dbo].[support_ticket]",
+            "sql": "SELECT AVG(CAST([resolution_minutes] AS DECIMAL(38,10))) AS avg_resolution_minutes FROM [dbo].[support_ticket]",
             "selectedMetrics": [
               "avg_resolution_minutes"
             ],
@@ -2867,7 +2867,7 @@
           {
             "question": "Thời gian xử lý trung bình là bao nhiêu phút?",
             "sqlDialect": "SQL_SERVER",
-            "sql": "SELECT AVG([resolution_minutes]) AS avg_resolution_minutes FROM [dbo].[support_ticket]",
+            "sql": "SELECT AVG(CAST([resolution_minutes] AS DECIMAL(38,10))) AS avg_resolution_minutes FROM [dbo].[support_ticket]",
             "selectedMetrics": [
               "avg_resolution_minutes"
             ],
@@ -3019,7 +3019,7 @@
           {
             "question": "What is the average resolution time by category?",
             "sqlDialect": "SQL_SERVER",
-            "sql": "SELECT [category] AS ticket_category, AVG([resolution_minutes]) AS avg_resolution_minutes FROM [dbo].[support_ticket] GROUP BY [category] ORDER BY [category]",
+            "sql": "SELECT [category] AS ticket_category, AVG(CAST([resolution_minutes] AS DECIMAL(38,10))) AS avg_resolution_minutes FROM [dbo].[support_ticket] GROUP BY [category] ORDER BY [category]",
             "selectedMetrics": [
               "avg_resolution_minutes"
             ],
@@ -3042,7 +3042,7 @@
           {
             "question": "Thời gian xử lý trung bình theo danh mục là bao nhiêu?",
             "sqlDialect": "SQL_SERVER",
-            "sql": "SELECT [category] AS ticket_category, AVG([resolution_minutes]) AS avg_resolution_minutes FROM [dbo].[support_ticket] GROUP BY [category] ORDER BY [category]",
+            "sql": "SELECT [category] AS ticket_category, AVG(CAST([resolution_minutes] AS DECIMAL(38,10))) AS avg_resolution_minutes FROM [dbo].[support_ticket] GROUP BY [category] ORDER BY [category]",
             "selectedMetrics": [
               "avg_resolution_minutes"
             ],
@@ -3065,7 +3065,7 @@
           {
             "question": "What is the average resolution time by status?",
             "sqlDialect": "SQL_SERVER",
-            "sql": "SELECT [status] AS ticket_status, AVG([resolution_minutes]) AS avg_resolution_minutes FROM [dbo].[support_ticket] GROUP BY [status] ORDER BY [status]",
+            "sql": "SELECT [status] AS ticket_status, AVG(CAST([resolution_minutes] AS DECIMAL(38,10))) AS avg_resolution_minutes FROM [dbo].[support_ticket] GROUP BY [status] ORDER BY [status]",
             "selectedMetrics": [
               "avg_resolution_minutes"
             ],
@@ -3088,7 +3088,7 @@
           {
             "question": "Thời gian xử lý trung bình theo trạng thái là bao nhiêu?",
             "sqlDialect": "SQL_SERVER",
-            "sql": "SELECT [status] AS ticket_status, AVG([resolution_minutes]) AS avg_resolution_minutes FROM [dbo].[support_ticket] GROUP BY [status] ORDER BY [status]",
+            "sql": "SELECT [status] AS ticket_status, AVG(CAST([resolution_minutes] AS DECIMAL(38,10))) AS avg_resolution_minutes FROM [dbo].[support_ticket] GROUP BY [status] ORDER BY [status]",
             "selectedMetrics": [
               "avg_resolution_minutes"
             ],
@@ -3501,7 +3501,7 @@
         {
           "caseId": "SUP-003-EN",
           "question": "What is the average resolution time in minutes?",
-          "expectedSql": "SELECT AVG([resolution_minutes]) AS avg_resolution_minutes FROM [dbo].[support_ticket]",
+          "expectedSql": "SELECT AVG(CAST([resolution_minutes] AS DECIMAL(38,10))) AS avg_resolution_minutes FROM [dbo].[support_ticket]",
           "selectedMetrics": [
             "avg_resolution_minutes"
           ],
@@ -3514,7 +3514,7 @@
         {
           "caseId": "SUP-003-VI",
           "question": "Thời gian xử lý trung bình là bao nhiêu phút?",
-          "expectedSql": "SELECT AVG([resolution_minutes]) AS avg_resolution_minutes FROM [dbo].[support_ticket]",
+          "expectedSql": "SELECT AVG(CAST([resolution_minutes] AS DECIMAL(38,10))) AS avg_resolution_minutes FROM [dbo].[support_ticket]",
           "selectedMetrics": [
             "avg_resolution_minutes"
           ],
@@ -3645,7 +3645,7 @@
         {
           "caseId": "SUP-007-EN",
           "question": "What is the average resolution time by category?",
-          "expectedSql": "SELECT [category] AS ticket_category, AVG([resolution_minutes]) AS avg_resolution_minutes FROM [dbo].[support_ticket] GROUP BY [category] ORDER BY [category]",
+          "expectedSql": "SELECT [category] AS ticket_category, AVG(CAST([resolution_minutes] AS DECIMAL(38,10))) AS avg_resolution_minutes FROM [dbo].[support_ticket] GROUP BY [category] ORDER BY [category]",
           "selectedMetrics": [
             "avg_resolution_minutes"
           ],
@@ -3660,7 +3660,7 @@
         {
           "caseId": "SUP-007-VI",
           "question": "Thời gian xử lý trung bình theo danh mục là bao nhiêu?",
-          "expectedSql": "SELECT [category] AS ticket_category, AVG([resolution_minutes]) AS avg_resolution_minutes FROM [dbo].[support_ticket] GROUP BY [category] ORDER BY [category]",
+          "expectedSql": "SELECT [category] AS ticket_category, AVG(CAST([resolution_minutes] AS DECIMAL(38,10))) AS avg_resolution_minutes FROM [dbo].[support_ticket] GROUP BY [category] ORDER BY [category]",
           "selectedMetrics": [
             "avg_resolution_minutes"
           ],
@@ -3675,7 +3675,7 @@
         {
           "caseId": "SUP-008-EN",
           "question": "What is the average resolution time by status?",
-          "expectedSql": "SELECT [status] AS ticket_status, AVG([resolution_minutes]) AS avg_resolution_minutes FROM [dbo].[support_ticket] GROUP BY [status] ORDER BY [status]",
+          "expectedSql": "SELECT [status] AS ticket_status, AVG(CAST([resolution_minutes] AS DECIMAL(38,10))) AS avg_resolution_minutes FROM [dbo].[support_ticket] GROUP BY [status] ORDER BY [status]",
           "selectedMetrics": [
             "avg_resolution_minutes"
           ],
@@ -3690,7 +3690,7 @@
         {
           "caseId": "SUP-008-VI",
           "question": "Thời gian xử lý trung bình theo trạng thái là bao nhiêu?",
-          "expectedSql": "SELECT [status] AS ticket_status, AVG([resolution_minutes]) AS avg_resolution_minutes FROM [dbo].[support_ticket] GROUP BY [status] ORDER BY [status]",
+          "expectedSql": "SELECT [status] AS ticket_status, AVG(CAST([resolution_minutes] AS DECIMAL(38,10))) AS avg_resolution_minutes FROM [dbo].[support_ticket] GROUP BY [status] ORDER BY [status]",
           "selectedMetrics": [
             "avg_resolution_minutes"
           ],

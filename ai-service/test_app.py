@@ -1,12 +1,23 @@
 import json
 import os
+import re
 from pathlib import Path
 
 import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from app import Candidate, Context, DeterministicModelClient, Input, SemanticContextSelector, app
+from app import (
+    Candidate,
+    Context,
+    DeterministicModelClient,
+    Input,
+    SemanticContextSelector,
+    app,
+    normalize,
+    serialize_provider_payload,
+)
+from context_index import cached_snapshot_count, clear_schema_index_cache
 
 ROOT = Path(__file__).resolve().parents[1]
 TOKEN = "test-service-secret-token-with-minimum-32-characters"
@@ -36,6 +47,25 @@ def payload(engine="POSTGRESQL"):
     for dimension in ctx["dimensions"]:
         key = (dimension["table"]["schema"], dimension["table"]["name"])
         tables.setdefault(key, set()).add(dimension["column"])
+    identifier = r'(?:"[^"]+"|`[^`]+`|\[[^\]]+\]|[A-Za-z_][A-Za-z0-9_$#]*)'
+    table_pattern = re.compile(
+        rf"\b(?:FROM|JOIN)\s+(?:({identifier})\s*\.\s*)?({identifier})",
+        re.IGNORECASE,
+    )
+
+    def unquote(identifier_value):
+        if identifier_value[0] in {'"', "`"}:
+            return identifier_value[1:-1]
+        if identifier_value[0] == "[":
+            return identifier_value[1:-1]
+        return identifier_value
+
+    default_schema = "dbo" if engine == "SQL_SERVER" else "public"
+    for example in ctx["examples"]:
+        for match in table_pattern.finditer(example["sql"]):
+            schema = unquote(match.group(1)) if match.group(1) else default_schema
+            name = unquote(match.group(2))
+            tables.setdefault((schema, name), set())
     for schema, name in tables:
         tables[(schema, name)].add("track_id")
     ctx["tables"] = [
@@ -147,9 +177,58 @@ def test_invalid_mode(client):
 
 
 def test_budget_rejects_incomplete_context(monkeypatch):
-    monkeypatch.setenv("LLM_CONTEXT_CHARS", "100")
+    monkeypatch.setenv("LLM_REQUEST_MAX_BYTES", "100")
     with pytest.raises(Exception):
         SemanticContextSelector().select(Input.model_validate(payload()))
+
+
+@pytest.mark.parametrize("domain", ["chinook", "synthetic-support"])
+def test_retrieval_reduces_serialized_prompt_vs_previous_selector(domain):
+    if domain == "chinook":
+        body = payload()
+        body["question"] = "Tổng doanh số theo quốc gia thanh toán?"
+    else:
+        definition = json.loads(
+            (ROOT / "ai-service/evaluation/synthetic-support.json").read_text()
+        )["dialects"]["POSTGRESQL"]["semanticContext"]
+        body = {
+            "correlationId": "retrieval-benchmark",
+            "warehouseId": "warehouse-test",
+            "datasetId": "dataset-test",
+            "sqlDialect": "POSTGRESQL",
+            "question": "Thời gian xử lý trung bình theo danh mục là bao nhiêu?",
+            "semanticContext": definition,
+        }
+    request = Input.model_validate(body)
+
+    # Reproduce the previous production selector's same-dialect top-eight few-shot
+    # behavior for these under-budget snapshots, then serialize its actual HTTP body.
+    previous_context = request.semanticContext.model_dump(by_alias=True)
+    question_terms = set(re.findall(r"\w+", normalize(request.question)))
+
+    def previous_relevance(example):
+        example_terms = set(re.findall(r"\w+", normalize(json.dumps(example, ensure_ascii=False))))
+        return len(question_terms & example_terms)
+
+    previous_context["examples"] = sorted(
+        [
+            example
+            for example in previous_context["examples"]
+            if example["sqlDialect"] == request.sqlDialect
+        ],
+        key=previous_relevance,
+        reverse=True,
+    )[:8]
+    previous_body = serialize_provider_payload(request, previous_context, "benchmark-model")
+
+    selected_context = SemanticContextSelector().select(request)
+    selected_body = serialize_provider_payload(request, selected_context, "benchmark-model")
+
+    assert len(selected_body) < len(previous_body)
+    assert len(selected_context["examples"]) <= 5
+    assert all(
+        example["sqlDialect"] == request.sqlDialect for example in selected_context["examples"]
+    )
 
 
 @pytest.mark.parametrize("engine", ["POSTGRESQL", "MYSQL", "SQL_SERVER"])
@@ -236,6 +315,235 @@ def test_provider_api_returns_strict_candidate(client, monkeypatch):
     )
     assert response.status_code == 200, response.text
     assert response.json()["model"] == "configured-test-model"
+
+
+def test_provider_boundary_compacts_same_snapshot_without_losing_join_context(
+    client,
+    monkeypatch,
+):
+    body = payload()
+    context = body["semanticContext"]
+    body["question"] = "Tổng doanh số theo tên bản nhạc?"
+    invoice = next(table for table in context["tables"] if table["name"] == "invoice")
+    track = next(table for table in context["tables"] if table["name"] == "track")
+    for table, logical_name, grain in (
+        (invoice, "Invoice", "One row per invoice"),
+        (track, "Track", "One row per track"),
+    ):
+        table.update(
+            logicalName=logical_name,
+            description=f"Physical source for {logical_name.lower()} analytics",
+            grain=grain,
+            primaryKey=[table["columns"][0]["name"]],
+        )
+        for column in table["columns"]:
+            column.update(nullable=None, description="Source column", synonyms=[column["name"]])
+
+    invoice_line = {
+        "schema": "public",
+        "name": "invoice_line",
+        "logicalName": "Invoice line",
+        "description": "Bridge from invoices to tracks",
+        "grain": "One row per invoice line",
+        "columns": [
+            {
+                "name": "invoice_id",
+                "dataType": "INTEGER",
+                "nullable": False,
+                "description": "Invoice key",
+                "synonyms": ["invoice"],
+            },
+            {
+                "name": "track_id",
+                "dataType": "INTEGER",
+                "nullable": None,
+                "description": "Track key",
+                "synonyms": ["song"],
+            },
+        ],
+    }
+    existing_invoice_line = next(
+        (table for table in context["tables"] if table["name"] == "invoice_line"),
+        None,
+    )
+    if existing_invoice_line is None:
+        context["tables"].append(invoice_line)
+    else:
+        existing_columns = {column["name"] for column in existing_invoice_line["columns"]}
+        existing_invoice_line["columns"].extend(
+            column for column in invoice_line["columns"] if column["name"] not in existing_columns
+        )
+    next(metric for metric in context["metrics"] if metric["name"] == "total_sales")[
+        "compatibleDimensions"
+    ].append("track_name")
+    context["relationships"] = [
+        {
+            "from": {"table": {"schema": "public", "name": "invoice"}, "column": "track_id"},
+            "to": {
+                "table": {"schema": "public", "name": "invoice_line"},
+                "column": "invoice_id",
+            },
+            "cardinality": "ONE_TO_MANY",
+        },
+        {
+            "from": {
+                "table": {"schema": "public", "name": "invoice_line"},
+                "column": "track_id",
+            },
+            "to": {"table": {"schema": "public", "name": "track"}, "column": "track_id"},
+            "cardinality": "MANY_TO_ONE",
+        },
+    ]
+    for table_number in range(40):
+        context["tables"].append(
+            {
+                "schema": "unrelated",
+                "name": f"archive_{table_number}",
+                "logicalName": f"Historical logistics batch {table_number}",
+                "description": "Unrelated archival inventory and shipment records",
+                "grain": "One row per historical shipment event",
+                "columns": [
+                    {
+                        "name": f"shipment_attribute_{column_number}",
+                        "dataType": "VARCHAR",
+                        "nullable": True,
+                        "description": "Unrelated shipment metadata",
+                        "synonyms": ["inventory", "shipment"],
+                    }
+                    for column_number in range(30)
+                ],
+            }
+        )
+
+    monkeypatch.setenv("LLM_MODEL", "configured-test-model")
+    monkeypatch.setenv("LLM_BASE_URL", "https://llm.example.test/v1")
+    monkeypatch.setenv("LLM_API_KEY", "provider-test-secret")
+    request = Input.model_validate(body)
+    complete_body = serialize_provider_payload(
+        request,
+        context,
+        "configured-test-model",
+    )
+
+    monkeypatch.setenv("LLM_REQUEST_MAX_BYTES", "25000")
+    selected = SemanticContextSelector().select(request)
+    selected_body = serialize_provider_payload(request, selected, "configured-test-model")
+    assert len(selected_body) < len(complete_body) * 0.1
+    assert {table["name"] for table in selected["tables"]} == {
+        "invoice",
+        "track",
+        "invoice_line",
+    }
+    selected_tables = {(table["schema"], table["name"]): table for table in selected["tables"]}
+    assert selected_tables[("public", "invoice")]["logicalName"] == "Invoice"
+    assert selected_tables[("public", "invoice")]["grain"] == "One row per invoice"
+    assert selected_tables[("public", "invoice")]["columns"][0]["nullable"] is None
+    assert len(selected_tables[("public", "invoice")]["columns"]) == len(invoice["columns"])
+    assert len(selected["relationships"]) == 2
+
+    observed_request: list[bytes] = []
+
+    def handler(provider_request):
+        observed_request.append(provider_request.content)
+        return httpx.Response(200, json=provider_response())
+
+    app.state.provider_transport = httpx.MockTransport(handler)
+    response = client.post(
+        "/internal/v1/text-to-sql",
+        json=body,
+        headers=headers("API"),
+    )
+    assert response.status_code == 200, response.text
+    assert len(observed_request) == 1
+    assert observed_request[0] == selected_body
+    assert len(observed_request[0]) <= 25000
+
+
+def test_context_cache_reuses_structure_but_sends_fresh_reference_time(client, monkeypatch):
+    clear_schema_index_cache()
+    body = payload()
+    body["question"] = "How many tracks?"
+    monkeypatch.setenv("LLM_MODEL", "configured-test-model")
+    monkeypatch.setenv("LLM_BASE_URL", "https://llm.example.test/v1")
+    monkeypatch.setenv("LLM_API_KEY", "provider-test-secret")
+    observed_times = []
+
+    def handler(provider_request):
+        payload_sent = json.loads(provider_request.content)
+        user_message = json.loads(payload_sent["messages"][1]["content"])
+        observed_times.append(user_message["semanticContext"]["referenceTime"])
+        return httpx.Response(200, json=provider_response())
+
+    app.state.provider_transport = httpx.MockTransport(handler)
+    first_time = "2026-10-20T12:00:00Z"
+    second_time = "2026-10-20T12:01:00Z"
+    for reference_time in (first_time, second_time):
+        body["semanticContext"]["referenceTime"] = reference_time
+        response = client.post(
+            "/internal/v1/text-to-sql",
+            json=body,
+            headers=headers("API"),
+        )
+        assert response.status_code == 200, response.text
+
+    assert cached_snapshot_count() == 1
+    assert observed_times == [first_time, second_time]
+
+
+def test_selected_examples_keep_sql_physical_dependencies_without_semantic_tags():
+    body = payload()
+    context = body["semanticContext"]
+    context["examples"] = [
+        {
+            "question": "How much invoice revenue by customer?",
+            "sqlDialect": "POSTGRESQL",
+            "sql": (
+                "SELECT c.customer_id, SUM(i.total) AS revenue "
+                'FROM "public"."invoice" i '
+                'JOIN "public"."customer" c ON c.customer_id = i.customer_id '
+                "GROUP BY c.customer_id"
+            ),
+            "selectedMetrics": [],
+            "selectedDimensions": [],
+        }
+    ]
+    body["question"] = "How much invoice revenue by customer?"
+    for table_name in ("invoice", "customer"):
+        table = next(table for table in context["tables"] if table["name"] == table_name)
+        if "customer_id" not in {column["name"] for column in table["columns"]}:
+            table["columns"].append({"name": "customer_id", "dataType": "INTEGER"})
+    context["relationships"] = [
+        {
+            "from": {
+                "table": {"schema": "public", "name": "invoice"},
+                "column": "customer_id",
+            },
+            "to": {
+                "table": {"schema": "public", "name": "customer"},
+                "column": "customer_id",
+            },
+            "cardinality": "MANY_TO_ONE",
+        }
+    ]
+    request = Input.model_validate(body)
+    selected = SemanticContextSelector().select(request)
+    assert {(table["schema"], table["name"]) for table in selected["tables"]} == {
+        ("public", "invoice"),
+        ("public", "customer"),
+    }
+    assert len(selected["relationships"]) == 1
+
+
+def test_single_table_exact_example_does_not_pull_in_partial_name_matches():
+    body = payload()
+    body["question"] = "Có bao nhiêu bản ghi trong bảng invoice?"
+    request = Input.model_validate(body)
+    selected = SemanticContextSelector().select(request)
+    assert {(table["schema"], table["name"]) for table in selected["tables"]} == {
+        ("public", "invoice")
+    }
+    assert selected["metrics"] == []
+    assert selected["dimensions"] == []
 
 
 @pytest.mark.parametrize(
