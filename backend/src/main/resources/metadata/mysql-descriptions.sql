@@ -1,0 +1,18 @@
+-- Copyright 2025 Google LLC
+-- Licensed under the Apache License, Version 2.0. See third_party/data-tool-runtime/LICENSE.
+-- Modified for NLA: narrow description-only, schema-bound, bounded JDBC discovery.
+WITH table_info AS (
+    SELECT TABLE_SCHEMA, TABLE_NAME, TABLE_TYPE, TABLE_COMMENT
+    FROM INFORMATION_SCHEMA.TABLES
+    WHERE TABLE_SCHEMA = ? AND TABLE_TYPE IN ('BASE TABLE', 'VIEW')
+)
+SELECT T.TABLE_NAME AS table_name, CAST(NULL AS CHAR(64)) AS column_name,
+       LEFT(T.TABLE_COMMENT, 4000) AS description
+FROM table_info T
+WHERE T.TABLE_TYPE = 'BASE TABLE' AND T.TABLE_COMMENT IS NOT NULL AND T.TABLE_COMMENT <> ''
+UNION ALL
+SELECT C.TABLE_NAME AS table_name, C.COLUMN_NAME AS column_name,
+       LEFT(C.COLUMN_COMMENT, 4000) AS description
+FROM INFORMATION_SCHEMA.COLUMNS C
+JOIN table_info T ON C.TABLE_SCHEMA = T.TABLE_SCHEMA AND C.TABLE_NAME = T.TABLE_NAME
+WHERE C.COLUMN_COMMENT IS NOT NULL AND C.COLUMN_COMMENT <> ''

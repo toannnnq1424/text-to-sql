@@ -16,7 +16,7 @@ Java validate token, role và resource-level authorization mọi registry/query/
 
 ## Credentials và logs
 
-Credential reference trỏ secret provider/env binding, không secret trực tiếp trong DTO/log. Query reader khác ingestion writer và provisioning admin. Python không nhận reader/writer credentials. Log correlationId + safe metadata, không API key, token, connection string password, raw provider body hoặc data row nhạy cảm. Question/SQL có thể chứa nội dung nhạy cảm: audit truy cập có hạn quyền, retention policy và redaction, không log tràn toàn bộ mặc định.
+Credential reference trỏ secret provider/env binding, không secret trực tiếp trong DTO/log. Query reader khác ingestion writer, SQL Import writer và provisioning admin. Python không nhận reader/writer credentials. SQL Import writer chỉ có quyền tạo/đọc/chèn và tạo index/khóa ngoại cần thiết trong namespace import riêng (`nla_import`); không có write grant trên source tables. MySQL ánh xạ namespace này thành database/catalog riêng; PostgreSQL/SQL Server dùng schema riêng trong target database. Ingestion writer chỉ được đọc source objects đã đăng ký và ghi bốn lớp raw/staging/warehouse/mart được cấu hình. Log correlationId + safe metadata, không API key, token, connection string password, raw provider body hoặc data row nhạy cảm. Question/SQL có thể chứa nội dung nhạy cảm: audit truy cập có hạn quyền, retention policy và redaction, không log tràn toàn bộ mặc định.
 
 ## Semantic/AI/UI
 

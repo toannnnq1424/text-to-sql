@@ -1,6 +1,6 @@
 # Quy trình đóng góp
 
-Đọc AGENTS.md, [implementation-rules.md](docs/implementation-rules.md) và role tương ứng trước khi làm. Repository hiện là bộ tài liệu chuẩn bị; chỉ tạo app code khi được giao task triển khai.
+Đọc AGENTS.md, [implementation-rules.md](docs/implementation-rules.md), acceptance và role tương ứng trước khi làm. Repository có ứng dụng React, Spring Boot, Python AI service, data provisioning và Docker Compose; thay đổi runtime phải kiểm tra caller thật trong phạm vi được giao.
 
 - Nhánh công việc dùng `module/<scope>`. Mỗi task nêu ownership, contract baseline, acceptance.
 - Shared API/model/schema changes cần cập nhật docs/contracts + fixtures + impacted role notes cùng PR trước khi consumers lệ thuộc; không duy trì ba contract riêng.

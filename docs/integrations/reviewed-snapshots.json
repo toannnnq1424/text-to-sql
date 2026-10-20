@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Snapshot review identity and selected runtime reuse; exact adopted modules and limitations are referenced per project.",
+  "sourceCommitStatus": "No Git metadata found in downloaded directories; commit IDs are not inferred from main directory names.",
+  "projects": [
+    {
+      "role": "semantic-engine",
+      "localDirectoryName": "wren-engine-main",
+      "reportedUpstream": "https://github.com/Canner/wren-engine",
+      "snapshotFileCount": 1234,
+      "snapshotBytes": 37582485,
+      "inventorySha256": "d8b0e97519a41e62a2859e7c2d6d66a9c0680a341178072e1c81a8ba0d039d42",
+      "inventoryDefinition": "SHA-256 of UTF-8 compact sorted-key JSON list of {path,sha256,bytes}, ordered by relative path, regular non-symlink files only.",
+      "reviewedFiles": [
+        {
+          "path": "README.md",
+          "sha256": "79ec8f002e33357700056c533ed8fe3c3c71871510a1afa2b5490c02e034beed",
+          "bytes": 11391
+        },
+        {
+          "path": "LICENSE",
+          "sha256": "3da122eeaedca9b81aa873d2cb090c66eeaa1594e776efab631fbf0d1cebfeed",
+          "bytes": 11342
+        },
+        {
+          "path": "wren/pyproject.toml",
+          "sha256": "df1006babda652dd28380f57e5ddac0a15733a0f5ce57ead1dd9855e9def8a43",
+          "bytes": 2879
+        },
+        {
+          "path": "wren-core-py/pyproject.toml",
+          "sha256": "2ef183ff12db1d9f8439e6007dd22519539782c3705a5310bb3d7281bdef8ef6",
+          "bytes": 4840
+        },
+        {
+          "path": "wren-core/core/Cargo.toml",
+          "sha256": "72a05cdbf3465100a035fd7b2a7ab0e6b9b21be869887f80cc75bf1546d13018",
+          "bytes": 1253
+        },
+        {
+          "path": "ibis-server/pyproject.toml",
+          "sha256": "f2c2125ae1c3fcf746bcefa477cb01fa9943e51e305575a3de5e0ba86260a9ac",
+          "bytes": 6765
+        },
+        {
+          "path": "ibis-server/app/model/data_source.py",
+          "sha256": "25d1c6e9d3ddd31cd3248230c23ac38c7d11147ff6a92a37705cbbc12bdabe8e",
+          "bytes": 22727
+        },
+        {
+          "path": "ibis-server/app/model/metadata/factory.py",
+          "sha256": "3f14525a18e8e8fa58d29284741b79863dc907f1b7a000a7988eb5ad536c0f68",
+          "bytes": 2582
+        },
+        {
+          "path": "mcp-server/README.md",
+          "sha256": "d072ea41cfbfc2cb398ab1ee76febaf0d2f3e52c338b1054a137660369ed6ebf",
+          "bytes": 8783
+        }
+      ],
+      "detectedLicense": "Apache-2.0 at root; dependencies require separate inventory on adoption.",
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "sha256": "3da122eeaedca9b81aa873d2cb090c66eeaa1594e776efab631fbf0d1cebfeed",
+          "bytes": 11342
+        },
+        {
+          "path": "wren-core-wasm/LICENSE",
+          "sha256": "3da122eeaedca9b81aa873d2cb090c66eeaa1594e776efab631fbf0d1cebfeed",
+          "bytes": 11342
+        }
+      ],
+      "runtimeIntegrated": true,
+      "integratedScope": "Dependency-free schema description/index/cache approach adapted into AI context selection and provider request payload; no upstream planner, SDK, vector store or connectors.",
+      "integrationEvidence": "docs/integrations/semantic-context.md"
+    },
+    {
+      "role": "data-tool-runtime",
+      "localDirectoryName": "mcp-toolbox-main",
+      "reportedUpstream": "https://github.com/googleapis/mcp-toolbox",
+      "snapshotFileCount": 2062,
+      "snapshotBytes": 31800274,
+      "inventorySha256": "e3fd6f459aa77346b71c71d035319014d31ca29453c9cfbcbbb5cedd9c07a829",
+      "inventoryDefinition": "SHA-256 of UTF-8 compact sorted-key JSON list of {path,sha256,bytes}, ordered by relative path, regular non-symlink files only.",
+      "reviewedFiles": [
+        {
+          "path": "README.md",
+          "sha256": "4650fc2513fe4d5320779902ee8a331b6a357ae1ab0462e5ce2b5e46a9728be1",
+          "bytes": 33734
+        },
+        {
+          "path": "LICENSE",
+          "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+          "bytes": 11357
+        },
+        {
+          "path": "go.mod",
+          "sha256": "cdff102892ab78fbda85605f86a8c3a35e39920e9cf27c1dc4c7f61575aa7c6d",
+          "bytes": 15117
+        },
+        {
+          "path": "internal/sources/sources.go",
+          "sha256": "02886bd887ac58a8bf03e7c89201c62c8f849622ee83858e89d00ec35a61f42d",
+          "bytes": 2808
+        },
+        {
+          "path": "internal/tools/tools.go",
+          "sha256": "6ec4022ae42428ed691a3b0f1280e8a4681cbf9300935f6ff2a42610895b78a5",
+          "bytes": 12700
+        },
+        {
+          "path": "internal/auth/generic/generic.go",
+          "sha256": "a281e61392c96972dfe7364e5a1a60ce221e215813ecb2a2432b0b78b47df9d9",
+          "bytes": 16343
+        },
+        {
+          "path": "internal/prebuiltconfigs/tools/postgres.yaml",
+          "sha256": "f83fe59d81bd53b69380a5f735368e394a91fdc662681e3aefb224b1ea1852d4",
+          "bytes": 9393
+        }
+      ],
+      "detectedLicense": "Apache-2.0 at root; dependencies require separate inventory on adoption.",
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+          "bytes": 11357
+        }
+      ],
+      "runtimeIntegrated": true,
+      "integratedScope": "Description-only native catalog SQL adapted into Java discovery on PostgreSQL, MySQL and SQL Server; no upstream Go server or arbitrary execution tools.",
+      "integrationEvidence": "docs/integrations/native-metadata.md"
+    }
+  ]
+}

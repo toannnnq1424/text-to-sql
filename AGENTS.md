@@ -8,6 +8,8 @@
 
 Repository đang có frontend, backend, Python AI service, data provisioning, Docker Compose và các bài kiểm chứng. Các prompt gốc là yêu cầu nguồn, không tự phát sinh task ngoài yêu cầu hiện tại. Tiếp tục phát triển theo chỉ đạo người dùng và cập nhật trạng thái sau mỗi commit/push.
 
+Task semantic layer, connector, MCP/data tools hoặc mở rộng nguồn đọc thêm `docs/platform-reuse.md`, `docs/integrations/reviewed-snapshots.json` và `docs/future-connectors.md`. Ưu tiên tái sử dụng implementation phù hợp từ các snapshot đã khảo sát, có provenance/license và tests; không tự viết lại hoặc copy cả repo chỉ để lấy tên connector. Tên sản phẩm/UI dùng branding dự án, giữ notice/attribution bắt buộc trong hồ sơ nguồn. Danh mục connector tương lai không là bằng chứng runtime đã hỗ trợ và không thay target ba engine hiện tại.
+
 ## Thứ tự hiệu lực
 
 1. Yêu cầu trực tiếp và điều chỉnh mới nhất của người dùng.

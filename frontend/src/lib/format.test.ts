@@ -106,6 +106,18 @@ describe("precision and contract boundaries", () => {
     expect(
       WarehouseInputSchema.safeParse({
         ...input,
+        importCredentialReference: "env:WAREHOUSE_IMPORT_WRITER_PASSWORD",
+      }).success,
+    ).toBe(true);
+    expect(
+      WarehouseInputSchema.safeParse({
+        ...input,
+        importCredentialReference: "x".repeat(257),
+      }).success,
+    ).toBe(false);
+    expect(
+      WarehouseInputSchema.safeParse({
+        ...input,
         host: "https://untrusted.example/path",
       }).success,
     ).toBe(false);

@@ -56,6 +56,7 @@ export function apiUrl(path: string, params?: Params) {
 export type RequestOptions = {
   method?: "GET" | "POST" | "PATCH" | "PUT";
   body?: unknown;
+  formData?: FormData;
   params?: Params;
   signal?: AbortSignal;
   timeoutMs?: number;
@@ -112,7 +113,8 @@ async function transport(
     const response = await fetch(apiUrl(path, options.params), {
       method: options.method || "GET",
       body:
-        options.body !== undefined ? JSON.stringify(options.body) : undefined,
+        options.formData ??
+        (options.body !== undefined ? JSON.stringify(options.body) : undefined),
       headers,
       signal: controller.signal,
       credentials: "same-origin",

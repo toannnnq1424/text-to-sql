@@ -11,6 +11,6 @@
 
 `contractVersion=1.0.0` là version tài liệu/fixture, không bắt thêm field vào response Python. `semanticVersion` và `schemaVersion` độc lập, lưu snapshot vào Query. `/api/v1` và `/internal/v1` là namespace API.
 
-Đây là baseline thiết kế, chưa có generated clients hoặc OpenAPI đã chạy. Task C0 cần chuyển các bảng đã chốt thành OpenAPI + JSON Schema strict, validate fixtures, thống nhất auth/limits và cross-check giữa DTO TypeScript/Java/Pydantic trước khi phát triển độc lập. Không chờ code từng service hoàn thành để mới làm contract.
+Baseline này đã có consumers TypeScript/Zod, Java và Pydantic, cùng [OpenAPI của frontend](frontend-openapi.json) được sinh từ schemas tiêu thụ tại runtime. Đây không phải client được generate từ một OpenAPI server duy nhất; các kiểm thử consumer/provider và kiểm tra tích hợp vẫn cần đi kèm mọi thay đổi. OpenAPI không tự chứng minh endpoint hoạt động hoặc security đã nghiệm thu.
 
 Thay đổi breaking phải chỉ ra request/response/fixture nào đổi, bên nào bị ảnh hưởng, sửa mọi role/consumer liên quan và ghi decision. Không ngầm đổi camelCase thành snake_case. Không tạo bản copy contract riêng trong từng service.

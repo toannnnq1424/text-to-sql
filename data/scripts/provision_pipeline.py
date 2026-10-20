@@ -1,32 +1,196 @@
 #!/usr/bin/env python3
-"""Provision dedicated writer and staging/mart tables; never alters Chinook source tables."""
-import json,secrets
-from docker_chinook import ROOT,LOCAL,CONFIG,RUNTIME,init,execute,literal
+"""Provision writer grants and four typed pipeline tables from sample definitions."""
+
+import json
+import secrets
+from typing import Any
+
+from docker_chinook import CONFIG, LOCAL, ROOT, RUNTIME, execute, init, literal
+from pipeline_config import load_sample_pipeline_configs
+
+SQL_TYPES = {
+    "POSTGRESQL": {
+        "INTEGER": "bigint",
+        "DECIMAL": "decimal(38,10)",
+        "BOOLEAN": "boolean",
+        "DATE": "date",
+        "TIMESTAMP": "timestamp",
+    },
+    "MYSQL": {
+        "INTEGER": "bigint",
+        "DECIMAL": "decimal(38,10)",
+        "BOOLEAN": "boolean",
+        "DATE": "date",
+        "TIMESTAMP": "datetime(6)",
+    },
+    "SQL_SERVER": {
+        "INTEGER": "bigint",
+        "DECIMAL": "decimal(38,10)",
+        "BOOLEAN": "bit",
+        "DATE": "date",
+        "TIMESTAMP": "datetime2(7)",
+    },
+}
+
+
+def quote(engine: str, value: str) -> str:
+    if engine == "POSTGRESQL":
+        return f'"{value}"'
+    if engine == "MYSQL":
+        return f"`{value}`"
+    return f"[{value}]"
+
+
+def qualified(engine: str, target: dict[str, str]) -> str:
+    return f"{quote(engine, target['schema'])}.{quote(engine, target['name'])}"
+
+
+def column_type(engine: str, name: str, config: dict[str, Any]) -> str:
+    logical_type = config["columnTypes"][name]
+    if logical_type == "STRING":
+        length = config["maxStringLengths"].get(name)
+        if engine == "POSTGRESQL":
+            return f"varchar({length})" if length else "text"
+        if engine == "MYSQL":
+            return f"varchar({length})" if length else "text"
+        return f"nvarchar({length})" if length else "nvarchar(max)"
+    return SQL_TYPES[engine][logical_type]
+
+
+def table_statement(
+    engine: str,
+    target: dict[str, str],
+    config: dict[str, Any],
+) -> str:
+    definitions = []
+    required = set(config["requiredColumns"])
+    for name in config["columns"]:
+        nullability = " NOT NULL" if name in required else " NULL"
+        definitions.append(
+            f"{quote(engine, name)} {column_type(engine, name, config)}{nullability}"
+        )
+    return f"CREATE TABLE {qualified(engine, target)} ({', '.join(definitions)});"
+
+
+def source_grants(engine: str, config: dict[str, Any]) -> list[str]:
+    statements = []
+    for source in config["sourceObjects"]:
+        statements.append(
+            f"GRANT SELECT ON {qualified(engine, source)} TO "
+            + ("'nla_writer'@'%'" if engine == "MYSQL" else "nla_writer")
+            + ";"
+        )
+    return statements
+
+
+def target_grants(engine: str, config: dict[str, Any]) -> list[str]:
+    names = [qualified(engine, config[key]) for key in ("raw", "stage", "warehouse", "mart")]
+    if engine == "MYSQL":
+        return [f"GRANT SELECT,INSERT,DELETE ON {name} TO 'nla_writer'@'%';" for name in names]
+    return [f"GRANT SELECT, INSERT, DELETE ON {name} TO nla_writer;" for name in names]
+
 
 def provision():
-    values=init()
-    for engine,suffix in [('POSTGRESQL','PG'),('MYSQL','MYSQL'),('SQL_SERVER','MSSQL')]:
-        marker=LOCAL/f'pipeline-{engine}.json'
-        key=f'NLA_PIPELINE_{suffix}_PASSWORD'
+    configs = load_sample_pipeline_configs(ROOT)
+    values = init()
+    engine_suffixes = {
+        "POSTGRESQL": "PG",
+        "MYSQL": "MYSQL",
+        "SQL_SERVER": "MSSQL",
+    }
+    for engine, config in configs.items():
+        marker = LOCAL / f"pipeline-{engine}.json"
+        key = f"NLA_PIPELINE_{engine_suffixes[engine]}_PASSWORD"
         if key not in values:
-            values[key]='Nla_'+secrets.token_urlsafe(27)+'9!'
-            CONFIG.write_text(''.join(f'{k}={v}\n' for k,v in values.items()));CONFIG.chmod(0o600)
+            values[key] = "Nla_" + secrets.token_urlsafe(27) + "9!"
+            CONFIG.write_text("".join(f"{name}={value}\n" for name, value in values.items()))
+            CONFIG.chmod(0o600)
         if not marker.exists():
-            password=literal(values[key]);names=['nla_stage_sales','nla_mart_sales']
-            if engine=='POSTGRESQL':
-                ddl=';'.join(f'CREATE TABLE public.{n}(country varchar(100) PRIMARY KEY,total decimal(18,2) NOT NULL)' for n in names)+';'
-                execute(engine,ddl,'nla_chinook');execute(engine,f'CREATE ROLE nla_writer LOGIN PASSWORD {password} NOSUPERUSER NOCREATEDB NOCREATEROLE;GRANT CONNECT ON DATABASE nla_chinook TO nla_writer;')
-                execute(engine,'GRANT USAGE ON SCHEMA public TO nla_writer;GRANT SELECT ON public.invoice TO nla_writer;GRANT SELECT,INSERT,DELETE ON public.nla_stage_sales,public.nla_mart_sales TO nla_writer;','nla_chinook')
-            elif engine=='MYSQL':
-                execute(engine,';'.join(f'CREATE TABLE `{n}`(country varchar(100) PRIMARY KEY,total decimal(18,2) NOT NULL)' for n in names)+';','nla_chinook')
-                execute(engine,f"CREATE USER 'nla_writer'@'%' IDENTIFIED BY {password};GRANT SELECT ON nla_chinook.Invoice TO 'nla_writer'@'%';"+';'.join(f"GRANT SELECT,INSERT,DELETE ON nla_chinook.{n} TO 'nla_writer'@'%'" for n in names)+';')
+            database = "nla_chinook"
+            execute(
+                engine,
+                "\n".join(
+                    table_statement(engine, config[layer], config)
+                    for layer in ("raw", "stage", "warehouse", "mart")
+                ),
+                database,
+            )
+            password = literal(values[key])
+            if engine == "POSTGRESQL":
+                execute(
+                    engine,
+                    f"CREATE ROLE nla_writer LOGIN PASSWORD {password} "
+                    "NOSUPERUSER NOCREATEDB NOCREATEROLE;"
+                    "\nGRANT CONNECT ON DATABASE nla_chinook TO nla_writer;",
+                )
+                grants = source_grants(engine, config) + target_grants(engine, config)
+                grants.insert(0, "GRANT USAGE ON SCHEMA public TO nla_writer;")
+                execute(engine, "\n".join(grants), database)
+            elif engine == "MYSQL":
+                execute(
+                    engine,
+                    f"CREATE USER 'nla_writer'@'%' IDENTIFIED BY {password};",
+                )
+                execute(
+                    engine,
+                    "\n".join(source_grants(engine, config) + target_grants(engine, config)),
+                    database,
+                )
             else:
-                execute(engine,';'.join(f'CREATE TABLE dbo.[{n}](country nvarchar(100) PRIMARY KEY,total decimal(18,2) NOT NULL)' for n in names)+';\nGO\n','nla_chinook')
-                execute(engine,f'CREATE LOGIN nla_writer WITH PASSWORD={password},CHECK_POLICY=ON;\nGO\n')
-                execute(engine,'CREATE USER nla_writer FOR LOGIN nla_writer; GRANT SELECT ON dbo.Invoice TO nla_writer; GRANT SELECT,INSERT,DELETE ON dbo.nla_stage_sales TO nla_writer; GRANT SELECT,INSERT,DELETE ON dbo.nla_mart_sales TO nla_writer;\nGO\n','nla_chinook')
-            marker.write_text(json.dumps({'engine':engine,'writer':'nla_writer','tables':names})+'\n')
-    runtime=dict(line.split('=',1) for line in RUNTIME.read_text().splitlines())
-    for k,v in values.items():runtime[k]=v
-    RUNTIME.write_text(''.join(f'{k}={v}\n' for k,v in runtime.items()));RUNTIME.chmod(0o600)
-    print('Provisioned dedicated pipeline writers and staging/mart tables on all three engines.')
-if __name__=='__main__':provision()
+                execute(
+                    engine,
+                    f"CREATE LOGIN nla_writer WITH PASSWORD={password},CHECK_POLICY=ON;\nGO\n",
+                )
+                grants = [
+                    "CREATE USER nla_writer FOR LOGIN nla_writer;",
+                    *source_grants(engine, config),
+                    *target_grants(engine, config),
+                    "GO",
+                ]
+                execute(engine, "\n".join(grants), database)
+            marker.write_text(
+                json.dumps(
+                    {
+                        "engine": engine,
+                        "writer": "nla_writer",
+                        "tables": [
+                            config[layer] for layer in ("raw", "stage", "warehouse", "mart")
+                        ],
+                    },
+                    indent=2,
+                )
+                + "\n"
+            )
+        # Existing clones gain missing sample layers without recreating users or overwriting data.
+        for layer in ("raw", "stage", "warehouse", "mart"):
+            target = config[layer]
+            statement = table_statement(engine, target, config)
+            if engine == "SQL_SERVER":
+                statement = (
+                    f"IF OBJECT_ID(N'{target['schema']}.{target['name']}',N'U') IS NULL "
+                    + statement
+                )
+            else:
+                statement = statement.replace("CREATE TABLE ", "CREATE TABLE IF NOT EXISTS ", 1)
+            execute(engine, statement, "nla_chinook")
+        execute(engine, "\n".join(target_grants(engine, config)), "nla_chinook")
+        marker.write_text(
+            json.dumps(
+                {
+                    "engine": engine,
+                    "writer": "nla_writer",
+                    "tables": [config[layer] for layer in ("raw", "stage", "warehouse", "mart")],
+                },
+                indent=2,
+            )
+            + "\n"
+        )
+    runtime = dict(line.split("=", 1) for line in RUNTIME.read_text().splitlines())
+    runtime.update(values)
+    RUNTIME.write_text("".join(f"{name}={value}\n" for name, value in runtime.items()))
+    RUNTIME.chmod(0o600)
+    print("Provisioned configured pipeline writers and typed raw/staging/warehouse/mart tables.")
+
+
+if __name__ == "__main__":
+    provision()

@@ -1,0 +1,47 @@
+{
+  "component": "data-tool-runtime native metadata descriptions",
+  "reportedUpstream": "https://github.com/googleapis/mcp-toolbox",
+  "sourceCommit": null,
+  "sourceCommitStatus": "Downloaded directory has no Git metadata; main is not a commit pin. Source files identified by SHA-256.",
+  "snapshotInventorySha256": "e3fd6f459aa77346b71c71d035319014d31ca29453c9cfbcbbb5cedd9c07a829",
+  "license": "Apache-2.0",
+  "licensePath": "third_party/data-tool-runtime/LICENSE",
+  "licenseSha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+  "copyright": "Copyright 2025 Google LLC",
+  "upstreamNoticeStatus": "No root NOTICE file found in reviewed snapshot. Source copyright and license notices are retained in adapted SQL files.",
+  "sourceFiles": [
+    {
+      "engine": "POSTGRESQL",
+      "sourcePath": "internal/tools/postgres/postgreslisttables/postgreslisttables.go",
+      "sourceSha256": "d6d0d4341ec96a10216090f2eed827d6c5afc327e1736585381063bbe0abc14d",
+      "sourceBytes": 10012,
+      "reusedBehavior": "Native table/column comment catalog joins only; no tool transport, arbitrary SQL, trigger/index/default/owner payload or execution implementation copied."
+    },
+    {
+      "engine": "MYSQL",
+      "sourcePath": "internal/tools/mysql/mysqllisttables/mysqllisttables.go",
+      "sourceSha256": "222f21ef5d734bf9fe948d6ac32c0aed5baa789d7008a9c5434a095a38290e95",
+      "sourceBytes": 12818,
+      "reusedBehavior": "Native table/column comment catalog joins only; no tool transport, arbitrary SQL, trigger/index/default/owner payload or execution implementation copied."
+    },
+    {
+      "engine": "SQL_SERVER",
+      "sourcePath": "internal/tools/mssql/mssqllisttables/mssqllisttables.go",
+      "sourceSha256": "0c7385919c0c2cd140ea777ff4bb3fcd5e64fe1a5f6673df612fef3166d0b20e",
+      "sourceBytes": 18183,
+      "reusedBehavior": "Native table/column comment catalog joins only; no tool transport, arbitrary SQL, trigger/index/default/owner payload or execution implementation copied."
+    }
+  ],
+  "adaptedFiles": [
+    "backend/src/main/resources/metadata/postgresql-descriptions.sql",
+    "backend/src/main/resources/metadata/mysql-descriptions.sql",
+    "backend/src/main/resources/metadata/sql-server-descriptions.sql"
+  ],
+  "modifications": [
+    "Selected description-only native catalog joins; parameterized one selected schema; flattened result shape for JDBC rather than upstream JSON/MCP output.",
+    "Added per-query timeout, row/byte/comment limits; preserve physical JDBC identities/types/keys and merge only existing description fields.",
+    "Added VIEW metadata where applicable; do not interpret MySQL VIEW type marker as a user-authored comment.",
+    "Permission/query failures propagate to existing safe Java error mapping; no arbitrary SQL execution endpoint or additional credentials sent to AI."
+  ],
+  "artifactLicenseDirectory": "META-INF/licenses/data-tool-runtime/ (packaged in the backend JAR and container)"
+}

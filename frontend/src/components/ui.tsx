@@ -108,6 +108,7 @@ export function Badge({ status }: { status: string }) {
     "VALIDATION_ERROR",
     "DISABLED",
     "SKIPPED",
+    "ROLLED_BACK",
   ].includes(status.toUpperCase());
   return (
     <span

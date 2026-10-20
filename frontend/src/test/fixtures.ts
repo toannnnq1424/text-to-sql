@@ -151,6 +151,50 @@ export const source = {
   name: "Registered CSV source",
   type: "CSV",
   status: "ACTIVE",
+  sourceWarehouseId: warehouses[0].warehouseId,
+  sourceDatasetId: datasets[0].datasetId,
+};
+export const ingestionSource = {
+  ...source,
+  warehouseId: warehouses[0].warehouseId,
+  datasetId: datasets[0].datasetId,
+  readSql: "SELECT sale_id AS sale_id FROM analytics.fact_sales",
+  raw: { schema: "analytics", name: "raw_sales" },
+  stage: { schema: "analytics", name: "stage_sales" },
+  warehouse: { schema: "analytics", name: "warehouse_sales" },
+  mart: { schema: "analytics", name: "mart_sales" },
+  columns: ["sale_id"],
+  requiredColumns: ["sale_id"],
+  columnTypes: { sale_id: "INTEGER" },
+  maxStringLengths: {},
+  maxRows: 1000,
+  maxBytes: 5242880,
+  timeoutSeconds: 30,
+  createdAt: "2026-10-19T00:00:00Z",
+  updatedAt: "2026-10-19T00:00:00Z",
+};
+export const sourceTest = {
+  sourceId: source.sourceId,
+  reachable: true,
+  checkedAt: "2026-10-19T00:00:00Z",
+  sourceEngine: "POSTGRESQL",
+  targetEngine: "POSTGRESQL",
+  rowCount: 20,
+  truncated: false,
+  columns: [
+    {
+      name: "sale_id",
+      label: "sale_id",
+      dataType: "INTEGER",
+      semanticRole: "OTHER",
+    },
+  ],
+  targets: [
+    ingestionSource.raw,
+    ingestionSource.stage,
+    ingestionSource.warehouse,
+    ingestionSource.mart,
+  ],
 };
 export const suite = {
   suiteId: "suite-001",

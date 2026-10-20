@@ -5,6 +5,10 @@ server:
     include-message: never
     include-stacktrace: never
 spring:
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 3MB
   application:
     name: natural-language-analytics
   datasource:

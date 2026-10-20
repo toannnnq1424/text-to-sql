@@ -342,10 +342,20 @@ function WarehouseFields({
   const mutation = useMutation({
     mutationFn: async (body: WarehouseInput) => {
       if (!w) return warehouseApi.create(body);
-      const { engine: _, credentialReference, ...update } = body;
+      const {
+        engine: _,
+        credentialReference,
+        importCredentialReference,
+        ingestionCredentialReference,
+        ...update
+      } = body;
       return warehouseApi.update(w.warehouseId, {
         ...update,
         ...(credentialReference ? { credentialReference } : {}),
+        ...(importCredentialReference ? { importCredentialReference } : {}),
+        ...(ingestionCredentialReference
+          ? { ingestionCredentialReference }
+          : {}),
       });
     },
     onSuccess: onSaved,
@@ -362,7 +372,26 @@ function WarehouseFields({
           port: Number(port),
           defaultSchema: String(data.defaultSchema || "") || null,
           credentialReference: String(data.credentialReference || ""),
+          importCredentialReference: String(
+            data.importCredentialReference || "",
+          ),
+          ingestionUsername: String(
+            data.ingestionUsername || w?.ingestionUsername || "",
+          ),
+          ingestionCredentialReference: String(
+            data.ingestionCredentialReference || "",
+          ),
         };
+        if (
+          !w &&
+          Boolean(input.ingestionUsername) !==
+            Boolean(input.ingestionCredentialReference)
+        ) {
+          setError(
+            "Cấu hình pipeline cần cả ingestion writer username và credential reference.",
+          );
+          return;
+        }
         const validation = WarehouseInputSchema.safeParse({
           ...input,
           credentialReference:
@@ -379,9 +408,23 @@ function WarehouseFields({
           return;
         }
         setError("");
+        const {
+          importCredentialReference: _importReference,
+          ingestionCredentialReference: _ingestionReference,
+          ...validInput
+        } = validation.data;
         mutation.mutate({
-          ...validation.data,
+          ...validInput,
           credentialReference: input.credentialReference,
+          ...(input.importCredentialReference
+            ? { importCredentialReference: input.importCredentialReference }
+            : {}),
+          ...(input.ingestionCredentialReference
+            ? {
+                ingestionCredentialReference:
+                  input.ingestionCredentialReference,
+              }
+            : {}),
         });
       }}
     >
@@ -478,10 +521,42 @@ function WarehouseFields({
             autoComplete="off"
           />
         </Field>
+        <Field
+          label="Import writer credential reference (optional)"
+          hint="Chỉ dùng cho SQL Import đã được validate. Nhập env reference như env:WAREHOUSE_IMPORT_WRITER_PASSWORD; không nhập mật khẩu. Để trống để giữ cấu hình hiện tại."
+        >
+          <input
+            name="importCredentialReference"
+            maxLength={256}
+            autoComplete="off"
+          />
+        </Field>
+        <Field
+          label="Ingestion writer username (optional)"
+          hint="Tài khoản riêng có quyền ghi cho pipeline. Có thể khác reader; không dùng credential read-only."
+        >
+          <input
+            name="ingestionUsername"
+            defaultValue={w?.ingestionUsername}
+            maxLength={128}
+            autoComplete="off"
+          />
+        </Field>
+        <Field
+          label="Ingestion writer credential reference (optional)"
+          hint="Tham chiếu env:NAME tới secret được cấu hình trên Java. Không nhập mật khẩu; để trống giữ cấu hình hiện tại."
+        >
+          <input
+            name="ingestionCredentialReference"
+            maxLength={256}
+            autoComplete="off"
+          />
+        </Field>
       </div>
       <Notice>
-        <ShieldCheck size={16} /> App chỉ đăng ký kết nối. Không tạo database
-        hoặc tự chạy file SQL.
+        <ShieldCheck size={16} /> Truy vấn dùng credential read-only. SQL Import
+        cần writer reference riêng và chỉ áp dụng kế hoạch đã được server
+        validate.
       </Notice>
       {error && <Notice tone="error">{error}</Notice>}
       {mutation.error && <ErrorState error={mutation.error} />}
@@ -542,6 +617,7 @@ function WarehouseDetail({ warehouse: w }: { warehouse: Warehouse }) {
           ["Database", w.database],
           ["Default schema", w.defaultSchema],
           ["Username", w.username],
+          ["Ingestion writer username", w.ingestionUsername],
           ["Cập nhật", formatDate(w.updatedAt)],
         ]}
       />

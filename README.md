@@ -2,7 +2,7 @@
 
 Nền tảng Text-to-SQL đa warehouse, đa domain: đặt câu hỏi bằng tiếng Việt/Anh, nhận dữ liệu, biểu đồ, SQL, giải thích và thông tin thực thi.
 
-Repository hiện có frontend React, backend Spring Boot, Python AI service, quy trình nạp Chinook và adapter thực thi cho PostgreSQL, MySQL, SQL Server. Đây là trạng thái đang phát triển, chưa nghiệm thu toàn bộ target. SQL Import trong app, hoàn thiện cấu hình login OIDC, cùng các lỗi UI/data-loading trong [current review](docs/current-review.md) vẫn là scope bắt buộc cần hoàn tất. Import sẽ validate/preview một subset SQL có kiểm soát; app không chạy tùy ý file SQL.
+Repository có frontend React, backend Spring Boot, Python AI service, SQL Import có validate/preview, registry ingestion bốn lớp và thực thi PostgreSQL, MySQL, SQL Server. Đăng nhập OIDC local dùng IdP thật; Docker Compose đóng gói cả ba app services. Các luồng đã kiểm chứng và phần còn thiếu nằm trong [đánh giá hiện tại](docs/project-status.md), [current review](docs/current-review.md) và [work log](docs/work-log.md). Chưa nghiệm thu toàn bộ target hoặc AI provider thật. Import chỉ xử lý subset SQL đã kiểm soát; app không chạy tùy ý file SQL.
 
 ```text
 React → Java Spring Boot → Python AI Service / provider API
@@ -45,6 +45,8 @@ docker compose --env-file .local/compose.env -f infra/compose.databases.yml up -
 
 Provisioning đồng thời tạo metadata store PostgreSQL `nla_metadata` cùng vai trò runtime; pipeline staging/mart được quản trị trong từng engine. Các giá trị đăng nhập không dùng giá trị mẫu cố định như `postgrespassword`; xem file runtime cục bộ nếu cần tích hợp công cụ ngoài repo và không chia sẻ file đó.
 
+Sau khi các database hiện có đã provision, chạy `python3 data/scripts/docker_chinook.py provision-import` để tạo namespace `nla_import` và tài khoản riêng cho SQL Import. Lệnh này không đọc hoặc thực thi file SQL; nó kiểm tra quyền tạo/ghi trong namespace import và từ chối quyền tạo object trong schema/database nguồn Chinook.
+
 Lệnh `up` có thể dùng lại để khởi động lại các container đã provision. Để dừng container mà giữ dữ liệu:
 
 ```bash
@@ -62,6 +64,10 @@ python3 infra/local/run.py ai
 ```
 
 AI service chạy tại `http://127.0.0.1:8000`. Deterministic mode dùng được ngay cho ví dụ semantic đã đăng ký; muốn dùng model API cần cấu hình provider URL/model/key trong môi trường local. Key không đưa vào Git hoặc log.
+
+File cấu hình provider riêng là `.local/compose-app/provider.env`, dùng chung cho Docker và lệnh `infra/local/run.py`. Khi đã có key, sao chép mẫu [infra/provider.env.example](infra/provider.env.example) vào đường dẫn đó nếu chưa có file, rồi điền `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`. Có thể để cả ba trống trong lúc chưa dùng provider. Không đặt key vào `VITE_*`, source code hoặc chat.
+
+Với Docker, chạy lại `python3 infra/local/compose.py up` sau khi đổi file; xem [hướng dẫn Compose](docs/docker-local.md). Với cách chạy trực tiếp, khởi động lại AI và backend bằng các lệnh Quick Start. Launcher chỉ chuyển provider key cho Python; backend nhận tên model để hiển thị, frontend không nhận key. Chưa cấu hình provider thì chọn `DETERMINISTIC` tường minh; chế độ này chỉ khớp semantic examples đã đăng ký, không phải model đã train local.
 
 ### 3. Khởi chạy Backend (Spring Boot)
 
@@ -83,6 +89,48 @@ python3 infra/local/run.py frontend
 ```
 
 Frontend chạy tại `http://localhost:5173`. Chọn một trong ba warehouse đã đăng ký; ví dụ câu hỏi `How many tracks are in the catalog?` trả về 3.503 track từ Chinook.
+
+### 5. Chạy với đăng nhập OIDC thật
+
+Chế độ local ở các bước trên dùng token quản trị riêng cho máy. Để kiểm thử luồng đăng nhập/đăng xuất qua IdP, tạo Keycloak trên Docker rồi chạy lại backend/frontend với cấu hình OIDC:
+
+```bash
+python3 infra/local/oidc.py init
+python3 infra/local/oidc.py up
+python3 infra/local/oidc.py check
+```
+
+Trong hai terminal riêng, sau khi dừng backend/frontend đang chiếm port tương ứng:
+
+```bash
+python3 infra/local/run.py backend --auth oidc
+python3 infra/local/run.py frontend --auth oidc
+```
+
+Mở `http://127.0.0.1:5173` và chọn **Đăng nhập**. Tài khoản và mật khẩu được sinh ngẫu nhiên theo bản clone trong `.local/oidc/accounts.json` (chỉ đọc file trên máy của bạn, không commit/chia sẻ). Tài khoản `nla-admin` có quyền quản trị; `nla-viewer`, `nla-analyst`, `nla-operator` cần resource grant phù hợp trước khi truy cập dataset. Ứng dụng không lưu mật khẩu; đăng nhập dùng authorization code + PKCE qua public client của Keycloak tại `http://127.0.0.1:8180`.
+
+Hướng dẫn cấu hình, giới hạn deployment và kiểm thử thật có trong [OIDC local](docs/oidc-local.md). Kiểm thử không làm gián đoạn app đang chạy có thể dùng backend `8083`, frontend `5175`:
+
+```bash
+python3 infra/local/run.py backend --auth oidc --port 8083
+python3 infra/local/run.py frontend --auth oidc --port 5175 --api-url http://127.0.0.1:8083
+node infra/local/oidc-browser.mjs
+```
+
+Mỗi lệnh chạy service ở terminal riêng; lệnh browser chạy sau khi cả hai đã sẵn sàng. Test dùng Keycloak, React và Java thật; report an toàn ở `.local/oidc-browser-report.json`, không lưu password/token hoặc trace đăng nhập.
+
+### Chạy cả ứng dụng bằng Docker Compose
+
+Lệnh dưới đây thực hiện provisioning Chinook đã pin, khởi động IdP, sinh secret riêng cho app, build ba app images và đăng ký kết nối qua Java API:
+
+```bash
+python3 infra/local/compose.py up
+python3 infra/local/compose.py status
+```
+
+Mở `http://127.0.0.1:4173`, đăng nhập `nla-admin` với mật khẩu riêng trong `.local/oidc/accounts.json`. API Java được bind loopback `http://127.0.0.1:8085/api/v1`; Python chỉ có trong mạng container. Compose dùng metadata database riêng `nla_metadata_compose`, giữ nguyên registry của app host. Các endpoint warehouse được đăng ký bằng hostname/service port Compose, không sửa `localhost` trong code truy vấn.
+
+Build đầu cần tải base images và dependencies. Cần Docker Compose có hỗ trợ `env_file.format: raw` (v2.30+), Python 3.11+ cho script provisioning, cùng tài nguyên cho ba database và bốn app/IdP services. Hướng dẫn provider API, mạng, credential isolation, kiểm thử và dừng service ở [Docker deployment local](docs/docker-local.md). Nếu chưa cấu hình provider, app dùng `DETERMINISTIC` với semantic examples đã đăng ký; đây không phải bằng chứng model AI API thật.
 
 ## Dữ liệu và nguồn
 
@@ -124,10 +172,13 @@ Các test tích hợp cần Docker và database provisioned; test browser live c
 | [Contracts](docs/contracts/README.md) | Domain, API, errors, Java ↔ Python, semantic model |
 | [UI reference](docs/ui-reference.md) | 14 ảnh, routes và tiêu chí thị giác |
 | [Data sources](docs/data-sources.md) | Nguồn do người dùng cung cấp và cách sử dụng |
+| [Platform reuse](docs/platform-reuse.md) | Khảo sát hai bộ nguồn, phần ưu tiên tái sử dụng, ranh giới bảo mật và provenance |
+| [Future connectors](docs/future-connectors.md) | SQL engines, cloud/object storage và file sources theo định hướng mở rộng |
 | [Security](docs/security.md) | SQL, credential, auth, giới hạn thực thi |
+| [OIDC local](docs/oidc-local.md) | Keycloak, login/logout thật, roles/audience và kiểm thử browser |
 | [Acceptance](docs/acceptance.md) | Bằng chứng kiểm chứng |
 | [Current review gaps](docs/current-review.md) | Login, import, UI, source dữ liệu và acceptance đang mở |
 | [Future extensions](docs/future-extensions.md) | Local AI/training và nâng quy mô ngoài scope hiện tại |
 | [Work log](docs/work-log.md) | Nhật ký commit/push và handoff |
 
-Ảnh gốc được phép đưa lên GitHub lưu tại [images](images/README.md). Mã nguồn repository chưa chọn giấy phép phát hành; license của dataset bên thứ ba được ghi riêng.
+Ảnh gốc được phép đưa lên GitHub lưu tại [images](images/README.md). Mã nguồn tự viết của repository chưa chọn giấy phép phát hành; license của dataset và thành phần bên thứ ba được quản lý riêng. Hai bộ nguồn mới đã khảo sát chưa được tích hợp vào runtime; không lấy danh sách connector của chúng làm claim hỗ trợ hiện tại.
