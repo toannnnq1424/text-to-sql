@@ -5,6 +5,8 @@ import json
 import stat
 from pathlib import Path
 
+import pytest
+
 SPEC = importlib.util.spec_from_file_location("local_oidc", Path(__file__).with_name("oidc.py"))
 OIDC = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(OIDC)
@@ -25,6 +27,7 @@ def test_realm_requires_pkce_and_disables_password_and_implicit_grants():
     assert not client["directAccessGrantsEnabled"]
     assert not client["implicitFlowEnabled"]
     assert not client["serviceAccountsEnabled"]
+    assert "basic" in client["defaultClientScopes"]
     assert not document["registrationAllowed"]
     assert all("*" not in redirect for redirect in client["redirectUris"])
     assert {user["realmRoles"][0] for user in document["users"]} == set(OIDC.ROLES)
@@ -56,5 +59,18 @@ def test_initialize_preserves_credentials_and_private_modes(tmp_path, monkeypatc
     for file in configuration.rglob("*"):
         if file.is_file():
             assert stat.S_IMODE(file.stat().st_mode) == 0o600
+    (configuration / "runtime.env").unlink()
     OIDC.initialize()
     assert (configuration / "accounts.json").read_text() == accounts
+    assert (configuration / "runtime.env").read_text() == runtime
+
+
+def test_invalid_accounts_fail_closed_without_overwriting(tmp_path, monkeypatch):
+    configuration = tmp_path / "oidc"
+    configuration.mkdir()
+    accounts = configuration / "accounts.json"
+    accounts.write_text('{"admin": {"password": "invalid"}}')
+    monkeypatch.setattr(OIDC, "CONFIG", configuration)
+    with pytest.raises(SystemExit, match="Local IdP accounts are invalid"):
+        OIDC.initialize()
+    assert accounts.read_text() == '{"admin": {"password": "invalid"}}'

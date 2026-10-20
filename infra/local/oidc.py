@@ -61,7 +61,7 @@ def realm(credentials: dict) -> dict:
                     "pkce.code.challenge.method": "S256",
                     "post.logout.redirect.uris": "##".join(ORIGINS),
                 },
-                "defaultClientScopes": ["web-origins", "profile", "email"],
+                "defaultClientScopes": ["basic", "web-origins", "profile", "email"],
                 "protocolMappers": [
                     {
                         "name": "application-roles",

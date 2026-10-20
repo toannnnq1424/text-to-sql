@@ -37,12 +37,13 @@ python3 infra/local/oidc.py stop
 | Browser public client | `nla-web` — không client secret |
 | Grant | Authorization code, PKCE S256 bắt buộc; implicit/password grants bị tắt |
 | Application roles | `roles` array trong access token và ID token |
+| Principal | `sub` từ default client scope `basic`; browser và Java phải thấy cùng subject |
 | Callback | `/auth/callback`, `/auth/silent-callback` trên từng origin cho phép |
 | Browser origins | `http://localhost:5173`, `http://127.0.0.1:5173`, `http://127.0.0.1:5175` |
 | Logout | Redirect IdP, clear browser session, trở về đúng origin cho phép |
 | Token lifetime | Access token 120 giây cho acceptance renewal/expiry local |
 
-Java validate chữ ký, issuer, expiration và audience. ID token dành cho `nla-web` không phải API access token; gửi nó tới API phải bị từ chối. UI dùng cùng claim `roles` để hiển thị capability, còn Java quyết định quyền của mọi request. Các tài khoản ngoài ADMIN chưa được gán warehouse/dataset grant; role phù hợp không tự động cấp quyền dữ liệu.
+Java validate chữ ký, issuer, expiration, audience và subject không rỗng. Keycloak ánh xạ subject qua default scope `basic`; scope này phải đi kèm `profile`, `email` và `web-origins`, nếu không access token có thể thiếu identity cho phân quyền/audit. ID token dành cho `nla-web` không phải API access token; gửi nó tới API phải bị từ chối. UI dùng cùng claim `roles` để hiển thị capability, còn Java quyết định quyền của mọi request. Các tài khoản ngoài ADMIN chưa được gán warehouse/dataset grant; role phù hợp không tự động cấp quyền dữ liệu.
 
 `run.py --auth oidc` dùng profile `oidc-local`, tắt anonymous local API/token mode và chỉ bind loopback. Profile này chỉ tắt warehouse TLS cho ba database Docker cô lập trên máy; production không dùng profile này. `runtime.env` chỉ có issuer, audience và public client config, không credential. Browser giữ phiên OIDC trong `sessionStorage` theo tab, dùng `oidc-client-ts` cho callback/renewal/logout; Python tiếp tục được bảo vệ bằng service token riêng.
 
@@ -61,7 +62,7 @@ Sau khi Java và React sẵn sàng:
 node infra/local/oidc-browser.mjs
 ```
 
-Test dùng Playwright đã cài trong frontend, đăng nhập bốn tài khoản qua form Keycloak thật và gọi Java thật. Kiểm tra callback, password sai, roles, API 401 khi anonymous/chữ ký sai/audience sai/token hết hạn, API 403 khi thiếu role/resource grant, ADMIN test kết nối warehouse đã đăng ký, automatic token renewal và sign-out ở cả browser/IdP. Test đợi token hết hạn thật (kèm clock-skew của Java), vì vậy mất vài phút. Không bật trace/video hoặc log request body; report chỉ có kết quả kiểm tra, không password/token/user claims.
+Test dùng Playwright đã cài trong frontend, đăng nhập bốn tài khoản qua form Keycloak thật và gọi Java thật. Kiểm tra callback, password sai, roles, API 401 khi anonymous/chữ ký sai/audience sai/token hết hạn, API 403 khi thiếu role/resource grant, ADMIN test kết nối warehouse đã đăng ký, automatic token renewal và sign-out ở cả browser/IdP. Kiểm tra âm tạo public client tạm trong IdP local, nhận token được ký thật nhưng không có `sub`, xác nhận Java từ chối 401 rồi xóa client tạm. Test đợi token hết hạn thật (kèm clock-skew của Java), vì vậy mất vài phút. Không bật trace/video hoặc log request body; report chỉ có kết quả kiểm tra, không password/token/user claims.
 
 Report: `.local/oidc-browser-report.json`; biến `OIDC_TEST_APP_URL`/`OIDC_TEST_API_URL` có thể thay URL test, nhưng origin redirect phải được đăng ký trước tại IdP. Unit tests cấu hình: `python -m pytest infra/local/test_oidc.py`. Evidence thực tế và giới hạn commit xem [work log](work-log.md).
 

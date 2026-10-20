@@ -101,16 +101,6 @@ Các entry triển khai tiếp theo thêm phía dưới; không đánh dấu FE/
 - Việc tiếp nối: cập nhật PR #2 và tiếp tục triển khai các workflow bắt buộc; code style không thay thế acceptance chức năng.
 - Commit/push: entry này đi cùng commit; SHA remote xác minh sau push.
 
-### 2026-10-20 15:38 UTC+07 — Runtime OIDC / subagent runtime_auth
-- Nhánh / commit subject: `module/runtime-auth`; `feat: add reproducible local OIDC identity provider`.
-- Phạm vi: Keycloak Docker local, realm/public client/role/audience mapping, private credential generation, launcher/profile OIDC, README/OIDC guide và browser acceptance script.
-- Trạng thái: VERIFIED cho IdP runtime, discovery và login callback/token thực; OIDC acceptance tổng thể INCOMPLETE do kiểm tra permission trên BE baseline cũ phát hiện HTTP 500 thay vì 403. Đã gửi reproduction tới BE agent, sẽ chạy lại trên BE đã tích hợp.
-- Đã làm: pin Keycloak 26.8.1, bind loopback 8180 và persistent volume riêng; sinh mật khẩu ngẫu nhiên vào `.local/oidc/` ignored với permission 0600; public client authorization code + PKCE S256 bắt buộc, tắt implicit/password grant, map `roles` trong access/ID token và audience `nla-api`. Profile `oidc-local` dùng xác thực JWT thật với issuer/audience; launcher `--auth oidc` tắt local token/anonymous mode. Format ba script infra Python cũ bằng Black/isort, không nén nhiều statement trên một dòng.
-- Kiểm chứng PASS: unit `pytest infra/local/test_oidc.py` — 3 passed; Black/isort check, compileall, Prettier cho browser script/Compose, Compose config, `git diff --check`; Keycloak Docker health và discovery issuer chính xác; browser React tại 5175 đăng nhập Keycloak thật và callback về `/query`; Java 8083 nhận access token thật, reject anonymous API và password sai ở IdP.
-- Kiểm chứng FAIL: browser suite không mock phát hiện VIEWER gọi API quản trị `/warehouses/wh-chinook-pg/test` nhận 500 ở BE baseline cũ (phải 403); report `.local/oidc-browser-report.json`, không token/password. Chưa chạy hết logout/renewal/expiry/resource-denial suite sau điểm fail này. Không coi cấu hình hoặc login happy path là nghiệm thu đủ.
-- Còn thiếu / phụ thuộc: cần BE hiện tại với error mapping chuẩn để chạy hết browser suite; full application-container deployment và production HTTPS/IdP chưa được nghiệm thu bởi local check. Cấu hình dev IdP không thay thế các controls production.
-- Việc tiếp nối: tích hợp commit runtime với BE mới, chạy lại browser suite thật bốn roles/401/403/renewal/expiry/signout; giữ secrets ngoài Git và cập nhật evidence riêng.
-- Commit/push: entry dùng subject + branch cho chính commit; SHA local/remote xác minh sau push/pull trong handoff.
 
 ### 2026-10-20 02:11 UTC+07 — Chuẩn hóa AI/Data code / conversation chính
 - Nhánh / commit subject: `module/ai-data`; `style: format AI and data source code`.
@@ -151,3 +141,26 @@ Các entry triển khai tiếp theo thêm phía dưới; không đánh dấu FE/
 - Còn thiếu / blocker / phụ thuộc: đây chỉ là sửa config sample; không chứng minh ingestion app tổng quát hoặc SQL Import end-to-end.
 - Việc tiếp nối: BE cần lấy follow-up Data commit trước khi nghiệm thu/cherry-pick config mẫu mới.
 - Commit/push: entry này đi cùng commit; SHA remote xác minh sau push.
+
+### 2026-10-20 15:38 UTC+07 — Runtime OIDC / subagent runtime_auth
+- Nhánh / commit subject: `module/runtime-auth`; `feat: add reproducible local OIDC identity provider`.
+- Phạm vi: Keycloak Docker local, realm/public client/role/audience mapping, private credential generation, launcher/profile OIDC, README/OIDC guide và browser acceptance script.
+- Trạng thái: VERIFIED cho IdP runtime, discovery và login callback/token thực; OIDC acceptance tổng thể INCOMPLETE do kiểm tra permission trên BE baseline cũ phát hiện HTTP 500 thay vì 403. Đã gửi reproduction tới BE agent, sẽ chạy lại trên BE đã tích hợp.
+- Đã làm: pin Keycloak 26.8.1, bind loopback 8180 và persistent volume riêng; sinh mật khẩu ngẫu nhiên vào `.local/oidc/` ignored với permission 0600; public client authorization code + PKCE S256 bắt buộc, tắt implicit/password grant, map `roles` trong access/ID token và audience `nla-api`. Profile `oidc-local` dùng xác thực JWT thật với issuer/audience; launcher `--auth oidc` tắt local token/anonymous mode. Format ba script infra Python cũ bằng Black/isort, không nén nhiều statement trên một dòng.
+- Kiểm chứng PASS: unit `pytest infra/local/test_oidc.py` — 3 passed; Black/isort check, compileall, Prettier cho browser script/Compose, Compose config, `git diff --check`; Keycloak Docker health và discovery issuer chính xác; browser React tại 5175 đăng nhập Keycloak thật và callback về `/query`; Java 8083 nhận access token thật, reject anonymous API và password sai ở IdP.
+- Kiểm chứng FAIL: browser suite không mock phát hiện VIEWER gọi API quản trị `/warehouses/wh-chinook-pg/test` nhận 500 ở BE baseline cũ (phải 403); report `.local/oidc-browser-report.json`, không token/password. Chưa chạy hết logout/renewal/expiry/resource-denial suite sau điểm fail này. Không coi cấu hình hoặc login happy path là nghiệm thu đủ.
+- Còn thiếu / phụ thuộc: cần BE hiện tại với error mapping chuẩn để chạy hết browser suite; full application-container deployment và production HTTPS/IdP chưa được nghiệm thu bởi local check. Cấu hình dev IdP không thay thế các controls production.
+- Việc tiếp nối: tích hợp commit runtime với BE mới, chạy lại browser suite thật bốn roles/401/403/renewal/expiry/signout; giữ secrets ngoài Git và cập nhật evidence riêng.
+- Commit/push: entry dùng subject + branch cho chính commit; SHA local/remote xác minh sau push/pull trong handoff.
+
+### 2026-10-20 16:18 UTC+07 — Nghiệm thu browser OIDC thật / subagent runtime_auth
+- Nhánh / commit subject: `module/runtime-auth`; `fix: preserve OIDC principal and verify live auth boundaries`.
+- Phạm vi: default Keycloak scope `basic` để access token có subject; kiểm tra subject browser/Java; negative test token được ký thật nhưng thiếu subject; credential recovery/bounds, test runtime và tài liệu OIDC.
+- Trạng thái: VERIFIED cho đăng nhập OIDC local qua IdP/React/Java thật và bốn vai trò. Tổng acceptance sản phẩm vẫn INCOMPLETE theo các module còn mở; đây không phải evidence production deployment hoặc full application-container stack.
+- Đã làm: sửa scope IdP thiếu `basic` phát hiện bởi audit actor NULL trong test trước; bổ sung regression assertion và kiểm tra identity equality; BE agent đồng thời thêm validator từ chối JWT thiếu `sub`. Browser suite tạo public client âm tạm trong IdP, lấy valid-signed access token không có subject, xác nhận API trả 401 rồi xóa client. Mọi request test có timeout và chỉ chấp nhận loopback URL; không ghi token/password/trace. `init` bảo toàn credential khi khôi phục file runtime và fail closed khi account JSON sai.
+- Kiểm chứng PASS: `OIDC_TEST_API_URL=http://127.0.0.1:8084/api/v1 node infra/local/oidc-browser.mjs` — bốn role VIEWER/ANALYST/OPERATOR/ADMIN đăng nhập và đăng xuất qua IdP thật; invalid password; Java/browser subject equality; anonymous/signed wrong-audience/tampered signature/expired token/missing subject đều 401; thiếu admin role hoặc resource grant là 403; ADMIN kiểm tra kết nối PostgreSQL Chinook thật thành công; automatic renewal, callback error và IdP session logout PASS. Report an toàn: `.local/oidc-browser-report.json` (`mocked=false`, `status=PASS`).
+- Môi trường evidence: Keycloak Docker 26.8.1 tại 8180; React branch runtime tại 5175; bản sao chỉ đọc BE đang phát triển tại 8084 với profile OIDC, source snapshot SHA-256 `718396027e81a35849d28b0b91ed7acb18c962da8454006cb0d65ed6349449b9`. Không sửa source/target của BE agent. Phải chạy lại trên nhánh tích hợp đã commit trước nghiệm thu release cuối; không gán snapshot này cho một SHA Git chưa tồn tại.
+- Kiểm chứng bổ sung PASS: unit `pytest infra/local/test_oidc.py` — 4 passed; Black/isort, compileall, Prettier, Node syntax check, Compose config và `git diff --check`. Keycloak health/discovery được kiểm tra thật; default scope mapping đối chiếu tài liệu chính thức Keycloak.
+- Còn thiếu / NOT RUN: production HTTPS/IdP/multiple-node deployment và full app containers chưa được nghiệm thu trong task OIDC; query/provider AI và SQL Import/ingestion không được chứng minh bởi bộ test auth này. Entry FAIL trước đã được xử lý trong cấu hình/runtime evidence local hiện tại.
+- Việc tiếp nối: root tích hợp runtime commit với BE security mới, chạy lại browser suite trên Git SHA tích hợp và lưu kết quả; dùng account/grant thực cho dataset ngoài test.
+- Commit/push: entry này đi cùng commit subject nêu trên; SHA local/remote được xác minh sau push/pull trong handoff.
