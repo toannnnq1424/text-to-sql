@@ -1,0 +1,497 @@
+# Copyright 2024 Google LLC
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+steps:
+  - id: "setup-airlock-auth"
+    name: "gcr.io/cloud-builders/gcloud:latest"
+    waitFor: ["-"]
+    script: |
+      #!/usr/bin/env bash
+      set -e
+      EXPECTED_TAG="v$(cat ./cmd/version.txt)"
+      if [[ "${TAG_NAME}" != "${EXPECTED_TAG}" ]]; then
+        echo "ERROR: TAG_NAME ('${TAG_NAME}') does not match v\$(cat ./cmd/version.txt) ('${EXPECTED_TAG}')" >&2
+        exit 1
+      fi
+      TOKEN=$(gcloud auth print-access-token)
+      
+      # Write auth files to the persistent /workspace directory
+      echo "machine us-go.pkg.dev login oauth2accesstoken password $TOKEN" > /workspace/.netrc
+      echo "machine us-python.pkg.dev login oauth2accesstoken password $TOKEN" >> /workspace/.netrc
+      
+      cat > /workspace/.npmrc <<EOL
+      registry=https://us-npm.pkg.dev/${_AIRLOCK_AR_PROJECT}/npm-3p-trusted/
+      //us-npm.pkg.dev/${_AIRLOCK_AR_PROJECT}/npm-3p-trusted/:always-auth=true
+      //us-npm.pkg.dev/${_AIRLOCK_AR_PROJECT}/npm-3p-trusted/:_authToken=$TOKEN
+      EOL
+
+      echo "$TOKEN" > /workspace/.airlock_token
+
+  - id: "install-dependencies"
+    name: "us-docker.pkg.dev/${_AIRLOCK_AR_PROJECT}/docker-3p-trusted/golang@sha256:0ecdc2a9f6156af6451080bfe3d8382a662fcc4e209608c6f919e643453514c1"
+    waitFor: 
+      - "setup-airlock-auth"
+    env:
+      - "GOPATH=/gopath"
+      - "HOME=/workspace"
+      - "GOPROXY=https://us-go.pkg.dev/${_AIRLOCK_AR_PROJECT}/golang-3p-trusted,https://us-go.pkg.dev/${_AIRLOCK_AR_PROJECT}/golang-3p-l1,https://us-go.pkg.dev/${_AIRLOCK_AR_PROJECT}/ah-3p-staging-golang"
+      - "GONOSUMDB=*"
+    volumes:
+      - name: "go"
+        path: "/gopath"
+    script: |
+      go get -d ./...
+
+  - id: "run-tests"
+    name: "us-docker.pkg.dev/${_AIRLOCK_AR_PROJECT}/docker-3p-trusted/golang@sha256:0ecdc2a9f6156af6451080bfe3d8382a662fcc4e209608c6f919e643453514c1"
+    waitFor:
+      - "install-dependencies"
+    env:
+      - "GOPATH=/gopath"
+      - "HOME=/workspace"
+      - "GOPROXY=https://us-go.pkg.dev/${_AIRLOCK_AR_PROJECT}/golang-3p-trusted,https://us-go.pkg.dev/${_AIRLOCK_AR_PROJECT}/golang-3p-l1,https://us-go.pkg.dev/${_AIRLOCK_AR_PROJECT}/ah-3p-staging-golang"
+      - "GONOSUMDB=*"
+    volumes:
+      - name: "go"
+        path: "/gopath"
+    script: |
+      #!/usr/bin/env bash
+      set -eo pipefail
+
+      echo "Installing go-junit-report..."
+      go install github.com/jstemmer/go-junit-report/v2@v2.1.0
+
+      echo "Running unit tests and generating JUnit XML report..."
+      go test -race -v ./cmd/... ./internal/... 2>&1 | tee /dev/stderr | $(go env GOPATH)/bin/go-junit-report -set-exit-code > in-progress-junit-report.xml
+
+      # If the previous command failed, this will never be renamed and thus not uploaded
+      mv in-progress-junit-report.xml junit-report.xml
+
+  - id: "install-zig"
+    name: "gcr.io/cloud-builders/gcloud:latest"
+    waitFor: ["setup-airlock-auth"]
+    volumes:
+      - name: "zig"
+        path: "/zig-tools"
+    script: |
+      #!/usr/bin/env bash
+      set -e
+      bash .ci/setup_apt.sh ${_AIRLOCK_AR_PROJECT} && apt-get update && apt-get install -y xz-utils
+      echo "Downloading Zig..."
+      gcloud storage cp gs://${_ASSETS_BUCKET}/dependencies/zig-x86_64-linux-0.15.2.tar.xz zig.tar.xz
+      echo "02aa270f183da276e5b5920b1dac44a63f1a49e55050ebde3aecc9eb82f93239  zig.tar.xz" | sha256sum -c -
+
+      mkdir -p /zig-tools
+      echo "Unpacking Zig..."
+      tar -xf zig.tar.xz -C /zig-tools --strip-components=1
+
+  - id: "build-docker"
+    name: "gcr.io/cloud-builders/docker"
+    env:
+      - "GOPROXY=https://us-go.pkg.dev/${_AIRLOCK_AR_PROJECT}/golang-3p-trusted,https://us-go.pkg.dev/${_AIRLOCK_AR_PROJECT}/golang-3p-l1,https://us-go.pkg.dev/${_AIRLOCK_AR_PROJECT}/ah-3p-staging-golang"
+      - "GONOSUMDB=*"
+    waitFor:
+      - "run-tests"
+      - "install-zig"
+    script: |
+      #!/usr/bin/env bash
+      set -e
+
+      docker buildx create --name container-builder --driver docker-container --driver-opt network=cloudbuild --bootstrap --use
+
+      # Build OCI archive for Cloud Build artifacts.oci upload
+      docker buildx build \
+        --platform linux/amd64,linux/arm64 \
+        --build-arg BASE_IMAGE="us-docker.pkg.dev/${_AIRLOCK_AR_PROJECT}/docker-3p-trusted/golang@sha256:0ecdc2a9f6156af6451080bfe3d8382a662fcc4e209608c6f919e643453514c1" \
+        --build-arg BUILD_TYPE=container.release \
+        --build-arg GOPROXY=${GOPROXY} \
+        --build-arg GONOSUMDB=${GONOSUMDB} \
+        --build-arg COMMIT_SHA=$(git rev-parse --short HEAD) \
+        --secret id=airlock_token,src=/workspace/.airlock_token \
+        --provenance=false \
+        --output=type=oci,dest=/workspace/image.tar .
+
+  - id: "install-macos-sdk"
+    name: "gcr.io/cloud-builders/gcloud:latest"
+    waitFor: ["setup-airlock-auth"]
+    volumes:
+      - name: "macos-sdk"
+        path: "/macos-sdk"
+    script: |
+      #!/usr/bin/env bash
+      set -e
+      bash .ci/setup_apt.sh ${_AIRLOCK_AR_PROJECT} && apt-get update && apt-get install -y xz-utils
+      echo "Downloading macOS 14.5 SDK..."
+      gcloud storage cp gs://${_ASSETS_BUCKET}/MacOSX14.5.tar.xz sdk.tar.xz
+
+      mkdir -p /macos-sdk/MacOSX14.5.sdk
+      echo "Unpacking macOS 14.5 SDK..."
+      tar -xf sdk.tar.xz -C /macos-sdk/MacOSX14.5.sdk --strip-components=1
+
+  - id: "build-linux-amd64"
+    name: "us-docker.pkg.dev/${_AIRLOCK_AR_PROJECT}/docker-3p-trusted/golang@sha256:0ecdc2a9f6156af6451080bfe3d8382a662fcc4e209608c6f919e643453514c1"
+    waitFor:
+      - "run-tests"
+      - "install-zig"
+    env:
+      - "GOPATH=/gopath"
+      - "CGO_ENABLED=1"
+      - "GOOS=linux"
+      - "GOARCH=amd64"
+      - "CC=/zig-tools/zig cc -target x86_64-linux-gnu"
+      - "CXX=/zig-tools/zig c++ -target x86_64-linux-gnu"
+    volumes:
+      - name: "go"
+        path: "/gopath"
+      - name: "zig"
+        path: "/zig-tools"
+    script: |
+      #!/usr/bin/env bash
+      go build -ldflags "-X github.com/googleapis/mcp-toolbox/cmd.buildType=binary -X github.com/googleapis/mcp-toolbox/cmd.commitSha=$(git rev-parse --short HEAD)" -o toolbox.linux.amd64
+
+  - id: "store-linux-amd64"
+    name: "gcr.io/cloud-builders/gcloud:latest"
+    waitFor:
+      - "build-linux-amd64"
+    script: |
+      #!/usr/bin/env bash
+      export VERSION=v$(cat ./cmd/version.txt)
+      gcloud storage cp toolbox.linux.amd64 gs://$_UNSIGNED_BUCKET_NAME/$VERSION/linux/amd64/toolbox
+
+  - id: "build-linux-amd64-geminicli"
+    name: "us-docker.pkg.dev/${_AIRLOCK_AR_PROJECT}/docker-3p-trusted/golang@sha256:0ecdc2a9f6156af6451080bfe3d8382a662fcc4e209608c6f919e643453514c1"
+    waitFor:
+      - "run-tests"
+      - "install-zig"
+    env:
+      - "GOPATH=/gopath"
+      - "CGO_ENABLED=1"
+      - "GOOS=linux"
+      - "GOARCH=amd64"
+      - "CC=/zig-tools/zig cc -target x86_64-linux-gnu"
+      - "CXX=/zig-tools/zig c++ -target x86_64-linux-gnu"
+    volumes:
+      - name: "go"
+        path: "/gopath"
+      - name: "zig"
+        path: "/zig-tools"
+    script: |
+      #!/usr/bin/env bash
+      go build -ldflags "-X github.com/googleapis/mcp-toolbox/cmd.buildType=geminicli.binary -X github.com/googleapis/mcp-toolbox/cmd.commitSha=$(git rev-parse --short HEAD)" -o toolbox.geminicli.linux.amd64
+
+  - id: "store-linux-amd64-geminicli"
+    name: "gcr.io/cloud-builders/gcloud:latest"
+    waitFor:
+      - "build-linux-amd64-geminicli"
+    script: |
+      #!/usr/bin/env bash
+      export VERSION=v$(cat ./cmd/version.txt)
+      gcloud storage cp toolbox.geminicli.linux.amd64 gs://$_BUCKET_NAME/geminicli/$VERSION/linux/amd64/toolbox
+
+  - id: "build-darwin-arm64"
+    name: "us-docker.pkg.dev/${_AIRLOCK_AR_PROJECT}/docker-3p-trusted/golang@sha256:0ecdc2a9f6156af6451080bfe3d8382a662fcc4e209608c6f919e643453514c1"
+    waitFor:
+      - "run-tests"
+      - "install-zig"
+      - "install-macos-sdk"
+    env:
+      - "GOPATH=/gopath"
+      - "CGO_ENABLED=1"
+      - "GOOS=darwin"
+      - "GOARCH=arm64"
+      - "SDK_PATH=/macos-sdk/MacOSX14.5.sdk"
+      - "MACOS_MIN_VER=10.14"
+      - "CGO_LDFLAGS=-mmacosx-version-min=10.14 --sysroot /macos-sdk/MacOSX14.5.sdk -F/macos-sdk/MacOSX14.5.sdk/System/Library/Frameworks -L/usr/lib"
+      - "COMMON_FLAGS=-mmacosx-version-min=10.14 -target aarch64-macos.11.0.0-none -isysroot /macos-sdk/MacOSX14.5.sdk -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks"
+      - "CC=/zig-tools/zig cc -mmacosx-version-min=10.14 -target aarch64-macos.11.0.0-none -isysroot /macos-sdk/MacOSX14.5.sdk -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks"
+      - "CXX=/zig-tools/zig c++ -mmacosx-version-min=10.14 -target aarch64-macos.11.0.0-none -isysroot /macos-sdk/MacOSX14.5.sdk -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks"
+    volumes:
+      - name: "go"
+        path: "/gopath"
+      - name: "zig"
+        path: "/zig-tools"
+      - name: "macos-sdk"
+        path: "/macos-sdk"
+    script: |
+      #!/usr/bin/env bash
+       go build -trimpath -buildmode=pie -ldflags "-s -w -X github.com/googleapis/mcp-toolbox/cmd.buildType=binary -X github.com/googleapis/mcp-toolbox/cmd.commitSha=$(git rev-parse --short HEAD)" -o toolbox.darwin.arm64
+
+  - id: "store-darwin-arm64"
+    name: "gcr.io/cloud-builders/gcloud:latest"
+    waitFor:
+      - "build-darwin-arm64"
+    script: |
+      #!/usr/bin/env bash
+      export VERSION=v$(cat ./cmd/version.txt)
+      gcloud storage cp toolbox.darwin.arm64 gs://$_UNSIGNED_BUCKET_NAME/$VERSION/darwin/arm64/toolbox
+
+  - id: "build-darwin-arm64-geminicli"
+    name: "us-docker.pkg.dev/${_AIRLOCK_AR_PROJECT}/docker-3p-trusted/golang@sha256:0ecdc2a9f6156af6451080bfe3d8382a662fcc4e209608c6f919e643453514c1"
+    waitFor:
+      - "run-tests"
+      - "install-zig"
+      - "install-macos-sdk"
+    env:
+      - "GOPATH=/gopath"
+      - "CGO_ENABLED=1"
+      - "GOOS=darwin"
+      - "GOARCH=arm64"
+      - "SDK_PATH=/macos-sdk/MacOSX14.5.sdk"
+      - "MACOS_MIN_VER=10.14"
+      - "CGO_LDFLAGS=-mmacosx-version-min=10.14 --sysroot /macos-sdk/MacOSX14.5.sdk -F/macos-sdk/MacOSX14.5.sdk/System/Library/Frameworks -L/usr/lib"
+      - "COMMON_FLAGS=-mmacosx-version-min=10.14 -target aarch64-macos.11.0.0-none -isysroot /macos-sdk/MacOSX14.5.sdk -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks"
+      - "CC=/zig-tools/zig cc -mmacosx-version-min=10.14 -target aarch64-macos.11.0.0-none -isysroot /macos-sdk/MacOSX14.5.sdk -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks"
+      - "CXX=/zig-tools/zig c++ -mmacosx-version-min=10.14 -target aarch64-macos.11.0.0-none -isysroot /macos-sdk/MacOSX14.5.sdk -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks"
+    volumes:
+      - name: "go"
+        path: "/gopath"
+      - name: "zig"
+        path: "/zig-tools"
+      - name: "macos-sdk"
+        path: "/macos-sdk"
+    script: |
+      #!/usr/bin/env bash
+       go build -trimpath -buildmode=pie -ldflags "-s -w -X github.com/googleapis/mcp-toolbox/cmd.buildType=geminicli.binary -X github.com/googleapis/mcp-toolbox/cmd.commitSha=$(git rev-parse --short HEAD)" -o toolbox.geminicli.darwin.arm64
+
+  - id: "store-darwin-arm64-geminicli"
+    name: "gcr.io/cloud-builders/gcloud:latest"
+    waitFor:
+      - "build-darwin-arm64-geminicli"
+    script: |
+      #!/usr/bin/env bash
+      export VERSION=v$(cat ./cmd/version.txt)
+      gcloud storage cp toolbox.geminicli.darwin.arm64 gs://$_BUCKET_NAME/geminicli/$VERSION/darwin/arm64/toolbox
+
+  - id: "build-darwin-amd64"
+    name: "us-docker.pkg.dev/${_AIRLOCK_AR_PROJECT}/docker-3p-trusted/golang@sha256:0ecdc2a9f6156af6451080bfe3d8382a662fcc4e209608c6f919e643453514c1"
+    waitFor:
+      - "run-tests"
+      - "install-zig"
+      - "install-macos-sdk"
+    env:
+      - "GOPATH=/gopath"
+      - "CGO_ENABLED=1"
+      - "GOOS=darwin"
+      - "GOARCH=amd64"
+      - "SDK_PATH=/macos-sdk/MacOSX14.5.sdk"
+      - "MACOS_MIN_VER=10.14"
+      - "CGO_LDFLAGS=-mmacosx-version-min=10.14 --sysroot /macos-sdk/MacOSX14.5.sdk -F/macos-sdk/MacOSX14.5.sdk/System/Library/Frameworks -L/usr/lib"
+      - "COMMON_FLAGS=-mmacosx-version-min=10.14 -target x86_64-macos.11.0.0-none -isysroot /macos-sdk/MacOSX14.5.sdk -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks"
+      - "CC=/zig-tools/zig cc -mmacosx-version-min=10.14 -target x86_64-macos.11.0.0-none -isysroot /macos-sdk/MacOSX14.5.sdk -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks"
+      - "CXX=/zig-tools/zig c++ -mmacosx-version-min=10.14 -target x86_64-macos.11.0.0-none -isysroot /macos-sdk/MacOSX14.5.sdk -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks"
+    volumes:
+      - name: "go"
+        path: "/gopath"
+      - name: "zig"
+        path: "/zig-tools"
+      - name: "macos-sdk"
+        path: "/macos-sdk"
+    script: |
+      #!/usr/bin/env bash
+       go build -trimpath -buildmode=pie -ldflags "-s -w -X github.com/googleapis/mcp-toolbox/cmd.buildType=binary -X github.com/googleapis/mcp-toolbox/cmd.commitSha=$(git rev-parse --short HEAD)" -o toolbox.darwin.amd64
+
+  - id: "store-darwin-amd64"
+    name: "gcr.io/cloud-builders/gcloud:latest"
+    waitFor:
+      - "build-darwin-amd64"
+    script: |
+      #!/usr/bin/env bash
+      export VERSION=v$(cat ./cmd/version.txt)
+      gcloud storage cp toolbox.darwin.amd64 gs://$_UNSIGNED_BUCKET_NAME/$VERSION/darwin/amd64/toolbox
+
+  - id: "build-darwin-amd64-geminicli"
+    name: "us-docker.pkg.dev/${_AIRLOCK_AR_PROJECT}/docker-3p-trusted/golang@sha256:0ecdc2a9f6156af6451080bfe3d8382a662fcc4e209608c6f919e643453514c1"
+    waitFor:
+      - "run-tests"
+      - "install-zig"
+      - "install-macos-sdk"
+    env:
+      - "GOPATH=/gopath"
+      - "CGO_ENABLED=1"
+      - "GOOS=darwin"
+      - "GOARCH=amd64"
+      - "SDK_PATH=/macos-sdk/MacOSX14.5.sdk"
+      - "MACOS_MIN_VER=10.14"
+      - "CGO_LDFLAGS=-mmacosx-version-min=10.14 --sysroot /macos-sdk/MacOSX14.5.sdk -F/macos-sdk/MacOSX14.5.sdk/System/Library/Frameworks -L/usr/lib"
+      - "COMMON_FLAGS=-mmacosx-version-min=10.14 -target x86_64-macos.11.0.0-none -isysroot /macos-sdk/MacOSX14.5.sdk -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks"
+      - "CC=/zig-tools/zig cc -mmacosx-version-min=10.14 -target x86_64-macos.11.0.0-none -isysroot /macos-sdk/MacOSX14.5.sdk -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks"
+      - "CXX=/zig-tools/zig c++ -mmacosx-version-min=10.14 -target x86_64-macos.11.0.0-none -isysroot /macos-sdk/MacOSX14.5.sdk -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks"
+    volumes:
+      - name: "go"
+        path: "/gopath"
+      - name: "zig"
+        path: "/zig-tools"
+      - name: "macos-sdk"
+        path: "/macos-sdk"
+    script: |
+      #!/usr/bin/env bash
+       go build -trimpath -buildmode=pie -ldflags "-s -w -X github.com/googleapis/mcp-toolbox/cmd.buildType=geminicli.binary -X github.com/googleapis/mcp-toolbox/cmd.commitSha=$(git rev-parse --short HEAD)" -o toolbox.geminicli.darwin.amd64
+
+  - id: "store-darwin-amd64-geminicli"
+    name: "gcr.io/cloud-builders/gcloud:latest"
+    waitFor:
+      - "build-darwin-amd64-geminicli"
+    script: |
+      #!/usr/bin/env bash
+      export VERSION=v$(cat ./cmd/version.txt)
+      gcloud storage cp toolbox.geminicli.darwin.amd64 gs://$_BUCKET_NAME/geminicli/$VERSION/darwin/amd64/toolbox
+
+  - id: "build-windows-amd64"
+    name: "us-docker.pkg.dev/${_AIRLOCK_AR_PROJECT}/docker-3p-trusted/golang@sha256:0ecdc2a9f6156af6451080bfe3d8382a662fcc4e209608c6f919e643453514c1"
+    waitFor:
+      - "run-tests"
+      - "install-zig"
+    env:
+      - "GOPATH=/gopath"
+      - "CGO_ENABLED=1"
+      - "GOOS=windows"
+      - "GOARCH=amd64"
+      - "CC=/zig-tools/zig cc -target x86_64-windows-gnu"
+      - "CXX=/zig-tools/zig c++ -target x86_64-windows-gnu"
+    volumes:
+      - name: "go"
+        path: "/gopath"
+      - name: "zig"
+        path: "/zig-tools"
+    script: |
+      #!/usr/bin/env bash
+      go build -ldflags "-X github.com/googleapis/mcp-toolbox/cmd.buildType=binary -X github.com/googleapis/mcp-toolbox/cmd.commitSha=$(git rev-parse --short HEAD)" -o toolbox.windows.amd64
+
+  - id: "store-windows-amd64"
+    name: "gcr.io/cloud-builders/gcloud:latest"
+    waitFor:
+      - "build-windows-amd64"
+    script: |
+      #!/usr/bin/env bash
+      export VERSION=v$(cat ./cmd/version.txt)
+      gcloud storage cp toolbox.windows.amd64 gs://$_UNSIGNED_BUCKET_NAME/$VERSION/windows/amd64/toolbox.exe
+
+  - id: "build-windows-amd64-geminicli"
+    name: "us-docker.pkg.dev/${_AIRLOCK_AR_PROJECT}/docker-3p-trusted/golang@sha256:0ecdc2a9f6156af6451080bfe3d8382a662fcc4e209608c6f919e643453514c1"
+    waitFor:
+      - "run-tests"
+      - "install-zig"
+    env:
+      - "GOPATH=/gopath"
+      - "CGO_ENABLED=1"
+      - "GOOS=windows"
+      - "GOARCH=amd64"
+      - "CC=/zig-tools/zig cc -target x86_64-windows-gnu"
+      - "CXX=/zig-tools/zig c++ -target x86_64-windows-gnu"
+    volumes:
+      - name: "go"
+        path: "/gopath"
+      - name: "zig"
+        path: "/zig-tools"
+    script: |
+      #!/usr/bin/env bash
+      go build -ldflags "-X github.com/googleapis/mcp-toolbox/cmd.buildType=geminicli.binary -X github.com/googleapis/mcp-toolbox/cmd.commitSha=$(git rev-parse --short HEAD)" -o toolbox.geminicli.windows.amd64
+
+  - id: "store-windows-amd64-geminicli"
+    name: "gcr.io/cloud-builders/gcloud:latest"
+    waitFor:
+      - "build-windows-amd64-geminicli"
+    script: |
+      #!/usr/bin/env bash
+      export VERSION=v$(cat ./cmd/version.txt)
+      gcloud storage cp toolbox.geminicli.windows.amd64 gs://$_BUCKET_NAME/geminicli/$VERSION/windows/amd64/toolbox.exe
+
+  - id: "build-windows-arm64"
+    name: "us-docker.pkg.dev/${_AIRLOCK_AR_PROJECT}/docker-3p-trusted/golang@sha256:0ecdc2a9f6156af6451080bfe3d8382a662fcc4e209608c6f919e643453514c1"
+    waitFor:
+      - "run-tests"
+      - "install-zig"
+    env:
+      - "GOPATH=/gopath"
+      - "CGO_ENABLED=1"
+      - "GOOS=windows"
+      - "GOARCH=arm64"
+      - "CC=/zig-tools/zig cc -target aarch64-windows-gnu"
+      - "CXX=/zig-tools/zig c++ -target aarch64-windows-gnu"
+    volumes:
+      - name: "go"
+        path: "/gopath"
+      - name: "zig"
+        path: "/zig-tools"
+    script: |
+      #!/usr/bin/env bash
+      go build -ldflags "-X github.com/googleapis/mcp-toolbox/cmd.buildType=binary -X github.com/googleapis/mcp-toolbox/cmd.commitSha=$(git rev-parse --short HEAD)" -o toolbox.windows.arm64
+
+  - id: "store-windows-arm64"
+    name: "gcr.io/cloud-builders/gcloud:latest"
+    waitFor:
+      - "build-windows-arm64"
+    script: |
+      #!/usr/bin/env bash
+      export VERSION=v$(cat ./cmd/version.txt)
+      gcloud storage cp toolbox.windows.arm64 gs://$_UNSIGNED_BUCKET_NAME/$VERSION/windows/arm64/toolbox.exe
+
+  - id: "build-windows-arm64-geminicli"
+    name: "us-docker.pkg.dev/${_AIRLOCK_AR_PROJECT}/docker-3p-trusted/golang@sha256:0ecdc2a9f6156af6451080bfe3d8382a662fcc4e209608c6f919e643453514c1"
+    waitFor:
+      - "run-tests"
+      - "install-zig"
+    env:
+      - "GOPATH=/gopath"
+      - "CGO_ENABLED=1"
+      - "GOOS=windows"
+      - "GOARCH=arm64"
+      - "CC=/zig-tools/zig cc -target aarch64-windows-gnu"
+      - "CXX=/zig-tools/zig c++ -target aarch64-windows-gnu"
+    volumes:
+      - name: "go"
+        path: "/gopath"
+      - name: "zig"
+        path: "/zig-tools"
+    script: |
+      #!/usr/bin/env bash
+      go build -ldflags "-X github.com/googleapis/mcp-toolbox/cmd.buildType=geminicli.binary -X github.com/googleapis/mcp-toolbox/cmd.commitSha=$(git rev-parse --short HEAD)" -o toolbox.geminicli.windows.arm64
+
+  - id: "store-windows-arm64-geminicli"
+    name: "gcr.io/cloud-builders/gcloud:latest"
+    waitFor:
+      - "build-windows-arm64-geminicli"
+    script: |
+      #!/usr/bin/env bash
+      export VERSION=v$(cat ./cmd/version.txt)
+      gcloud storage cp toolbox.geminicli.windows.arm64 gs://$_BUCKET_NAME/geminicli/$VERSION/windows/arm64/toolbox.exe
+
+options:
+  requestedVerifyOption: VERIFIED # This ensures provenance is generated
+  automapSubstitutions: true
+  dynamicSubstitutions: true
+  logging: CLOUD_LOGGING_ONLY # Necessary for custom service account
+  pool:
+    name: projects/$PROJECT_ID/locations/us-central1/workerPools/run-release # to increase resource for running releases
+
+substitutions:
+  _REGION: us-central1
+  _AIRLOCK_AR_PROJECT: artifact-foundry-prod
+  _AR_HOSTNAME: ${_REGION}-docker.pkg.dev
+  _STAGING_AR_REPO_NAME: toolbox-containers-staging
+  _BUCKET_NAME: mcp-toolbox-for-databases
+  _UNSIGNED_BUCKET_NAME: mcp-toolbox-for-databases-unsigned
+  _ASSETS_BUCKET: toolbox-build-assets
+  _DOCKER_URI: ${_AR_HOSTNAME}/${PROJECT_ID}/${_STAGING_AR_REPO_NAME}/toolbox
+  _VERSION: '${TAG_NAME#v}'
+
+artifacts:
+  testResults:
+    bucketUri: "gs://${_ASSETS_BUCKET}/test-results/${TAG_NAME}"
+    paths:
+      - "junit-report.xml"
+    format: JUNIT
+  oci:
+    - file: '/workspace/image.tar'
+      registryPath: '${_DOCKER_URI}'
+      tags: ['${_VERSION}']

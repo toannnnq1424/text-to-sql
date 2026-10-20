@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "patches": [
+    {
+      "path": "vendor/upstream/semantic-engine/wren/src/wren/engine.py",
+      "upstreamSha256": "c25567034ebf09b9daa4e63a2a9eeb7d0aa9913664df2ee1398a1a10d5bc3d59",
+      "runtimeSha256": "d8cf5176b97c7029bdc997d6fc3251a41557417f121635d4ac0763c8de6efa1f",
+      "reason": "NLA fork: dataset-scoped physical SQL planning entry point, immutable physical lineage after rewrite, planning-only execution boundary and injected bounded native session lease.",
+      "kind": "modified"
+    },
+    {
+      "path": "vendor/upstream/data-tool-platform/internal/sources/mssql/mssql.go",
+      "upstreamSha256": "08e6a8a576bc798dde222520987856f92e2a20794eeee8ac6dc5859d78a5252d",
+      "runtimeSha256": "0b1780b0b3cdb0df6a1432ea0632f3a3f1358ecc9496b1f88b65e7a28a5c8826",
+      "reason": "Preserve bounded connection startup, explicit certificate verification and IPv6-safe host formatting when the app invokes the actual upstream source factory.",
+      "kind": "modified"
+    },
+    {
+      "path": "vendor/upstream/semantic-engine/wren/src/wren/nla_planning.py",
+      "kind": "added",
+      "upstreamSha256": null,
+      "runtimeSha256": "fa7c4f76811f510b734b5e8e16dce4bc718e07ad67652c90e1c9f269afc2114a",
+      "reason": "Project-owned planner specialization inside the source fork: physical-to-logical binding, immutable typed lineage, select-only nested AST policy, native model resolution, post-rewrite source-set check, SDK type normalization and safe reason codes. Replaces app-owned duplicate planning logic."
+    }
+  ]
+}

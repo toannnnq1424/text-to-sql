@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "purpose": "Snapshot review identity and selected runtime reuse; exact adopted modules and limitations are referenced per project.",
+  "purpose": "Identity of supplied snapshots, full source import and actual runtime reuse; copied source is not proof of enabled capability.",
   "sourceCommitStatus": "No Git metadata found in downloaded directories; commit IDs are not inferred from main directory names.",
   "projects": [
     {
@@ -82,7 +82,7 @@
         }
       ],
       "runtimeIntegrated": true,
-      "integratedScope": "Dependency-free schema description/index/cache approach in AI selection and provider payload; pinned wren-core-py 0.4.0 native manifest/session planner; adapted CTE rewrite and Wren SQLGlot dialect; no upstream SDK, vector store or connectors. Local file dispatch/Arrow schema conversion adapted into authenticated bulk parser for13 extensions. Bounded native session factory adapted from SDK mdl utilities, with per-session serialization and no SQL/result retention.",
+      "integratedScope": "Full supplied source imported into vendor/upstream/semantic-engine (one .env excluded). The local wren-engine SDK is installed from this source and WrenEngine.dry_plan is invoked by the Java-authorized Python planner, with strict policy, CTE rewrite, native core and SDK type parsing. A recorded SDK patch injects the application-bounded native session lease. SQLGlot/native packages pinned. No claim of the separate Wren AI Service, local LLM, or all SDK database connectors being enabled. NLA source fork adds engine.plan_for_dataset/nla_planning.py for authorized physical binding, read-only AST enforcement, immutable manifests, native resolution and post-rewrite physical-lineage equality; planning-only mode prevents connector creation. The application adapter uses this implementation directly.",
       "integrationEvidence": "docs/integrations/semantic-planner.md"
     },
     {
@@ -139,8 +139,10 @@
         }
       ],
       "runtimeIntegrated": true,
-      "integratedScope": "Native metadata plus adapted PostgreSQL/pgx, MySQL and SQLServer source drivers, pooled connection lifecycle, cancellation and canonical result serialization in private Go executor. Java owns authorization/SQL guard; no public arbitrary execution tools or cloud connectors.",
+      "integratedScope": "Full supplied source imported into vendor/upstream/data-tool-platform. Private Go executor uses a local Go module replace and directly calls actual postgres/mysql/mssql source Config.Initialize factories and native pools. App-owned guarded read-only query execution, auth/host/row/byte/time controls and lease bounds remain. No public arbitrary tool server and no claim of enabled cloud connector inventory.",
       "integrationEvidence": "docs/integrations/data-tool-runtime.md"
     }
-  ]
+  ],
+  "fullSourceInventory": "docs/integrations/full-source-inventory.json",
+  "reviewedPatches": "docs/integrations/full-source-patches.json"
 }

@@ -1,3 +1,5 @@
 -r requirements.txt
 black==26.10.1
 isort==9.0.2
+# Selected unit regression tests from the imported SDK use orjson fixtures.
+orjson==3.13.0

@@ -25,7 +25,7 @@ Tổng điểm theo các trọng số trên là 80%; phạm vi chưa nghiệm th
 | Data tool runtime | Native PG/pgx, MySQL và SQLServer drivers, bounded connection pools/leases/rotation, cancellation, canonical decimal/BIGINT/UUID/bool/time, private Java transport | Native Go race/DB3 tests; Java→Go→DB3; query API/browser; giữ reader grants/time/row/byte bounds |
 | Local file dispatch | Arrow format conversion và upload parser riêng13 extension, automatic full-file inference, preview/mapping, batch4layers, Dataset registration |39 format/engine pairs plus active100k-row cancellation DB3, exact persistence/cleanup; real OIDC browser upload/catalog DB3 |
 
-Không claim cả sản phẩm upstream hoặc mọi cloud connector đã chạy. Native metric-measure compiler của upstream, SDK/vector retrieval/cloud IAM/connectors ngoài DB3 và vận hành production/load dài hạn chưa được nghiệm thu. LLM provider thật vẫn chưa chạy theo lựa chọn của người dùng để key cấu hình sau; core SQL planner không tự thay thế model sinh câu hỏi tự do. [Chi tiết nguồn/mapping](platform-reuse.md), [file contract](contracts/file-ingestion.md), [work log](work-log.md).
+Không claim cả sản phẩm upstream hoặc mọi cloud connector đã chạy. Native metric-measure compiler của upstream, vector retrieval/cloud IAM/connectors ngoài DB3 và vận hành production/load dài hạn chưa được nghiệm thu. LLM provider thật vẫn chưa chạy theo lựa chọn của người dùng để key cấu hình sau; core SQL planner không tự thay thế model sinh câu hỏi tự do. [Chi tiết nguồn/mapping](platform-reuse.md), [file contract](contracts/file-ingestion.md), [work log](work-log.md).
 
 ## Bằng chứng baseline trước đợt tích hợp này và giới hạn
 
@@ -42,3 +42,7 @@ Lệnh, branch/commit, kết quả FE/AI cuối và trạng thái PR/main đư�
 ## Acceptance mới của đợt tích hợp source/file
 
 Backend79 tests PASS/no skip trên Docker/Testcontainers và DB3; frontend124 unit PASS, build/25 mocked browser PASS; parser18 PASS; native planner58 PASS/1 provider SKIP. Packaged Compose có đủ5 app services healthy. Upload13extension×3engine39 pairs và3active cancellation PASS. Browser OIDC thật query và file upload/catalog DB3 PASS, các bảng kiểm thử đã được kiểm tra/dọn theo manifest. Các thay đổi nhỏ về quoted-case/qualifier/source identity và packaging evaluation được kiểm tra lại khi đóng đợt; work log là nguồn evidence cuối, không suy PASS provider từ tests offline.
+
+## Source adoption — cập nhật2026-10-21
+
+Hai bộ source đã được nhập trong repo với417.117 dòng code theo inventory. Python cài/gọi SDK semantic trực tiếp từ source; Go gọi native source factories trực tiếp từ source qua local module replace. [Bản đồ caller và giới hạn](integrations/full-source-adoption.md) ghi chính xác phần đang chạy. Không cộng phần trăm chỉ từ lượng code nhập. Engine source không bao gồm toàn bộ Wren AI Service; [Ollama/API](llm-provider.md) có hướng dẫn cấu hình nhưng inference thật vẫn NOT RUN.

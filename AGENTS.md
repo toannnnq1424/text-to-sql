@@ -8,7 +8,7 @@
 
 Repository đang có frontend, backend, Python AI service, data provisioning, Docker Compose và các bài kiểm chứng. Các prompt gốc là yêu cầu nguồn, không tự phát sinh task ngoài yêu cầu hiện tại. Tiếp tục phát triển theo chỉ đạo người dùng và cập nhật trạng thái sau mỗi commit/push.
 
-Task semantic layer, connector, MCP/data tools hoặc mở rộng nguồn đọc thêm `docs/platform-reuse.md`, `docs/integrations/reviewed-snapshots.json` và `docs/future-connectors.md`. Ưu tiên tái sử dụng implementation phù hợp từ các snapshot đã khảo sát, có provenance/license và tests; không tự viết lại hoặc copy cả repo chỉ để lấy tên connector. Tên sản phẩm/UI dùng branding dự án, giữ notice/attribution bắt buộc trong hồ sơ nguồn. Danh mục connector tương lai không là bằng chứng runtime đã hỗ trợ và không thay target ba engine hiện tại.
+Task semantic layer, connector, MCP/data tools hoặc mở rộng nguồn đọc thêm `docs/platform-reuse.md`, `docs/integrations/reviewed-snapshots.json` và `docs/future-connectors.md`. Người dùng đã yêu cầu đưa toàn bộ hai snapshot vào repo và dùng bộ kit thật. Source nằm trong `vendor/upstream/`; đọc thêm `docs/integrations/full-source-adoption.md`. Ưu tiên gọi trực tiếp SDK/module phù hợp, có caller, provenance/license và tests; không tự viết lại implementation đã có. Không coi việc copy source là tích hợp runtime. Giữ inventory gốc; sửa upstream phải cập nhật patch manifest và chạy `python3 infra/upstream/verify.py`. Tên sản phẩm/UI dùng branding dự án, giữ notice/attribution bắt buộc trong hồ sơ nguồn. Danh mục connector tương lai không là bằng chứng runtime đã hỗ trợ và không thay target ba engine hiện tại.
 
 ## Thứ tự hiệu lực
 

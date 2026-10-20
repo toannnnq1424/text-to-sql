@@ -1,0 +1,15 @@
+services:
+  ibis-server:
+    image: ghcr.io/canner/wren-engine-ibis:latest
+    ports:
+      - "${HOST_WREN_PORT:-8000}:8000"
+      - "${HOST_MCP_PORT:-9000}:9000"
+    environment:
+      ENABLE_MCP_SERVER: "true"
+      MCP_TRANSPORT: "streamable-http"
+      MCP_HOST: "0.0.0.0"
+      MCP_PORT: "9000"
+      WREN_URL: "localhost:8000"
+      CONNECTION_FILE_ROOT: "/workspace"
+    volumes:
+      - ${MDL_WORKSPACE:-../workspace}:/workspace

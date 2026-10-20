@@ -14,6 +14,7 @@ from threading import Lock
 from typing import Iterator
 
 import wren_core
+from wren.mdl import get_session_context
 
 MAX_CACHED_MANIFEST_BYTES = 65536
 _FACTORY_LOCK = Lock()
@@ -26,7 +27,7 @@ class _Session:
 
 
 def _create(manifest_str: str, data_source: str) -> _Session:
-    return _Session(wren_core.SessionContext(manifest_str, None, None, data_source))
+    return _Session(get_session_context.__wrapped__(manifest_str, None, None, data_source))
 
 
 # Keys contain the complete authorized manifest and dialect, never query text,
