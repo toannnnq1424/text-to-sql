@@ -3,6 +3,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse, delay } from "msw";
 import { renderApp, readyDataset } from "../test/render";
+import { importApi } from "../api/importApi";
 import { warehouseSelectionKey } from "./warehouseSelection";
 import { server } from "../test/server";
 import * as f from "../test/fixtures";
@@ -17,6 +18,7 @@ describe("shell and context", () => {
     ["/warehouses", "Warehouses"],
     ["/evaluation", "Đánh giá"],
     ["/ingestion", "Nạp dữ liệu"],
+    ["/import/sql", "SQL Import"],
     ["/monitoring", "Giám sát"],
     ["/settings", "Cài đặt"],
   ])("keeps sidebar active on %s", async (path, label) => {
@@ -57,6 +59,101 @@ describe("shell and context", () => {
         "Commerce demo",
       ),
     );
+  });
+  it("validates, previews and confirms an allowlisted SQL import plan", async () => {
+    const user = userEvent.setup();
+    const validatePlan = vi.spyOn(importApi, "validate").mockResolvedValue({
+      planId: "plan-test-001",
+      planDigest: "sha256:test-digest",
+      warehouseId: "wh-demo-pg",
+      targetSchema: "public",
+      sourceDialect: "AUTO_DETECT",
+      detectedDialect: "POSTGRESQL",
+      targetEngine: "POSTGRESQL",
+      mode: "NATIVE",
+      statementCount: 2,
+      objectCount: 1,
+      supportedActions: ["CREATE_TABLE", "INSERT"],
+      warnings: [],
+      unsupportedFeatures: [],
+      preview: {
+        statements: [
+          {
+            index: 1,
+            kind: "CREATE_TABLE",
+            objectName: "imported_tracks",
+            summary: "Create table imported_tracks",
+          },
+        ],
+        schemas: [
+          {
+            name: "public",
+            tables: [
+              {
+                name: "imported_tracks",
+                columns: [
+                  {
+                    name: "track_id",
+                    dataType: "INTEGER",
+                    nullable: false,
+                    primaryKey: true,
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      expiresAt: "2099-01-01T00:00:00Z",
+    });
+    renderApp("/import/sql");
+    await readyDataset();
+    await user.selectOptions(
+      screen.getByLabelText("Dialect nguồn"),
+      "AUTO_DETECT",
+    );
+    await screen.findByRole("option", {
+      name: "Demo POSTGRESQL · PostgreSQL",
+    });
+    await user.selectOptions(
+      screen.getByLabelText("Warehouse đích"),
+      "wh-demo-pg",
+    );
+    await user.upload(
+      screen.getByLabelText("File SQL (tối đa 2 MiB)"),
+      new File(
+        ["CREATE TABLE imported_tracks (track_id INTEGER PRIMARY KEY);"],
+        "tracks.sql",
+        {
+          type: "text/plain",
+        },
+      ),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Kiểm tra và xem trước" }),
+    );
+    expect(await screen.findByText("Kế hoạch đã xác thực")).toBeInTheDocument();
+    expect(validatePlan).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceDialect: "AUTO_DETECT",
+        warehouseId: "wh-demo-pg",
+        targetSchema: "analytics",
+      }),
+    );
+    validatePlan.mockRestore();
+    expect(
+      screen.getByText("Create table imported_tracks"),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Xem lại và xác nhận" }),
+    );
+    const dialog = screen.getByRole("alertdialog");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Xác nhận import" }),
+    );
+    expect(await screen.findByText("Chi tiết lần import")).toBeInTheDocument();
+    expect(await screen.findByText("sql-import-run-001")).toBeInTheDocument();
+    expect(await screen.findAllByText("SUCCESS")).toHaveLength(2);
   });
   it("restores warehouse context only for the signed-in subject", async () => {
     let posted: unknown;

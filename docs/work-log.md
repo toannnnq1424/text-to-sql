@@ -100,3 +100,13 @@ Các entry triển khai tiếp theo thêm phía dưới; không đánh dấu FE/
 - Còn thiếu / blocker / phụ thuộc: provider OIDC, SQL Import UI/API end-to-end và live-data/visual acceptance còn thiếu.
 - Việc tiếp nối: cập nhật PR #2 và tiếp tục triển khai các workflow bắt buộc; code style không thay thế acceptance chức năng.
 - Commit/push: entry này đi cùng commit; SHA remote xác minh sau push.
+
+### 2026-10-20 13:33 UTC+07 — Thêm luồng SQL Import trong ứng dụng / conversation FE
+- Nhánh / commit subject: `module/frontend-polish`; `feat: add validated SQL import workflow`.
+- Phạm vi: màn SQL Import, client multipart/run APIs, schema DTO, route/sidebar, cấu hình writer credential reference write-only trên warehouse và kiểm thử FE.
+- Trạng thái: VERIFIED cho caller UI/API contract dưới test; SQL Import tổng thể vẫn INCOMPLETE vì chưa chạy caller FE với Java và warehouse thật qua upload, preview, xác nhận, persistence, history trên ba engine.
+- Đã làm: thêm validate → preview → explicit confirm → run detail/history; giới hạn file `.sql` 2 MiB; giữ idempotency key cho lần retry; chỉ submit planId/digest khi xác nhận, không gửi lại SQL gốc; hiển thị warnings/unsupported features và ngăn xác nhận plan hết hạn/không hỗ trợ. Warehouse form nhận `importCredentialReference` dạng env reference, không nhập password và không hiển thị giá trị được lưu.
+- Kiểm chứng: `npm test -- --reporter=dot` — 104 passed; `npm run test:e2e` — 21 passed với API fixture riêng cho browser tests; `npm run build` PASS; `npm run format:check` PASS; `git diff --check` PASS.
+- Còn thiếu / blocker / phụ thuộc: E2E browser ở commit này dùng mock Java, không chứng minh tích hợp hoặc persistence thật. Backend SQL Import đang ở nhánh riêng; backend agent đang sửa mapping sang writer username chuyên dụng. OIDC provider thật và đối chiếu dữ liệu/provenance mọi route vẫn chưa nghiệm thu; `docs/current-review.md` được giữ cho nhánh tích hợp để tránh xung đột giữa module.
+- Việc tiếp nối: tích hợp contract/implementation từ backend rồi chạy upload-preview-confirm thật trên PostgreSQL, MySQL và SQL Server; cấu hình OIDC provider và hoàn thiện acceptance UI còn mở.
+- Commit/push: entry này đi cùng commit; SHA local/remote được đối chiếu sau push.

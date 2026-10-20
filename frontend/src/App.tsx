@@ -44,6 +44,9 @@ const Home = lazy(() =>
   ),
   Settings = lazy(() =>
     import("./pages/SettingsPage").then((m) => ({ default: m.SettingsPage })),
+  ),
+  SqlImport = lazy(() =>
+    import("./pages/SqlImportPage").then((m) => ({ default: m.SqlImportPage })),
   );
 export const client = new QueryClient({ defaultOptions: queryClientDefaults });
 export function AppRoutes() {
@@ -67,6 +70,8 @@ export function AppRoutes() {
           <Route path="warehouses" element={<Warehouses />} />
           <Route path="ingestion" element={<Ingestion />} />
           <Route path="ingestion/:runId" element={<Ingestion />} />
+          <Route path="import/sql" element={<SqlImport />} />
+          <Route path="import/sql/:runId" element={<SqlImport />} />
           <Route path="evaluation" element={<Evaluation />} />
           <Route path="evaluation/results/:resultId" element={<Evaluation />} />
           <Route path="monitoring" element={<Monitoring />} />

@@ -423,6 +423,90 @@ export const SettingsSchema = z.object({
   modelDisplayName: z.string().nullable(),
 });
 export type Settings = z.infer<typeof SettingsSchema>;
+export const ImportDialectSchema = z.enum([
+  "AUTO_DETECT",
+  "POSTGRESQL",
+  "MYSQL",
+  "SQL_SERVER",
+]);
+export const ImportModeSchema = z.enum(["NATIVE", "CROSS_DIALECT"]);
+export const ImportRunStatusSchema = z.enum([
+  "PENDING",
+  "RUNNING",
+  "SUCCESS",
+  "PARTIAL",
+  "FAILED",
+]);
+export const ImportPlanSchema = z.strictObject({
+  planId: id,
+  planDigest: id,
+  warehouseId: id,
+  targetSchema: id,
+  sourceDialect: ImportDialectSchema,
+  detectedDialect: z.enum(["POSTGRESQL", "MYSQL", "SQL_SERVER"]),
+  targetEngine: EngineSchema,
+  mode: ImportModeSchema,
+  statementCount: count,
+  objectCount: count,
+  supportedActions: z.array(id),
+  warnings: z.array(z.string()),
+  unsupportedFeatures: z.array(z.string()),
+  preview: z.strictObject({
+    statements: z.array(
+      z.strictObject({
+        index: count.min(1),
+        kind: id,
+        objectName: z.string(),
+        summary: z.string(),
+      }),
+    ),
+    schemas: z.array(
+      z.strictObject({
+        name: id,
+        tables: z.array(
+          z.strictObject({
+            name: id,
+            columns: z.array(
+              z.strictObject({
+                name: id,
+                dataType: id,
+                nullable: z.boolean(),
+                primaryKey: z.boolean(),
+              }),
+            ),
+          }),
+        ),
+      }),
+    ),
+  }),
+  expiresAt: time,
+});
+export type ImportPlan = z.infer<typeof ImportPlanSchema>;
+const ImportStepSchema = z.strictObject({
+  index: count.min(1),
+  kind: id,
+  objectName: z.string(),
+  status: ImportRunStatusSchema,
+  rowsAffected: count,
+  error: ErrorBodySchema.nullable(),
+});
+export const ImportRunSchema = z.strictObject({
+  runId: id,
+  planId: id,
+  warehouseId: id,
+  targetSchema: id,
+  sourceDialect: ImportDialectSchema,
+  targetEngine: EngineSchema,
+  status: ImportRunStatusSchema,
+  statementCount: count,
+  completedStatements: count,
+  rowsAffected: count,
+  createdAt: time,
+  completedAt: time.nullable(),
+  steps: z.array(ImportStepSchema),
+  error: ErrorBodySchema.nullable(),
+});
+export type ImportRun = z.infer<typeof ImportRunSchema>;
 export const WarehouseInputSchema = z.strictObject({
   name: z.string().trim().min(1).max(120),
   engine: EngineSchema,
@@ -437,6 +521,7 @@ export const WarehouseInputSchema = z.strictObject({
   defaultSchema: z.string().trim().max(128).nullable(),
   username: z.string().trim().min(1).max(128),
   credentialReference: z.string().trim().min(1).max(256),
+  importCredentialReference: z.string().trim().max(256).optional(),
 });
 export type WarehouseInput = z.infer<typeof WarehouseInputSchema>;
 export const SavedSchema = z.object({

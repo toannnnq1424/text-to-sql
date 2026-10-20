@@ -342,10 +342,16 @@ function WarehouseFields({
   const mutation = useMutation({
     mutationFn: async (body: WarehouseInput) => {
       if (!w) return warehouseApi.create(body);
-      const { engine: _, credentialReference, ...update } = body;
+      const {
+        engine: _,
+        credentialReference,
+        importCredentialReference,
+        ...update
+      } = body;
       return warehouseApi.update(w.warehouseId, {
         ...update,
         ...(credentialReference ? { credentialReference } : {}),
+        ...(importCredentialReference ? { importCredentialReference } : {}),
       });
     },
     onSuccess: onSaved,
@@ -362,6 +368,9 @@ function WarehouseFields({
           port: Number(port),
           defaultSchema: String(data.defaultSchema || "") || null,
           credentialReference: String(data.credentialReference || ""),
+          importCredentialReference: String(
+            data.importCredentialReference || "",
+          ),
         };
         const validation = WarehouseInputSchema.safeParse({
           ...input,
@@ -379,9 +388,14 @@ function WarehouseFields({
           return;
         }
         setError("");
+        const { importCredentialReference: _writerReference, ...validInput } =
+          validation.data;
         mutation.mutate({
-          ...validation.data,
+          ...validInput,
           credentialReference: input.credentialReference,
+          ...(input.importCredentialReference
+            ? { importCredentialReference: input.importCredentialReference }
+            : {}),
         });
       }}
     >
@@ -478,10 +492,21 @@ function WarehouseFields({
             autoComplete="off"
           />
         </Field>
+        <Field
+          label="Import writer credential reference (optional)"
+          hint="Chỉ dùng cho SQL Import đã được validate. Nhập env reference như env:WAREHOUSE_IMPORT_WRITER_PASSWORD; không nhập mật khẩu. Để trống để giữ cấu hình hiện tại."
+        >
+          <input
+            name="importCredentialReference"
+            maxLength={256}
+            autoComplete="off"
+          />
+        </Field>
       </div>
       <Notice>
-        <ShieldCheck size={16} /> App chỉ đăng ký kết nối. Không tạo database
-        hoặc tự chạy file SQL.
+        <ShieldCheck size={16} /> Truy vấn dùng credential read-only. SQL Import
+        cần writer reference riêng và chỉ áp dụng kế hoạch đã được server
+        validate.
       </Notice>
       {error && <Notice tone="error">{error}</Notice>}
       {mutation.error && <ErrorState error={mutation.error} />}

@@ -140,6 +140,101 @@ export const handlers = [
   http.get(`${base}/warehouse/ingestion/runs/:id`, () =>
     HttpResponse.json(f.ingestion),
   ),
+  http.post(`${base}/import/sql/validate`, () =>
+    HttpResponse.json({
+      planId: "plan-test-001",
+      planDigest: "sha256:test-digest",
+      warehouseId: "wh-demo-pg",
+      targetSchema: "public",
+      sourceDialect: "AUTO_DETECT",
+      detectedDialect: "POSTGRESQL",
+      targetEngine: "POSTGRESQL",
+      mode: "NATIVE",
+      statementCount: 2,
+      objectCount: 1,
+      supportedActions: ["CREATE_TABLE", "INSERT"],
+      warnings: [],
+      unsupportedFeatures: [],
+      preview: {
+        statements: [
+          {
+            index: 1,
+            kind: "CREATE_TABLE",
+            objectName: "imported_tracks",
+            summary: "Create table imported_tracks",
+          },
+        ],
+        schemas: [
+          {
+            name: "public",
+            tables: [
+              {
+                name: "imported_tracks",
+                columns: [
+                  {
+                    name: "track_id",
+                    dataType: "INTEGER",
+                    nullable: false,
+                    primaryKey: true,
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      expiresAt: "2099-01-01T00:00:00Z",
+    }),
+  ),
+  http.post(`${base}/import/sql/runs`, () =>
+    HttpResponse.json(
+      {
+        runId: "sql-import-run-001",
+        planId: "plan-test-001",
+        warehouseId: "wh-demo-pg",
+        targetSchema: "public",
+        sourceDialect: "AUTO_DETECT",
+        targetEngine: "POSTGRESQL",
+        status: "RUNNING",
+        statementCount: 2,
+        completedStatements: 0,
+        rowsAffected: 0,
+        createdAt: "2026-10-20T00:00:00Z",
+        completedAt: null,
+        steps: [],
+        error: null,
+      },
+      { status: 202 },
+    ),
+  ),
+  http.get(`${base}/import/sql/runs`, () => HttpResponse.json(f.page([]))),
+  http.get(`${base}/import/sql/runs/:id`, () =>
+    HttpResponse.json({
+      runId: "sql-import-run-001",
+      planId: "plan-test-001",
+      warehouseId: "wh-demo-pg",
+      targetSchema: "public",
+      sourceDialect: "AUTO_DETECT",
+      targetEngine: "POSTGRESQL",
+      status: "SUCCESS",
+      statementCount: 2,
+      completedStatements: 2,
+      rowsAffected: 16,
+      createdAt: "2026-10-20T00:00:00Z",
+      completedAt: "2026-10-20T00:00:02Z",
+      steps: [
+        {
+          index: 1,
+          kind: "CREATE_TABLE",
+          objectName: "imported_tracks",
+          status: "SUCCESS",
+          rowsAffected: 0,
+          error: null,
+        },
+      ],
+      error: null,
+    }),
+  ),
   http.get(`${base}/evaluation/test-suites`, () =>
     HttpResponse.json(f.page([f.suite])),
   ),

@@ -5,7 +5,14 @@ async function javaTestBoundary(page: Page) {
     const url = new URL(route.request().url()),
       path = url.pathname.replace("/api/v1", "");
     let body: unknown;
-    if (path === "/warehouses") body = f.page(f.warehouses);
+    if (path === "/session")
+      body = {
+        subject: "e2e-admin",
+        name: "E2E Admin",
+        roles: ["ADMIN"],
+        local: true,
+      };
+    else if (path === "/warehouses") body = f.page(f.warehouses);
     else if (/^\/warehouses\/[^/]+$/.test(path)) {
       const w = f.warehouses.find(
         (w) => w.warehouseId === decodeURIComponent(path.split("/")[2]),
@@ -76,6 +83,70 @@ async function javaTestBoundary(page: Page) {
     else if (path === "/warehouse/ingestion/runs") body = f.page([f.ingestion]);
     else if (path.startsWith("/warehouse/ingestion/runs/")) body = f.ingestion;
     else if (path.endsWith("/sources")) body = f.page([f.source]);
+    else if (path === "/import/sql/validate")
+      body = {
+        planId: "plan-demo-001",
+        planDigest: "digest-demo-001",
+        warehouseId: f.warehouses[0].warehouseId,
+        targetSchema: "analytics",
+        sourceDialect: "POSTGRESQL",
+        detectedDialect: "POSTGRESQL",
+        targetEngine: "POSTGRESQL",
+        mode: "NATIVE",
+        statementCount: 1,
+        objectCount: 1,
+        supportedActions: ["CREATE_TABLE"],
+        warnings: [],
+        unsupportedFeatures: [],
+        preview: {
+          statements: [
+            {
+              index: 1,
+              kind: "CREATE_TABLE",
+              objectName: "analytics.imported_rows",
+              summary: "Create table analytics.imported_rows",
+            },
+          ],
+          schemas: [
+            {
+              name: "analytics",
+              tables: [
+                {
+                  name: "imported_rows",
+                  columns: [
+                    {
+                      name: "id",
+                      dataType: "INTEGER",
+                      nullable: false,
+                      primaryKey: true,
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        expiresAt: new Date(Date.now() + 600_000).toISOString(),
+      };
+    else if (path === "/import/sql/runs") body = f.page([]);
+    else if (path.startsWith("/import/sql/runs/"))
+      body = {
+        runId: "import-demo-001",
+        planId: "plan-demo-001",
+        warehouseId: f.warehouses[0].warehouseId,
+        targetSchema: "analytics",
+        sourceDialect: "POSTGRESQL",
+        targetEngine: "POSTGRESQL",
+        status: "SUCCESS",
+        statementCount: 1,
+        completedStatements: 1,
+        rowsAffected: 0,
+        createdAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+        steps: [],
+        error: null,
+      };
+    else if (path === "/evaluation/test-suites") body = f.page([f.suite]);
     else if (path === "/evaluation/test-suites") body = f.page([f.suite]);
     else if (path === "/evaluation/runs") body = f.page([f.evalRun]);
     else if (path.startsWith("/evaluation/runs/")) body = f.evalRun;
@@ -213,10 +284,51 @@ test("system notification menu displays monitoring API data", async ({
   await expect(menu).toContainText("1");
   await expect(menu.getByRole("link", { name: "Mở giám sát" })).toBeVisible();
 });
+test("SQL Import validates a script and presents a bounded plan for review", async ({
+  page,
+}) => {
+  await javaTestBoundary(page);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/import/sql");
+  await expect(page.getByRole("heading", { name: "Import SQL" })).toBeVisible();
+  await page.getByLabel("Schema đích").fill("analytics");
+  await page.getByLabel(/File SQL/).setInputFiles({
+    name: "warehouse.sql",
+    mimeType: "application/sql",
+    buffer: Buffer.from("CREATE TABLE imported_rows (id INTEGER PRIMARY KEY);"),
+  });
+  await page.getByRole("button", { name: "Kiểm tra và xem trước" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Kế hoạch đã xác thực" }),
+  ).toBeVisible();
+  await expect(page.locator(".import-schema")).toContainText("imported_rows");
+  await expect(
+    page.getByRole("button", { name: "Xem lại và xác nhận" }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(1441);
+});
 test("offline Java is an error state, not fabricated success", async ({
   page,
 }) => {
-  await page.route("**/api/v1/**", (route) => route.abort("connectionfailed"));
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        subject: "e2e-admin",
+        name: "E2E Admin",
+        roles: ["ADMIN"],
+        local: true,
+      }),
+    }),
+  );
+  await page.route("**/api/v1/**", (route) => {
+    if (new URL(route.request().url()).pathname.endsWith("/session")) {
+      return route.fallback();
+    }
+    return route.abort("connectionfailed");
+  });
   await page.goto("/query");
   await expect(page.getByRole("alert").first()).toContainText(
     "Không kết nối được Java API",

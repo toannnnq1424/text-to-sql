@@ -2888,6 +2888,80 @@ summary {
 .page-heading:has(+ .filters):has(.hero-art) {
   min-height: 185px;
 }
+.import-form fieldset {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+.import-file-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+.import-schema {
+  padding: 12px 14px;
+  margin-top: 10px;
+  border: 1px solid #e2ebf9;
+  border-radius: 9px;
+}
+.import-schema summary {
+  color: #172654;
+  font-weight: 650;
+  cursor: pointer;
+}
+.import-schema ul {
+  max-height: 240px;
+  overflow: auto;
+  padding-left: 22px;
+}
+.import-confirm-overlay {
+  position: fixed;
+  z-index: 200;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(11 27 52 / 48%);
+}
+.import-confirm-dialog {
+  width: min(560px, 100%);
+  margin: 0;
+  box-shadow: 0 24px 70px rgb(7 24 55 / 25%);
+}
+.import-confirm-dialog h2 {
+  margin: 0 0 12px;
+}
+.import-confirm-dialog p {
+  line-height: 1.65;
+}
+.import-step-list {
+  display: grid;
+  gap: 10px;
+  padding-left: 22px;
+}
+.import-step-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 12px;
+  border: 1px solid #e2ebf9;
+  border-radius: 9px;
+}
+.import-step-list li > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.import-step-list li > div span,
+.import-step-list li small {
+  overflow-wrap: anywhere;
+  color: #7183a8;
+}
+.import-step-list li .notice {
+  grid-column: 1 / -1;
+}
 @media (max-width: 1440px) {
   .catalog-grid.with-categories {
     grid-template-columns: 155px minmax(0, 1.6fr) minmax(280px, 1fr);
@@ -2922,5 +2996,8 @@ summary {
   }
   .selector-trigger > .selector-value {
     font-size: 11px;
+  }
+  .import-step-list li {
+    grid-template-columns: 1fr;
   }
 }
