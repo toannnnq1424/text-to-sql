@@ -68,12 +68,17 @@ Pipeline chỉ chạy nguồn đã đăng ký và dataset được phép ghi b�
 
 | Method/path | Input / output |
 |---|---|
-| GET /warehouse/ingestion/sources | Page<IngestionSource> theo warehouseId/datasetId; `{sourceId,name,type,status}` không secrets |
+| GET /warehouse/ingestion/sources | Page<IngestionSource> theo warehouseId/datasetId; `{sourceId,name,type,status,sourceWarehouseId,sourceDatasetId}` không secrets |
+| POST /warehouse/ingestion/sources | Admin đăng ký pipeline từ warehouse/dataset đã đăng ký: `{name,warehouseId,datasetId,sourceWarehouseId,sourceDatasetId,readSql,stage,mart,columns,requiredColumns,columnTypes,maxStringLengths,maxRows,maxBytes,timeoutSeconds}` → 201 safe `IngestionSource`; sourceId do server tạo, writer credential lấy từ secret reference được quản trị server-side |
+| PATCH /warehouse/ingestion/sources/{sourceId} | Admin đổi name/query/mapping/limits hoặc ACTIVE/DISABLED; cùng validation như POST, không trả secret |
+| POST /warehouse/ingestion/sources/{sourceId}/test | Admin kiểm tra source query bounded, allowlist metadata, column names/types và writer/table availability; trả reachable, checkedAt, bounded row sample metadata và sanitized error |
 | POST /warehouse/ingestion/run | `{warehouseId,datasetId,sourceId,idempotencyKey}` → 202 IngestionRun |
 | GET /warehouse/ingestion/runs | Page<IngestionRun>; warehouseId,engine,datasetId,status,from,to,search |
 | GET /warehouse/ingestion/runs/{runId} | IngestionRun + stage details/errors sanitized |
 
 IngestionRun: runId,batchId,warehouseId,datasetId,engine,status,sourceId,rowsWritten,rejectedCount,startedAt,completedAt,durationMs,idempotent,steps,error. Nullable timestamps/duration trước hoàn tất. Stages RAW,STAGING,WAREHOUSE,MART; status PENDING,RUNNING,SUCCESS,FAILED,SKIPPED. Run status PENDING,RUNNING,SUCCESS,PARTIAL,FAILED. Idempotency key cùng principal+source+dataset+payload trả cùng run; reuse key với payload khác trả 409 INVALID_REQUEST. Không tự rerun failure và double insert.
+
+Pipeline source is application metadata, not a file per warehouse in the repository. `sourceWarehouseId`/`sourceDatasetId` name the registered read-only source and its allowlist; `warehouseId`/`datasetId` name the registered write target. `readSql` is a bounded SELECT candidate validated against source dataset metadata by Java. `columns` is an ordered, unique list of result aliases; `columnTypes` must declare exactly one canonical type per alias (`STRING`,`INTEGER`,`DECIMAL`,`BOOLEAN`,`DATE`,`TIMESTAMP`). `requiredColumns` and `maxStringLengths` must be subsets of columns; string length limits apply only to `STRING`. `stage`/`mart` identifiers are validated and safely quoted by target adapter. Query and writer credentials remain server-managed references; API never accepts or returns secret values. Configuration changes are audited and produce an immutable snapshot for each run. `sourceObjects` in checked-in sample pipeline JSON is local-provisioning metadata and is not accepted by the application API; application source objects are resolved from the authorized registered dataset.
 
 ## Import SQL (mandatory)
 

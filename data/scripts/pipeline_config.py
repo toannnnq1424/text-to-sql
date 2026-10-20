@@ -11,6 +11,7 @@ CONFIGS = {
     "mysql": "MYSQL",
     "mssql": "SQL_SERVER",
 }
+COLUMN_TYPES = {"STRING", "INTEGER", "DECIMAL", "BOOLEAN", "DATE", "TIMESTAMP"}
 
 
 def validate_config(config: dict[str, Any], engine: str) -> dict[str, Any]:
@@ -22,10 +23,14 @@ def validate_config(config: dict[str, Any], engine: str) -> dict[str, Any]:
         "engine",
         "warehouseId",
         "datasetId",
+        "sourceWarehouseId",
+        "sourceDatasetId",
+        "sourceObjects",
         "readSql",
         "stage",
         "mart",
         "columns",
+        "columnTypes",
         "requiredColumns",
         "maxStringLengths",
         "maxRows",
@@ -43,6 +48,28 @@ def validate_config(config: dict[str, Any], engine: str) -> dict[str, Any]:
     if not isinstance(config["readSql"], str) or not config["readSql"].strip():
         raise ValueError("Pipeline readSql must be a non-empty SELECT candidate.")
 
+    for key in ("sourceWarehouseId", "sourceDatasetId"):
+        if not isinstance(config[key], str) or not config[key].strip():
+            raise ValueError(f"Pipeline field {key} must be a non-empty string.")
+    source_objects = config["sourceObjects"]
+    if (
+        not isinstance(source_objects, list)
+        or not source_objects
+        or any(
+            not isinstance(item, dict)
+            or set(item) != {"schema", "name"}
+            or any(
+                not isinstance(value, str) or not IDENTIFIER.fullmatch(value)
+                for value in item.values()
+            )
+            for item in source_objects
+        )
+    ):
+        raise ValueError("Pipeline sourceObjects must explicitly allow safe schema/table names.")
+    object_names = [(item["schema"].casefold(), item["name"].casefold()) for item in source_objects]
+    if len(set(object_names)) != len(object_names):
+        raise ValueError("Pipeline sourceObjects must be unique.")
+
     columns = config["columns"]
     if (
         not isinstance(columns, list)
@@ -58,6 +85,13 @@ def validate_config(config: dict[str, Any], engine: str) -> dict[str, Any]:
         or len(set(required_columns)) != len(required_columns)
     ):
         raise ValueError("Pipeline requiredColumns must be unique output columns.")
+    column_types = config["columnTypes"]
+    if (
+        not isinstance(column_types, dict)
+        or set(column_types) != set(columns)
+        or any(value not in COLUMN_TYPES for value in column_types.values())
+    ):
+        raise ValueError("Pipeline columnTypes must declare a supported type for every output.")
     limits = config["maxStringLengths"]
     if not isinstance(limits, dict) or any(
         name not in columns
@@ -67,6 +101,8 @@ def validate_config(config: dict[str, Any], engine: str) -> dict[str, Any]:
         for name, maximum in limits.items()
     ):
         raise ValueError("Pipeline maxStringLengths must be bounded output columns.")
+    if any(column_types[name] != "STRING" for name in limits):
+        raise ValueError("Pipeline maxStringLengths can only apply to STRING columns.")
     bounds = {
         "maxRows": (1, 10000),
         "maxBytes": (1024, 52428800),

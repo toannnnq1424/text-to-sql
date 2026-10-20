@@ -5,6 +5,12 @@
   "engine": "MYSQL",
   "warehouseId": "wh-chinook-mysql",
   "datasetId": "ds-chinook-mysql",
+  "sourceWarehouseId": "wh-chinook-mysql",
+  "sourceDatasetId": "ds-chinook-mysql",
+  "sourceObjects": [{
+    "schema": "nla_chinook",
+    "name": "Invoice"
+  }],
   "readSql": "SELECT `BillingCountry` AS country, SUM(`Total`) AS total FROM `nla_chinook`.`Invoice` GROUP BY `BillingCountry`",
   "stage": {
     "schema": "nla_chinook",
@@ -18,6 +24,10 @@
     "country",
     "total"
   ],
+  "columnTypes": {
+    "country": "STRING",
+    "total": "DECIMAL"
+  },
   "requiredColumns": [
     "country",
     "total"

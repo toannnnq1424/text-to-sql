@@ -29,17 +29,35 @@ def init():
                 "NLA_CHINOOK_PG_PASSWORD",
                 "NLA_CHINOOK_MYSQL_PASSWORD",
                 "NLA_CHINOOK_MSSQL_PASSWORD",
+                "NLA_IMPORT_PG_PASSWORD",
+                "NLA_IMPORT_MYSQL_PASSWORD",
+                "NLA_IMPORT_MSSQL_PASSWORD",
                 "METADATA_PASSWORD",
                 "LOCAL_API_TOKEN",
             ]
         }
         CONFIG.write_text("".join(f"{k}={v}\n" for k, v in values.items()))
         CONFIG.chmod(0o600)
-    return dict(
+    values = dict(
         line.split("=", 1)
         for line in CONFIG.read_text().splitlines()
         if line and not line.startswith("#")
     )
+    missing = [
+        key
+        for key in (
+            "NLA_IMPORT_PG_PASSWORD",
+            "NLA_IMPORT_MYSQL_PASSWORD",
+            "NLA_IMPORT_MSSQL_PASSWORD",
+        )
+        if key not in values
+    ]
+    if missing:
+        for key in missing:
+            values[key] = "Nla_" + secrets.token_urlsafe(27) + "9!"
+        CONFIG.write_text("".join(f"{key}={value}\n" for key, value in values.items()))
+        CONFIG.chmod(0o600)
+    return values
 
 
 def compose(*args, sql=None, check=True):
@@ -64,11 +82,16 @@ def compose(*args, sql=None, check=True):
     return p
 
 
-def execute(engine, sql, db=None, reader=False):
+def execute(engine, sql, db=None, reader=False, importer=False):
     vals = init()
     if engine == "POSTGRESQL":
-        user = "nla_reader" if reader else "nla_provisioner"
-        password = vals["NLA_CHINOOK_PG_PASSWORD" if reader else "NLA_PG_ADMIN_PASSWORD"]
+        user = "nla_importer" if importer else "nla_reader" if reader else "nla_provisioner"
+        password_key = (
+            "NLA_IMPORT_PG_PASSWORD"
+            if importer
+            else "NLA_CHINOOK_PG_PASSWORD" if reader else "NLA_PG_ADMIN_PASSWORD"
+        )
+        password = vals[password_key]
         args = [
             "exec",
             "-T",
@@ -88,8 +111,13 @@ def execute(engine, sql, db=None, reader=False):
         ]
         env = dict(os.environ, PGPASSWORD=password)
     elif engine == "MYSQL":
-        user = "nla_reader" if reader else "root"
-        password = vals["NLA_CHINOOK_MYSQL_PASSWORD" if reader else "NLA_MYSQL_ADMIN_PASSWORD"]
+        user = "nla_importer" if importer else "nla_reader" if reader else "root"
+        password_key = (
+            "NLA_IMPORT_MYSQL_PASSWORD"
+            if importer
+            else "NLA_CHINOOK_MYSQL_PASSWORD" if reader else "NLA_MYSQL_ADMIN_PASSWORD"
+        )
+        password = vals[password_key]
         args = [
             "exec",
             "-T",
@@ -101,11 +129,16 @@ def execute(engine, sql, db=None, reader=False):
             "--skip-column-names",
             "-u",
             user,
-        ] + ([db] if db else [])
+        ] + ([db or "nla_import"] if db or importer else [])
         env = dict(os.environ, MYSQL_PWD=password)
     else:
-        user = "nla_reader" if reader else "sa"
-        password = vals["NLA_CHINOOK_MSSQL_PASSWORD" if reader else "NLA_MSSQL_ADMIN_PASSWORD"]
+        user = "nla_importer" if importer else "nla_reader" if reader else "sa"
+        password_key = (
+            "NLA_IMPORT_MSSQL_PASSWORD"
+            if importer
+            else "NLA_CHINOOK_MSSQL_PASSWORD" if reader else "NLA_MSSQL_ADMIN_PASSWORD"
+        )
+        password = vals[password_key]
         args = [
             "exec",
             "-T",
@@ -216,6 +249,7 @@ GO
             )
             + "\n"
         )
+    provision_import_namespace(engine, vals)
     counts = {}
     names = {
         "invoice_line": "InvoiceLine",
@@ -285,9 +319,150 @@ GO
     RUNTIME.chmod(0o600)
 
 
+def provision_import_namespace(engine, values):
+    password_key = {
+        "POSTGRESQL": "NLA_IMPORT_PG_PASSWORD",
+        "MYSQL": "NLA_IMPORT_MYSQL_PASSWORD",
+        "SQL_SERVER": "NLA_IMPORT_MSSQL_PASSWORD",
+    }[engine]
+    password = literal(values[password_key])
+    if engine == "POSTGRESQL":
+        exists = execute(engine, "SELECT count(*) FROM pg_roles WHERE rolname='nla_importer';")
+        if exists == "0":
+            execute(
+                engine,
+                f"CREATE ROLE nla_importer LOGIN PASSWORD {password} "
+                "NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;",
+            )
+        else:
+            execute(engine, f"ALTER ROLE nla_importer WITH PASSWORD {password};")
+        schema_exists = execute(
+            engine,
+            "SELECT count(*) FROM information_schema.schemata " "WHERE schema_name='nla_import';",
+            "nla_chinook",
+        )
+        if schema_exists == "0":
+            execute(engine, "CREATE SCHEMA nla_import;", "nla_chinook")
+        execute(
+            engine,
+            "GRANT CONNECT ON DATABASE nla_chinook TO nla_importer;",
+        )
+        execute(
+            engine,
+            "GRANT USAGE, CREATE ON SCHEMA nla_import TO nla_importer;",
+            "nla_chinook",
+        )
+        return
+    if engine == "MYSQL":
+        execute(engine, "CREATE DATABASE IF NOT EXISTS `nla_import` CHARACTER SET utf8mb4;")
+        user_exists = execute(
+            engine,
+            "SELECT COUNT(*) FROM mysql.user WHERE user='nla_importer' AND host='%';",
+        )
+        if user_exists == "0":
+            execute(
+                engine,
+                f"CREATE USER 'nla_importer'@'%' IDENTIFIED BY {password};",
+            )
+        else:
+            execute(
+                engine,
+                f"ALTER USER 'nla_importer'@'%' IDENTIFIED BY {password};",
+            )
+        execute(
+            engine,
+            "GRANT CREATE, INSERT, SELECT ON nla_import.* TO 'nla_importer'@'%';",
+        )
+        return
+    login_exists = execute(
+        engine,
+        "SELECT COUNT(*) FROM sys.sql_logins WHERE name='nla_importer';",
+    )
+    if login_exists == "0":
+        execute(
+            engine,
+            f"CREATE LOGIN [nla_importer] WITH PASSWORD={password},CHECK_POLICY=ON;\nGO\n",
+        )
+    else:
+        execute(
+            engine,
+            f"ALTER LOGIN [nla_importer] WITH PASSWORD={password};\nGO\n",
+        )
+    schema_exists = execute(
+        engine,
+        "SET NOCOUNT ON; SELECT COUNT(*) FROM sys.schemas WHERE name='nla_import';\nGO\n",
+        "nla_chinook",
+    )
+    if schema_exists == "0":
+        execute(engine, "CREATE SCHEMA [nla_import] AUTHORIZATION [dbo];\nGO\n", "nla_chinook")
+    user_exists = execute(
+        engine,
+        "SET NOCOUNT ON; SELECT COUNT(*) FROM sys.database_principals "
+        "WHERE name='nla_importer';\nGO\n",
+        "nla_chinook",
+    )
+    if user_exists == "0":
+        execute(
+            engine,
+            "CREATE USER [nla_importer] FOR LOGIN [nla_importer];\nGO\n",
+            "nla_chinook",
+        )
+    execute(
+        engine,
+        "GRANT CREATE TABLE TO [nla_importer];\n"
+        "GRANT ALTER, SELECT, INSERT ON SCHEMA::[nla_import] TO [nla_importer];\nGO\n",
+        "nla_chinook",
+    )
+
+
+def verify_import_writer(engine):
+    table = {
+        "POSTGRESQL": '"nla_import"."__nla_privilege_probe"',
+        "MYSQL": "`nla_import`.`__nla_privilege_probe`",
+        "SQL_SERVER": "[nla_import].[__nla_privilege_probe]",
+    }[engine]
+    database = "nla_import" if engine == "MYSQL" else "nla_chinook"
+    execute(engine, f"DROP TABLE IF EXISTS {table};", database)
+    if engine == "SQL_SERVER":
+        create = f"CREATE TABLE {table} ([id] int NOT NULL);\nGO\n"
+        insert = f"INSERT INTO {table} ([id]) VALUES (1);\nGO\n"
+        count = f"SET NOCOUNT ON; SELECT COUNT(*) FROM {table};\nGO\n"
+        denied_scope = "CREATE TABLE [dbo].[__nla_privilege_probe] ([id] int);\nGO\n"
+        outside_table = "[dbo].[__nla_privilege_probe]"
+    else:
+        create = f"CREATE TABLE {table} (id int NOT NULL);"
+        insert = f"INSERT INTO {table} (id) VALUES (1);"
+        count = f"SELECT COUNT(*) FROM {table};"
+        denied_scope = {
+            "POSTGRESQL": 'CREATE TABLE public."__nla_privilege_probe" (id int);',
+            "MYSQL": "CREATE TABLE nla_chinook.__nla_privilege_probe (id int);",
+        }[engine]
+        outside_table = {
+            "POSTGRESQL": '"public"."__nla_privilege_probe"',
+            "MYSQL": "`nla_chinook`.`__nla_privilege_probe`",
+        }[engine]
+    execute(engine, create, database, importer=True)
+    execute(engine, insert, database, importer=True)
+    if execute(engine, count, database, importer=True) != "1":
+        raise RuntimeError(f"{engine}: import writer cannot write/read its target namespace")
+    try:
+        execute(engine, denied_scope, "nla_chinook", importer=True)
+    except RuntimeError:
+        denied = True
+    else:
+        denied = False
+        execute(engine, f"DROP TABLE IF EXISTS {outside_table};", "nla_chinook")
+    execute(engine, f"DROP TABLE {table};", database)
+    if not denied:
+        raise RuntimeError(f"{engine}: import writer can create objects outside its namespace")
+
+
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("action", choices=["init", "up", "provision", "verify", "status"])
+    p.add_argument(
+        "action",
+        choices=["init", "up", "provision", "provision-import", "verify", "status"],
+    )
     p.add_argument("--engine", choices=SOURCE["files"])
     a = p.parse_args()
     init()
@@ -303,6 +478,30 @@ def main():
         return
     if a.action == "status":
         print(compose("ps").stdout)
+        return
+    if a.action == "provision-import":
+        values = init()
+        for engine in ([a.engine] if a.engine else SOURCE["files"]):
+            provision_import_namespace(engine, values)
+            verify_import_writer(engine)
+        runtime = (
+            dict(line.split("=", 1) for line in RUNTIME.read_text().splitlines() if line)
+            if RUNTIME.exists()
+            else {}
+        )
+        runtime.update(values)
+        runtime.update(
+            {
+                "METADATA_JDBC_URL": "jdbc:postgresql://127.0.0.1:55432/nla_metadata",
+                "METADATA_USERNAME": "nla_app",
+                "SPRING_PROFILES_ACTIVE": "local",
+                "WAREHOUSE_ALLOWED_HOSTS": "127.0.0.1,localhost",
+                "CHINOOK_DOCKER": "true",
+            }
+        )
+        RUNTIME.write_text("".join(f"{key}={value}\n" for key, value in runtime.items()))
+        RUNTIME.chmod(0o600)
+        print("Dedicated import writers verified for requested engine(s).")
         return
     for engine in ([a.engine] if a.engine else SOURCE["files"]):
         provision(engine)

@@ -45,6 +45,8 @@ docker compose --env-file .local/compose.env -f infra/compose.databases.yml up -
 
 Provisioning đồng thời tạo metadata store PostgreSQL `nla_metadata` cùng vai trò runtime; pipeline staging/mart được quản trị trong từng engine. Các giá trị đăng nhập không dùng giá trị mẫu cố định như `postgrespassword`; xem file runtime cục bộ nếu cần tích hợp công cụ ngoài repo và không chia sẻ file đó.
 
+Sau khi các database hiện có đã provision, chạy `python3 data/scripts/docker_chinook.py provision-import` để tạo namespace `nla_import` và tài khoản riêng cho SQL Import. Lệnh này không đọc hoặc thực thi file SQL; nó kiểm tra quyền tạo/ghi trong namespace import và từ chối quyền tạo object trong schema/database nguồn Chinook.
+
 Lệnh `up` có thể dùng lại để khởi động lại các container đã provision. Để dừng container mà giữ dữ liệu:
 
 ```bash

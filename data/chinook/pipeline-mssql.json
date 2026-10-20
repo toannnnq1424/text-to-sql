@@ -5,6 +5,12 @@
   "engine": "SQL_SERVER",
   "warehouseId": "wh-chinook-mssql",
   "datasetId": "ds-chinook-mssql",
+  "sourceWarehouseId": "wh-chinook-mssql",
+  "sourceDatasetId": "ds-chinook-mssql",
+  "sourceObjects": [{
+    "schema": "dbo",
+    "name": "Invoice"
+  }],
   "readSql": "SELECT [BillingCountry] AS country, SUM([Total]) AS total FROM [dbo].[Invoice] GROUP BY [BillingCountry]",
   "stage": {
     "schema": "dbo",
@@ -18,6 +24,10 @@
     "country",
     "total"
   ],
+  "columnTypes": {
+    "country": "STRING",
+    "total": "DECIMAL"
+  },
   "requiredColumns": [
     "country",
     "total"

@@ -5,6 +5,12 @@
   "engine": "POSTGRESQL",
   "warehouseId": "wh-chinook-pg",
   "datasetId": "ds-chinook-pg",
+  "sourceWarehouseId": "wh-chinook-pg",
+  "sourceDatasetId": "ds-chinook-pg",
+  "sourceObjects": [{
+    "schema": "public",
+    "name": "Invoice"
+  }],
   "readSql": "SELECT \"billing_country\" AS country, SUM(\"total\") AS total FROM \"public\".\"invoice\" GROUP BY \"billing_country\"",
   "stage": {
     "schema": "public",
@@ -18,6 +24,10 @@
     "country",
     "total"
   ],
+  "columnTypes": {
+    "country": "STRING",
+    "total": "DECIMAL"
+  },
   "requiredColumns": [
     "country",
     "total"
