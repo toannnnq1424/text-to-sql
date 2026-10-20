@@ -13,7 +13,7 @@
 | Data | 80% | Chinook có provenance/checksum/grants ba engines; typed four-layer provisioning; application ingestion có API thật; import matrix chín cặp; domain support độc lập đã chạy qua Java và ba databases | Kiểm thử datasets lớn và nhiều schema/type/constraint thực tế ngoài corpus đã chạy; data-quality/recovery/operational coverage rộng hơn. Chinook không phải star-schema warehouse |
 | AI | 65% | Provider API path có implementation, structured output và controlled errors; deterministic ba dialects/hai domain; context/few-shot/request-byte checks | Provider smoke/evaluation thật chưa chạy; chưa có số liệu chất lượng câu hỏi mới, typo/ambiguity, token billing và latency thực; budget hiện đếm bytes, chưa đếm tokens theo model. Deterministic chỉ khớp examples đã khai báo |
 
-Tổng trọng số là 80%; phạm vi chưa nghiệm thu vẫn thuộc target, không được chuyển thành “future work” để gọi 100%. Local training là tùy chọn nên không tính là phần bắt buộc còn thiếu.
+Tổng điểm theo các trọng số trên là 80%; phạm vi chưa nghiệm thu vẫn thuộc target, không được chuyển thành “future work” để gọi 100%. Local training là tùy chọn nên không tính là phần bắt buộc còn thiếu.
 
 ## Trường hợp 2: tính thêm việc tận dụng sâu hai bộ nguồn Downloads
 
@@ -30,10 +30,11 @@ Các connector S3/Spark/Doris/Athena/BigQuery/ClickHouse/Databricks/DuckDB/GCS/L
 
 ## Bằng chứng và giới hạn
 
+- Frontend tích hợp: 118 unit tests, 23 mocked browser cases, build và format PASS; live import/ingestion DB3 có kiểm tra persistence độc lập. Python: 44 PASS, 1 provider smoke SKIP; infra/data: 31 PASS.
 - Backend sau khi tích hợp metadata: 65 tests, không failure/error/skip, có Docker/Testcontainers và ba database thật.
 - SQL Import qua Java: chín cặp source→target, preview/digest/idempotency/persistence, rows/NULL/decimal kiểm tra trực tiếp DB; PASS.
 - Domain support: 108 Vietnamese/English case-engine runs qua Java→Python→database, so với expected độc lập bằng SQLite; PASS trong deterministic mode.
-- Docker: đã build ba app images, healthchecks và query API/browser qua ba engines; OIDC bốn roles, 401/403, renewal/expiry/logout đã PASS. Chạy lại trên checkout tích hợp cuối được ghi riêng trong work log.
+- Docker: đã build ba app images, healthchecks và query API/browser qua ba engines; OIDC bốn roles, 401/403, renewal/expiry/logout đã PASS. Lần chạy cuối dùng app source `57ddbcf`, có cả hai phần reuse; query UI/API, import9, support108 và OIDC đều PASS. Work log ghi lệnh và giới hạn.
 - Unit/mock provider tests chỉ chứng minh request/response/error handling, không chứng minh model thật sinh SQL chính xác. Mức giảm payload trong corpus kiểm thử không suy ra mức giảm billing/latency của provider.
 - Chưa có clean-machine run với volumes hoàn toàn mới, CI pipeline bắt buộc hoặc audit production/performance toàn diện; không suy ra các mục đó từ build PASS.
 
