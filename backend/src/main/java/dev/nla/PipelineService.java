@@ -1,7 +1,6 @@
 package dev.nla;
 
 import dev.nla.warehouse.*;
-import java.nio.file.*;
 import java.sql.*;
 import java.time.*;
 import java.util.*;
@@ -13,34 +12,19 @@ public class PipelineService {
   private final Adapters adapters;
   private final SqlGuard guard;
   private final CatalogService catalog;
+  private final IngestionSourceService sources;
 
-  public PipelineService(Store s, Adapters a, SqlGuard g, CatalogService c) {
+  public PipelineService(
+      Store s, Adapters a, SqlGuard g, CatalogService c, IngestionSourceService sources) {
     store = s;
     adapters = a;
     guard = g;
     catalog = c;
+    this.sources = sources;
   }
 
   public List<Map<String, Object>> configurations() {
-    List<Map<String, Object>> configs = new ArrayList<>();
-    for (String suffix : List.of("pg", "mysql", "mssql")) {
-      Path p =
-          Path.of(
-              System.getProperty("nla.data.root", "../data"),
-              "chinook",
-              "pipeline-" + suffix + ".json");
-      if (Files.exists(p))
-        try {
-          var conf = Json.read(Files.readString(p));
-          store.authorize(Json.str(conf, "warehouseId"));
-          store.warehouse(Json.str(conf, "warehouseId"));
-          configs.add(conf);
-        } catch (ApiException ignored) {
-        } catch (java.io.IOException e) {
-          throw new IllegalStateException("Registered pipeline unreadable");
-        }
-    }
-    return configs;
+    return store.ingestionSources();
   }
 
   public List<Map<String, Object>> sources() {
@@ -68,8 +52,8 @@ public class PipelineService {
     RegistryController.required(b, "warehouseId", "datasetId", "sourceId", "idempotencyKey");
     String key = Json.str(b, "idempotencyKey");
     if (key.length() > 100) throw ApiException.bad("Idempotency key quá dài.");
-    String signature =
-        Json.str(b, "warehouseId") + "/" + Json.str(b, "datasetId") + "/" + Json.str(b, "sourceId");
+    Map<String, Object> cfg = store.ingestionSource(Json.str(b, "sourceId"));
+    String signature = digest(Json.write(cfg));
     var existing =
         store
             .jdbc()
@@ -86,17 +70,20 @@ public class PipelineService {
             "Idempotency key đã dùng với payload khác.");
       return store.run(existing.getFirst().get("runId"), "INGESTION");
     }
-    var cfg =
-        configurations().stream()
-            .filter(
-                c ->
-                    Json.str(c, "sourceId").equals(b.get("sourceId"))
-                        && Json.str(c, "warehouseId").equals(b.get("warehouseId"))
-                        && Json.str(c, "datasetId").equals(b.get("datasetId")))
-            .findFirst()
-            .orElseThrow(ApiException::notFound);
+    if (!Json.str(cfg, "sourceId").equals(Json.str(b, "sourceId"))
+        || !Json.str(cfg, "warehouseId").equals(Json.str(b, "warehouseId"))
+        || !Json.str(cfg, "datasetId").equals(Json.str(b, "datasetId")))
+      throw ApiException.notFound();
+    if (!"ACTIVE".equals(Json.str(cfg, "status")))
+      throw new ApiException(
+          org.springframework.http.HttpStatus.CONFLICT,
+          "DATASET_UNAVAILABLE",
+          "Ingestion source đã bị vô hiệu hóa.");
+    sources.validateConfig(cfg);
     var w = store.warehouse(Json.str(b, "warehouseId"));
     var d = store.dataset(Json.str(b, "datasetId"));
+    var sourceWarehouse = store.warehouse(Json.str(cfg, "sourceWarehouseId"));
+    var sourceDataset = store.dataset(Json.str(cfg, "sourceDatasetId"));
     if (!"ACTIVE".equals(w.get("status")) || !"ACTIVE".equals(d.get("status")))
       throw new ApiException(
           org.springframework.http.HttpStatus.CONFLICT,
@@ -122,6 +109,12 @@ public class PipelineService {
             "RUNNING",
             "sourceId",
             cfg.get("sourceId"),
+            "sourceWarehouseId",
+            cfg.get("sourceWarehouseId"),
+            "sourceDatasetId",
+            cfg.get("sourceDatasetId"),
+            "configurationSnapshot",
+            cfg,
             "rowsWritten",
             0,
             "rejectedCount",
@@ -149,95 +142,82 @@ public class PipelineService {
             id);
     long start = System.nanoTime();
     int active = 0;
+    boolean rolledBack = false;
     try {
+      var sourceAdapter = adapters.get(sourceWarehouse);
       var adapter = adapters.get(w);
       var validated =
           guard.validate(
               Json.str(cfg, "readSql"),
-              Json.str(w, "engine"),
-              catalog.tables(Json.str(d, "datasetId")));
+              Json.str(sourceWarehouse, "engine"),
+              catalog.tables(Json.str(sourceDataset, "datasetId")));
       var raw =
-          adapter.executeReadOnlyQuery(
-              w,
-              adapters.password(store.credential(Json.str(w, "warehouseId"))),
+          sourceAdapter.executeReadOnlyQuery(
+              sourceWarehouse,
+              adapters.password(store.credential(Json.str(sourceWarehouse, "warehouseId"))),
               validated.sql(),
               configuredBound(cfg, "maxRows", 1000, 1, 10000),
               configuredBound(cfg, "maxBytes", 5242880, 1024, 52428800),
               configuredBound(cfg, "timeoutSeconds", 15, 1, 60));
-      if (Boolean.TRUE.equals(raw.get("truncated")))
-        throw ApiException.bad("Nguồn pipeline vượt giới hạn đã cấu hình.");
-      done(steps.get(active++), start);
-      var columns = configuredColumns(cfg);
-      var columnTypes = columnTypes(Json.objects(raw.get("columns")), columns);
-      var rows = Json.objects(raw.get("rows"));
-      long rejected = rows.stream().filter(row -> invalidRow(row, cfg, columns)).count();
-      run.put("rejectedCount", rejected);
-      if (rejected > 0)
+      List<String> configuredColumns = configuredColumns(cfg);
+      List<Map<String, Object>> sourceRows = Json.objects(raw.get("rows"));
+      long rejectedRows =
+          sourceRows.stream().filter(row -> invalidRow(row, cfg, configuredColumns)).count();
+      run.put("rejectedCount", rejectedRows);
+      sources.validateOutput(cfg, raw);
+      var columns = configuredColumns;
+      var columnTypes = stringMap(Json.map(cfg.get("columnTypes")));
+      var rows = sourceRows;
+      if (rejectedRows > 0)
         throw ApiException.bad(
             "Dữ liệu nguồn không vượt qua kiểm tra chất lượng; không ghi vào warehouse.");
       var writer = new LinkedHashMap<>(w);
-      writer.put("username", "nla_writer");
-      try (Connection conn =
-          adapter.connect(writer, adapters.password(Json.str(cfg, "credentialReference")))) {
+      writer.put("username", store.ingestionUsername(Json.str(w, "warehouseId")));
+      String writerCredential = store.ingestionCredential(Json.str(w, "warehouseId"));
+      try (Connection conn = adapter.connectForWrite(writer, adapters.password(writerCredential))) {
         conn.setAutoCommit(false);
         try {
-          String stage = qualified(adapter, Json.map(cfg.get("stage"))),
-              mart = qualified(adapter, Json.map(cfg.get("mart")));
-          verifyTargetColumns(conn, w, Json.map(cfg.get("stage")), columns);
-          verifyTargetColumns(conn, w, Json.map(cfg.get("mart")), columns);
+          Map<String, String> targets = new LinkedHashMap<>();
+          for (String layer : List.of("raw", "stage", "warehouse", "mart")) {
+            Map<String, Object> target = Json.map(cfg.get(layer));
+            verifyTargetColumns(conn, w, target, columns);
+            targets.put(layer, qualified(adapter, target));
+          }
           String columnList =
               columns.stream()
                   .map(adapter::quoteIdentifier)
                   .collect(java.util.stream.Collectors.joining(","));
           String placeholders = String.join(",", Collections.nCopies(columns.size(), "?"));
-          try (Statement stmt = conn.createStatement()) {
-            adapter.configureTimeout(stmt, 15);
-            stmt.executeUpdate("DELETE FROM " + stage);
-          }
-          try (PreparedStatement stmt =
-              conn.prepareStatement(
-                  "INSERT INTO " + stage + " (" + columnList + ") VALUES (" + placeholders + ")")) {
-            adapter.configureTimeout(stmt, 15);
-            for (var row : rows) {
-              for (int i = 0; i < columns.size(); i++) {
-                Object value = row.get(columns.get(i));
-                if (value == null) stmt.setNull(i + 1, Types.NULL);
-                else bindValue(stmt, i + 1, value, columnTypes.get(columns.get(i)));
-              }
-              stmt.addBatch();
-            }
-            stmt.executeBatch();
-          }
+          replaceFromRows(
+              conn,
+              adapter,
+              targets.get("raw"),
+              columnList,
+              placeholders,
+              rows,
+              columns,
+              columnTypes);
           done(steps.get(active++), start);
-          try (Statement stmt = conn.createStatement()) {
-            adapter.configureTimeout(stmt, 15);
-            stmt.executeUpdate("DELETE FROM " + mart);
-            stmt.executeUpdate(
-                "INSERT INTO "
-                    + mart
-                    + " ("
-                    + columnList
-                    + ") SELECT "
-                    + columnList
-                    + " FROM "
-                    + stage);
-          }
-          done(steps.get(active++), start);
-          try (Statement stmt = conn.createStatement();
-              ResultSet check = stmt.executeQuery("SELECT COUNT(*) FROM " + mart)) {
-            check.next();
-            if (check.getInt(1) != rows.size()) throw new SQLException("Mart integrity mismatch");
+          String previous = targets.get("raw");
+          for (String layer : List.of("stage", "warehouse", "mart")) {
+            String current = targets.get(layer);
+            replaceFromTable(conn, adapter, current, previous, columnList, rows.size());
+            previous = current;
+            done(steps.get(active++), start);
           }
           conn.commit();
-          done(steps.get(active++), start);
           run.put("rowsWritten", rows.size());
           run.put("status", "SUCCESS");
         } catch (Exception e) {
           conn.rollback();
+          rolledBack = true;
           throw e;
         }
       }
     } catch (Exception e) {
+      if (rolledBack)
+        for (Map<String, Object> step : steps)
+          if ("SUCCESS".equals(step.get("status"))) step.put("status", "ROLLED_BACK");
       org.slf4j.LoggerFactory.getLogger(PipelineService.class)
           .warn(
               "Pipeline failure engine={} phase={} exception={} code={}",
@@ -254,11 +234,12 @@ public class PipelineService {
               "Pipeline thất bại; transaction được rollback, dữ liệu đích được giữ nguyên.",
               Json.obj());
       run.put("error", error);
-      if (active < steps.size()) {
-        steps.get(active).put("status", "FAILED");
-        steps.get(active).put("error", error);
+      int failedStep = Math.min(active, steps.size() - 1);
+      if (failedStep >= 0 && !"ROLLED_BACK".equals(steps.get(failedStep).get("status"))) {
+        steps.get(failedStep).put("status", "FAILED");
+        steps.get(failedStep).put("error", error);
       }
-      for (int i = active + 1; i < steps.size(); i++) steps.get(i).put("status", "SKIPPED");
+      for (int i = failedStep + 1; i < steps.size(); i++) steps.get(i).put("status", "SKIPPED");
     }
     run.put("durationMs", (System.nanoTime() - start) / 1000000);
     run.put("completedAt", Instant.now().toString());
@@ -337,6 +318,26 @@ public class PipelineService {
     return types;
   }
 
+  private static Map<String, String> stringMap(Map<String, Object> values) {
+    Map<String, String> result = new LinkedHashMap<>();
+    values.forEach(
+        (key, value) -> {
+          if (value instanceof String text) result.put(key, text);
+        });
+    return result;
+  }
+
+  private static String digest(String value) {
+    try {
+      byte[] hash =
+          java.security.MessageDigest.getInstance("SHA-256")
+              .digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      return java.util.HexFormat.of().formatHex(hash);
+    } catch (java.security.NoSuchAlgorithmException e) {
+      throw new IllegalStateException("SHA-256 is unavailable", e);
+    }
+  }
+
   private static void bindValue(PreparedStatement statement, int index, Object value, String type)
       throws SQLException {
     try {
@@ -384,5 +385,69 @@ public class PipelineService {
     return adapter.quoteIdentifier(Json.str(t, "schema"))
         + "."
         + adapter.quoteIdentifier(Json.str(t, "name"));
+  }
+
+  private static void replaceFromRows(
+      Connection connection,
+      WarehouseAdapter adapter,
+      String target,
+      String columnList,
+      String placeholders,
+      List<Map<String, Object>> rows,
+      List<String> columns,
+      Map<String, String> columnTypes)
+      throws SQLException {
+    try (Statement statement = connection.createStatement()) {
+      adapter.configureTimeout(statement, 15);
+      statement.executeUpdate("DELETE FROM " + target);
+    }
+    try (PreparedStatement statement =
+        connection.prepareStatement(
+            "INSERT INTO " + target + " (" + columnList + ") VALUES (" + placeholders + ")")) {
+      adapter.configureTimeout(statement, 15);
+      for (Map<String, Object> row : rows) {
+        for (int index = 0; index < columns.size(); index++) {
+          Object value = row.get(columns.get(index));
+          if (value == null) statement.setNull(index + 1, Types.NULL);
+          else bindValue(statement, index + 1, value, columnTypes.get(columns.get(index)));
+        }
+        statement.addBatch();
+      }
+      statement.executeBatch();
+    }
+    verifyRowCount(connection, target, rows.size());
+  }
+
+  private static void replaceFromTable(
+      Connection connection,
+      WarehouseAdapter adapter,
+      String target,
+      String source,
+      String columnList,
+      int expectedRows)
+      throws SQLException {
+    try (Statement statement = connection.createStatement()) {
+      adapter.configureTimeout(statement, 15);
+      statement.executeUpdate("DELETE FROM " + target);
+      statement.executeUpdate(
+          "INSERT INTO "
+              + target
+              + " ("
+              + columnList
+              + ") SELECT "
+              + columnList
+              + " FROM "
+              + source);
+    }
+    verifyRowCount(connection, target, expectedRows);
+  }
+
+  private static void verifyRowCount(Connection connection, String target, int expectedRows)
+      throws SQLException {
+    try (Statement statement = connection.createStatement();
+        ResultSet result = statement.executeQuery("SELECT COUNT(*) FROM " + target)) {
+      if (!result.next() || result.getInt(1) != expectedRows)
+        throw new SQLException("Ingestion layer integrity mismatch.");
+    }
   }
 }

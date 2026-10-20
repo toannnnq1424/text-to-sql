@@ -94,12 +94,123 @@ public class Store {
             "SELECT semantic_model::text FROM dataset WHERE id=?", String.class, id));
   }
 
-  public void insertWarehouse(Map<String, Object> doc, String reference) {
+  public void insertWarehouse(
+      Map<String, Object> doc,
+      String reference,
+      String importCredentialReference,
+      String importUsername,
+      String ingestionUsername,
+      String ingestionCredentialReference) {
     jdbc.update(
-        "INSERT INTO warehouse(id,document,credential_reference) VALUES (?,?::jsonb,?)",
+        "INSERT INTO warehouse"
+            + "(id,document,credential_reference,import_credential_reference,"
+            + "import_username,ingestion_username,ingestion_credential_reference)"
+            + " VALUES (?,?::jsonb,?,?,?,?,?)",
         doc.get("warehouseId"),
         Json.write(doc),
-        reference);
+        reference,
+        importCredentialReference,
+        importUsername,
+        ingestionUsername,
+        ingestionCredentialReference);
+  }
+
+  public String importCredential(String id) {
+    return jdbc.queryForObject(
+        "SELECT import_credential_reference FROM warehouse WHERE id=?", String.class, id);
+  }
+
+  public String importUsername(String id) {
+    return jdbc.queryForObject(
+        "SELECT import_username FROM warehouse WHERE id=?", String.class, id);
+  }
+
+  public void saveImportPlan(
+      String id, String actor, String warehouseId, String digest, Map<String, Object> document) {
+    jdbc.update(
+        "INSERT INTO sql_import_plan(plan_id,actor,warehouse_id,digest,document,expires_at)"
+            + " VALUES (?,?,?, ?,?::jsonb,?::timestamptz)",
+        id,
+        actor,
+        warehouseId,
+        digest,
+        Json.write(document),
+        document.get("expiresAt"));
+  }
+
+  public void removeExpiredSqlImportPlans() {
+    jdbc.update("DELETE FROM sql_import_plan WHERE expires_at < now() - interval '1 day'");
+  }
+
+  public Map<String, Object> sqlImportPlan(String id, String actor) {
+    var plans =
+        jdbc.query(
+            "SELECT digest,document::text FROM sql_import_plan WHERE plan_id=? AND actor=?",
+            (rs, n) -> Map.of("digest", rs.getString(1), "document", Json.read(rs.getString(2))),
+            id,
+            actor);
+    if (plans.isEmpty()) throw ApiException.notFound();
+    return plans.getFirst();
+  }
+
+  public Map<String, Object> sqlImportRun(String id) {
+    var runs =
+        jdbc.query(
+            "SELECT document::text FROM sql_import_run WHERE run_id=?",
+            (rs, n) -> Json.read(rs.getString(1)),
+            id);
+    if (runs.isEmpty()) throw ApiException.notFound();
+    var run = runs.getFirst();
+    authorize(Json.str(run, "warehouseId"));
+    return run;
+  }
+
+  public List<Map<String, Object>> sqlImportRuns() {
+    return jdbc
+        .query(
+            "SELECT document::text FROM sql_import_run ORDER BY created_at DESC",
+            (rs, n) -> Json.read(rs.getString(1)))
+        .stream()
+        .filter(
+            run -> {
+              try {
+                authorize(Json.str(run, "warehouseId"));
+                return true;
+              } catch (ApiException e) {
+                return false;
+              }
+            })
+        .toList();
+  }
+
+  public Map<String, Object> existingSqlImport(String actor, String idempotencyKey) {
+    var runs =
+        jdbc.query(
+            "SELECT request_digest,document::text FROM sql_import_run"
+                + " WHERE actor=? AND idempotency_key=?",
+            (rs, n) -> Map.of("digest", rs.getString(1), "document", Json.read(rs.getString(2))),
+            actor,
+            idempotencyKey);
+    return runs.isEmpty() ? null : runs.getFirst();
+  }
+
+  public void saveSqlImportRun(
+      String id,
+      String actor,
+      String warehouseId,
+      String idempotencyKey,
+      String requestDigest,
+      Map<String, Object> document) {
+    jdbc.update(
+        "INSERT INTO sql_import_run"
+            + "(run_id,actor,warehouse_id,idempotency_key,request_digest,document)"
+            + " VALUES (?,?,?,?,?,?::jsonb)",
+        id,
+        actor,
+        warehouseId,
+        idempotencyKey,
+        requestDigest,
+        Json.write(document));
   }
 
   public void updateWarehouse(Map<String, Object> doc, String reference) {
@@ -110,6 +221,126 @@ public class Store {
         Json.write(doc),
         reference,
         doc.get("warehouseId"));
+  }
+
+  public void updateImportCredential(String id, String reference) {
+    jdbc.update(
+        "UPDATE warehouse SET import_credential_reference=?, updated_at=now() WHERE id=?",
+        reference,
+        id);
+  }
+
+  public void updateImportWriter(String id, String username, String reference) {
+    jdbc.update(
+        "UPDATE warehouse SET import_username=?,import_credential_reference=?,updated_at=now()"
+            + " WHERE id=?",
+        username,
+        reference,
+        id);
+  }
+
+  public void ensureImportWriter(String id, String username, String reference) {
+    jdbc.update(
+        "UPDATE warehouse SET import_username=coalesce(import_username,?),"
+            + "import_credential_reference=coalesce(import_credential_reference,?),"
+            + "updated_at=now() WHERE id=?",
+        username,
+        reference,
+        id);
+  }
+
+  public void updateIngestionCredential(String id, String username, String credentialReference) {
+    jdbc.update(
+        "UPDATE warehouse SET ingestion_username=?,ingestion_credential_reference=?,"
+            + "updated_at=now() WHERE id=?",
+        username,
+        credentialReference,
+        id);
+  }
+
+  public void ensureIngestionWriter(String id, String username, String credentialReference) {
+    jdbc.update(
+        "UPDATE warehouse SET ingestion_username=coalesce(ingestion_username,?),"
+            + "ingestion_credential_reference=coalesce(ingestion_credential_reference,?),"
+            + "updated_at=now() WHERE id=?",
+        username,
+        credentialReference,
+        id);
+  }
+
+  public String ingestionUsername(String id) {
+    return jdbc.queryForObject(
+        "SELECT ingestion_username FROM warehouse WHERE id=?", String.class, id);
+  }
+
+  public String ingestionCredential(String id) {
+    return jdbc.queryForObject(
+        "SELECT ingestion_credential_reference FROM warehouse WHERE id=?", String.class, id);
+  }
+
+  public void insertIngestionSource(Map<String, Object> document) {
+    jdbc.update(
+        "INSERT INTO ingestion_source"
+            + "(source_id,warehouse_id,dataset_id,source_warehouse_id,source_dataset_id,status,document)"
+            + " VALUES (?,?,?,?,?,?,?::jsonb)",
+        document.get("sourceId"),
+        document.get("warehouseId"),
+        document.get("datasetId"),
+        document.get("sourceWarehouseId"),
+        document.get("sourceDatasetId"),
+        document.get("status"),
+        Json.write(document));
+  }
+
+  public boolean ingestionSourceExists(String sourceId) {
+    return jdbc.queryForObject(
+            "SELECT count(*) FROM ingestion_source WHERE source_id=?", Integer.class, sourceId)
+        > 0;
+  }
+
+  public void updateIngestionSource(Map<String, Object> document) {
+    jdbc.update(
+        "UPDATE ingestion_source SET warehouse_id=?,dataset_id=?,source_warehouse_id=?"
+            + ",source_dataset_id=?,status=?,document=?::jsonb,updated_at=now() WHERE source_id=?",
+        document.get("warehouseId"),
+        document.get("datasetId"),
+        document.get("sourceWarehouseId"),
+        document.get("sourceDatasetId"),
+        document.get("status"),
+        Json.write(document),
+        document.get("sourceId"));
+  }
+
+  public Map<String, Object> ingestionSource(String id) {
+    var rows =
+        jdbc.query(
+            "SELECT document::text FROM ingestion_source WHERE source_id=?",
+            (rs, n) -> Json.read(rs.getString(1)),
+            id);
+    if (rows.isEmpty()) throw ApiException.notFound();
+    var source = rows.getFirst();
+    authorize(Json.str(source, "warehouseId"));
+    authorize(Json.str(source, "sourceWarehouseId"));
+    return source;
+  }
+
+  public List<Map<String, Object>> ingestionSources() {
+    return jdbc
+        .query(
+            "SELECT document::text FROM ingestion_source ORDER BY updated_at DESC,source_id",
+            (rs, n) -> Json.read(rs.getString(1)))
+        .stream()
+        .filter(
+            source -> {
+              try {
+                authorize(Json.str(source, "warehouseId"));
+                authorize(Json.str(source, "sourceWarehouseId"));
+                return true;
+              } catch (ApiException e) {
+                return false;
+              }
+            })
+        .toList();
   }
 
   public String credential(String id) {
@@ -164,6 +395,7 @@ public class Store {
     if (list.isEmpty()) throw ApiException.notFound();
     var doc = list.getFirst();
     if (doc.get("warehouseId") != null) authorize(doc.get("warehouseId").toString());
+    if (doc.get("sourceWarehouseId") != null) authorize(doc.get("sourceWarehouseId").toString());
     return doc;
   }
 
@@ -178,6 +410,8 @@ public class Store {
             r -> {
               try {
                 if (r.get("warehouseId") != null) authorize(r.get("warehouseId").toString());
+                if (r.get("sourceWarehouseId") != null)
+                  authorize(r.get("sourceWarehouseId").toString());
                 return true;
               } catch (ApiException e) {
                 return false;
@@ -203,6 +437,37 @@ public class Store {
         action,
         id,
         Errors.correlation());
+  }
+
+  public void audit(String action, String id, Map<String, Object> details) {
+    jdbc.update(
+        "INSERT INTO audit_event(actor,action,resource_id,correlation_id,details)"
+            + " VALUES (?,?,?,?,?::jsonb)",
+        actor(),
+        action,
+        id,
+        Errors.correlation(),
+        Json.write(details));
+  }
+
+  public List<Map<String, Object>> warehouseAccess(String warehouseId) {
+    return jdbc.query(
+        "SELECT subject,warehouse_id FROM resource_access WHERE warehouse_id=? ORDER BY subject",
+        (rs, row) -> Json.obj("subject", rs.getString(1), "warehouseId", rs.getString(2)),
+        warehouseId);
+  }
+
+  public void grantWarehouseAccess(String warehouseId, String subject) {
+    jdbc.update(
+        "INSERT INTO resource_access(subject,warehouse_id) VALUES (?,?)"
+            + " ON CONFLICT(subject,warehouse_id) DO NOTHING",
+        subject,
+        warehouseId);
+  }
+
+  public void revokeWarehouseAccess(String warehouseId, String subject) {
+    jdbc.update(
+        "DELETE FROM resource_access WHERE subject=? AND warehouse_id=?", subject, warehouseId);
   }
 
   private static void allowed(String table) {

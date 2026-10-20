@@ -85,6 +85,18 @@ public class LocalBootstrap implements ApplicationRunner {
                   "SELECT count(*) FROM warehouse WHERE id=?", Integer.class, warehouseId)
           > 0) {
         refreshSeededDescription(warehouseId, "ds-chinook-" + suffix);
+        store.ensureImportWriter(
+            warehouseId,
+            "nla_importer",
+            "env:NLA_IMPORT_"
+                + (suffix.equals("mssql") ? "MSSQL" : suffix.toUpperCase(Locale.ROOT))
+                + "_PASSWORD");
+        store.ensureIngestionWriter(
+            warehouseId,
+            "nla_writer",
+            "env:NLA_PIPELINE_"
+                + (suffix.equals("mssql") ? "MSSQL" : suffix.toUpperCase(Locale.ROOT))
+                + "_PASSWORD");
         continue;
       }
       String now = Instant.now().toString(), database = "nla_chinook";
@@ -106,6 +118,8 @@ public class LocalBootstrap implements ApplicationRunner {
               spec.get("schema"),
               "username",
               docker ? "nla_reader" : "nla_chinook_reader",
+              "ingestionUsername",
+              "nla_writer",
               "status",
               "ACTIVE",
               "capabilities",
@@ -125,6 +139,14 @@ public class LocalBootstrap implements ApplicationRunner {
             store.insertWarehouse(
                 w,
                 "env:NLA_CHINOOK_"
+                    + (suffix.equals("mssql") ? "MSSQL" : suffix.toUpperCase(Locale.ROOT))
+                    + "_PASSWORD",
+                "env:NLA_IMPORT_"
+                    + (suffix.equals("mssql") ? "MSSQL" : suffix.toUpperCase(Locale.ROOT))
+                    + "_PASSWORD",
+                "nla_importer",
+                "nla_writer",
+                "env:NLA_PIPELINE_"
                     + (suffix.equals("mssql") ? "MSSQL" : suffix.toUpperCase(Locale.ROOT))
                     + "_PASSWORD");
             var tables =
@@ -173,6 +195,44 @@ public class LocalBootstrap implements ApplicationRunner {
             store.insertDataset(d, semantic);
             store.audit("LOCAL_CHINOOK_REGISTER", warehouseId);
           });
+    }
+    seedSamplePipelines();
+  }
+
+  private void seedSamplePipelines() throws Exception {
+    for (String suffix : List.of("pg", "mysql", "mssql")) {
+      Path path =
+          Path.of(
+              System.getProperty("nla.data.root", "../data"),
+              "chinook",
+              "pipeline-" + suffix + ".json");
+      if (!Files.exists(path)) continue;
+      Map<String, Object> source = Json.read(Files.readString(path));
+      String sourceId = Json.str(source, "sourceId");
+      source.remove("sourceObjects");
+      source.remove("credentialReference");
+      source.remove("engine");
+      if (store.ingestionSourceExists(sourceId)) {
+        Map<String, Object> current = new LinkedHashMap<>(store.ingestionSource(sourceId));
+        boolean changed = false;
+        for (String layer : List.of("raw", "stage", "warehouse", "mart")) {
+          if (current.get(layer) == null && source.get(layer) != null) {
+            current.put(layer, source.get(layer));
+            changed = true;
+          }
+        }
+        if (changed) {
+          current.put("updatedAt", Instant.now().toString());
+          store.updateIngestionSource(current);
+          store.audit("LOCAL_INGESTION_SOURCE_TARGETS_MIGRATED", sourceId);
+        }
+        continue;
+      }
+      source.put("status", "ACTIVE");
+      source.put("createdAt", Instant.now().toString());
+      source.put("updatedAt", Instant.now().toString());
+      store.insertIngestionSource(source);
+      store.audit("LOCAL_INGESTION_SOURCE_REGISTERED", sourceId);
     }
   }
 

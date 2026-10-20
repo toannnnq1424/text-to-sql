@@ -101,6 +101,34 @@ Các entry triển khai tiếp theo thêm phía dưới; không đánh dấu FE/
 - Việc tiếp nối: cập nhật PR #2 và tiếp tục triển khai các workflow bắt buộc; code style không thay thế acceptance chức năng.
 - Commit/push: entry này đi cùng commit; SHA remote xác minh sau push.
 
+### 2026-10-20 02:11 UTC+07 — Chuẩn hóa AI/Data code / conversation chính
+- Nhánh / commit subject: `module/ai-data`; `style: format AI and data source code`.
+- Phạm vi: format Python AI service, tests và data scripts; chia system prompt thành các dòng đọc được; thêm cấu hình/hướng dẫn formatter.
+- Trạng thái: VERIFIED cho formatter, AI regression và dữ liệu Chinook local; AI/Data acceptance tổng thể INCOMPLETE, không có thay đổi pipeline ingestion tổng quát hoặc SQL Import.
+- Đã làm: format Black/isort; tách các câu SQL trong provisioning scripts thành nhiều dòng; nội dung system prompt được trình bày rõ hơn mà giữ các quy tắc sinh SQL hiện có.
+- Kiểm chứng: `isort --check-only` PASS; `black --check` PASS; `pytest ai-service/test_app.py` 14 passed; `compileall` PASS; `python data/scripts/docker_chinook.py verify` xác nhận Chinook v1.4.5 cùng row counts và quyền reader chỉ đọc trên PostgreSQL, MySQL, SQL Server; `git diff --check` PASS.
+- Còn thiếu / blocker / phụ thuộc: chưa thêm generic in-app ingestion/source registry; SQL Import end-to-end còn thiếu; chỉ Chinook sample được kiểm chứng, không đại diện cho toàn bộ data sources.
+- Việc tiếp nối: triển khai các workflow data bắt buộc tổng quát bằng API/UI/warehouse thật; không coi sample provisioning là import tổng quát.
+- Commit/push: entry này đi cùng commit; SHA remote xác minh sau push.
+
+### 2026-10-20 02:36 UTC+07 — Khai báo quality/resource bounds cho pipeline sample / conversation chính
+- Nhánh / commit subject: `module/ai-data`; dự kiến `feat: validate sample pipeline definitions`.
+- Phạm vi: cấu hình pipeline Chinook ba engine, validator Python, bước provisioning writer, tests và ghi nhận gap source registry.
+- Trạng thái: VERIFIED cho ba cấu hình sample và provisioning hiện có; ingestion source registry tổng quát vẫn INCOMPLETE.
+- Đã làm: khai báo rõ output/required columns, giới hạn string, row, byte và timeout trên cả ba dialect; thêm validator từ chối field thừa/thiếu, identifier không an toàn, giới hạn ngoài bounds và credential không dùng environment reference. Chạy validate trước khi tạo quyền writer. Ghi rõ `data/chinook` chỉ là sample có provenance và không phải folder cần thêm cho từng warehouse; source registry/runtime vẫn là yêu cầu còn thiếu.
+- Kiểm chứng: `pytest -q data/scripts/test_pipeline_config.py` — 7 passed; `python3 data/scripts/provision_pipeline.py` PASS; `python3 data/scripts/docker_chinook.py verify` PASS trên PostgreSQL/MySQL/SQL Server, expected counts và reader write denial khớp; Black/isort checks và `git diff --check` PASS.
+- Còn thiếu / blocker / phụ thuộc: validator hiện chỉ kiểm tra ba config Chinook có sẵn; chưa có registry/API/UI để admin đăng ký pipeline khác từ application và chưa chứng minh cross-domain ingest tổng quát. Controlled SQL Import và OIDC provider cũng chưa hoàn tất.
+- Việc tiếp nối: tích hợp registry-backed pipeline CRUD/validation/execution với FE và thêm test nguồn tùy biến trên cả ba engines; tiếp tục SQL Import/OIDC acceptance.
+- Commit/push: entry này đi cùng commit; SHA remote xác minh sau push.
+
+### 2026-10-20 12:40 UTC+07 — Typed pipeline metadata và writer riêng cho SQL Import / conversation chính
+- Nhánh / commit subject hoặc SHA đã biết: `module/data-ingestion`; dự kiến `feat: provision isolated import writers and type pipeline outputs`.
+- Phạm vi: validator/cấu hình pipeline sample, provisioning table theo logical column type, quyền import tách biệt cho PostgreSQL/MySQL/SQL Server, contract ingestion và tài liệu trạng thái.
+- Trạng thái: VERIFIED cho schema/config validation và tài khoản writer hẹp trên ba Docker engine; generic ingestion runtime và import end-to-end qua Java/FE vẫn INCOMPLETE.
+- Đã làm: thêm `sourceWarehouseId`/`sourceDatasetId`, explicit allowlist nguồn cho provisioning sample, canonical column types (`STRING`, `INTEGER`, `DECIMAL`, `BOOLEAN`, `DATE`, `TIMESTAMP`) và validation chéo cấu hình; table stage/mart được tạo theo type khai báo. Thêm writer `nla_importer` trong namespace `nla_import` riêng từng engine, không tái dùng reader/ELT writer; quyền ngoài namespace bị từ chối. Tài liệu contract chỉ rõ sample `sourceObjects` là metadata provisioning nội bộ, còn app phải lấy allowlist từ dataset đã đăng ký. Secrets lưu trong `.local/docker.env` bị ignore, không commit.
+- Kiểm chứng: `pytest data/scripts/test_pipeline_config.py` — 15 passed; Black/isort check, compileall và `git diff --check` PASS; `docker_chinook.py provision-import` PASS, kiểm tra tạo/ghi/đọc probe và từ chối tạo ngoài namespace trên cả ba engine; `docker_chinook.py verify` PASS, row counts đúng (15,607 tổng) và reader write denied trên PostgreSQL/MySQL/SQL Server.
+- Còn thiếu / blocker / phụ thuộc: pipeline app vẫn chỉ provision các config Chinook; chưa chứng minh API/UI đăng ký nguồn khác, chạy ingestion generic, hay upload-preview-confirm SQL Import qua caller thật và persistence. Cần tích hợp với BE/FE; OIDC provider cũng chưa cấu hình.
+- Việc tiếp nối: đồng bộ contract branch này vào BE/FE; nghiệm thu import và ingestion bằng API/UI thật, dữ liệu lưu bền trên cả ba engine, và ghi outcome sau khi agent hoàn tất.
 ### 2026-10-20 01:56 UTC+07 — Chuẩn hóa code backend / conversation chính
 - Nhánh / commit subject: `module/backend`; `style: format backend code for review`.
 - Phạm vi: format toàn bộ Java backend và tests; bổ sung quy tắc formatter chung để không tiếp tục nén nhiều lệnh trên một dòng.
@@ -120,3 +148,23 @@ Các entry triển khai tiếp theo thêm phía dưới; không đánh dấu FE/
 - Còn thiếu / blocker / phụ thuộc: runtime sources vẫn là ba pipeline Chinook cấu hình sẵn; chưa có đăng ký/configuration UI/API tổng quát, chưa có file upload SQL Import, OIDC provider chưa cấu hình. Unit và Chinook smoke không chứng minh mọi pipeline/schema tùy ý.
 - Việc tiếp nối: mở rộng data configuration và tests trên nhánh `module/ai-data`; triển khai các API/UI mandatory còn thiếu với acceptance end-to-end.
 - Commit/push: entry này đi cùng commit; SHA remote xác minh sau push.
+
+### 2026-10-20 14:08 UTC+07 — Sửa source allowlist PostgreSQL khớp tên vật lý / conversation chính
+- Nhánh / commit subject hoặc SHA đã biết: `module/data-ingestion`; dự kiến `fix: match postgres pipeline source table casing`.
+- Phạm vi: cấu hình sample pipeline PostgreSQL và test đối chiếu tên bảng allowlist với physical table của ba engine.
+- Trạng thái: VERIFIED cho tên bảng config; generic source registry/runtime vẫn INCOMPLETE theo entry trước.
+- Đã làm: sửa allowlist PostgreSQL từ `"Invoice"` sang `"invoice"` vì provisioner tạo bảng không quote tên chữ thường; MySQL/SQL Server giữ `Invoice`. Nếu giữ identifier hoa và quote như cũ, lệnh `GRANT SELECT` trong provisioning mới sẽ tìm sai relation PostgreSQL.
+- Kiểm chứng: `pytest data/scripts/test_pipeline_config.py` — 15 passed; Black/isort, compileall và `git diff --check` PASS; áp dụng lệnh `source_grants` với admin account lên PostgreSQL/MySQL/SQL Server local đều phân giải đúng physical table.
+- Còn thiếu / blocker / phụ thuộc: đây chỉ là sửa config sample; không chứng minh ingestion app tổng quát hoặc SQL Import end-to-end.
+- Việc tiếp nối: BE cần lấy follow-up Data commit trước khi nghiệm thu/cherry-pick config mẫu mới.
+- Commit/push: entry này đi cùng commit; SHA remote xác minh sau push.
+
+### 2026-10-20 19:33 UTC+07 — Hoàn thiện backend ingestion, SQL Import và registry evaluation / conversation BE
+- Nhánh / commit subject: `module/backend`; `feat: complete guarded imports and four-layer ingestion`.
+- Phạm vi: SQL Import đã xác thực và preview, OIDC/resource authorization, registry ingestion có nguồn/đích thật, bốn lớp ghi dữ liệu, evaluation corpus do server quản lý, migration/audit, test thực và contract.
+- Trạng thái: VERIFIED cho kiểm thử backend và HTTP/DB ingestion ba engine cùng luồng PG→MySQL; chưa đánh dấu toàn hệ thống ACCEPTED trước E2E cuối React→Java, đăng nhập provider và AI provider.
+- Đã làm: pipeline source registry lưu cấu hình typed, kiểm tra table/column/type, giới hạn và quyền trên source lẫn target. Mỗi lần chạy thay snapshot trong RAW, ghi STAGING, materialize WAREHOUSE rồi publish MART trong một transaction; từng lớp kiểm row count, lỗi rollback không báo lớp là đã lưu, idempotency theo principal/source/payload. SQL Import dùng canonical plan preview bất biến, parser theo dialect, bind literal, execution queue/deadline và trạng thái tiến độ/persistence; không thực thi nguyên văn file. Thêm tùy chọn internal OIDC JWKS URI trong khi vẫn kiểm issuer/audience/subject; evaluation suite/corpus đọc từ manifest có kiểm soát thay vì hardcode miền trong core. Mọi credential writer theo từng warehouse, write-only qua env reference; không ghi secret vào response/log.
+- Kiểm chứng: `python3 infra/local/test_backend.py -Dnla.data.root=/Users/toanlamsaoduocc/Documents/ChatGPT/text-to-sql-data/data` — 52 tests, 0 failures, 0 skipped; bao gồm Testcontainers PostgreSQL/MySQL/SQL Server, query security, parser/executor SQL Import và live writer privilege. Backend HTTP trên PostgreSQL/MySQL/SQL Server chạy `/test` và `/run` qua đủ bốn target; mỗi run ghi 24 dòng, 4 bước SUCCESS, replay cùng idempotency key trả cùng run ID. HTTP PG→MySQL đăng ký/test/run cũng ghi đủ bốn lớp và 24 dòng. `git diff --check`, Java Google formatter và `python3 -m py_compile infra/local/smoke.py` PASS. Conversation runtime-auth chạy browser OIDC suite trên snapshot riêng (4 role, audience/signature/subject, forbidden resource, renewal/expiry, logout) PASS; cần lặp lại trên commit tích hợp cuối.
+- Còn thiếu / blocker / phụ thuộc: FE browser flow tạo/sửa/test/run/history cần chạy với API sau khi hợp nhất; provisioning/four-layer manifest cần merge từ `module/data-ingestion` SHA `cbed547`; toàn stack React→Java→Python→warehouse và real provider E2E chưa được chạy sau commit; API key/model provider vẫn được chủ dự án hoãn.
+- Việc tiếp nối: hợp nhất module backend và data, chạy lại OIDC/FE/integration browser trên final SHA; chỉ khi caller thực, persistence, AI provider và ba engine đạt acceptance thì cập nhật trạng thái toàn sản phẩm.
+- Commit/push: entry này được commit cùng backend changes; kiểm tra SHA remote/local sau push.

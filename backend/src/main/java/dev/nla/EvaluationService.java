@@ -13,56 +13,38 @@ public class EvaluationService {
   private final Adapters adapters;
   private final SqlGuard guard;
   private final CatalogService catalog;
+  private final EvaluationCorpus corpus;
 
-  public EvaluationService(Store s, QueryService q, Adapters a, SqlGuard g, CatalogService c) {
+  public EvaluationService(
+      Store s, QueryService q, Adapters a, SqlGuard g, CatalogService c, EvaluationCorpus corpus) {
     store = s;
     queries = q;
     adapters = a;
     guard = g;
     catalog = c;
+    this.corpus = corpus;
   }
 
   public List<Map<String, Object>> suites() {
-    return List.of(
-        Json.obj(
-            "suiteId",
-            "chinook-core",
-            "name",
-            "Chinook bilingual safety and result equivalence",
-            "version",
-            "1.0.0",
-            "caseCount",
-            48,
-            "engines",
-            List.of("POSTGRESQL", "MYSQL", "SQL_SERVER")));
+    return corpus.summaries();
   }
 
   public Map<String, Object> run(Map<String, Object> b) {
     RegistryController.fields(b, Set.of("warehouseId", "datasetId", "suiteId", "mode"));
     RegistryController.required(b, "warehouseId", "datasetId", "suiteId", "mode");
-    if (!"chinook-core".equals(b.get("suiteId"))) throw ApiException.notFound();
     if (!Set.of("AUTO", "API", "DETERMINISTIC").contains(Json.str(b, "mode")))
       throw ApiException.bad("Mode không hợp lệ.");
     var w = store.warehouse(Json.str(b, "warehouseId"));
     var d = store.dataset(Json.str(b, "datasetId"));
     if (!w.get("warehouseId").equals(d.get("warehouseId")))
       throw ApiException.bad("Dataset không thuộc warehouse.");
-    String engine = Json.str(w, "engine"),
-        suffix =
-            Map.of("POSTGRESQL", "postgresql", "MYSQL", "mysql", "SQL_SERVER", "mssql").get(engine);
-    Map<String, Object> suite;
-    try {
-      suite =
-          Json.read(
-              Files.readString(
-                  Path.of(
-                      System.getProperty("nla.data.root", "../data"),
-                      "chinook",
-                      "evaluation-" + suffix + ".json")));
-    } catch (Exception e) {
-      throw new IllegalStateException("Evaluation corpus unavailable");
-    }
-    var cases = Json.objects(suite.get("cases"));
+    String engine = Json.str(w, "engine");
+    var cases = corpus.cases(Json.str(b, "suiteId"), engine);
+    // Validate every expected statement against this authorized dataset before creating a run.
+    var physical = catalog.tables(Json.str(d, "datasetId"));
+    for (var test : cases)
+      if (!Boolean.TRUE.equals(test.get("expectedRejection")))
+        guard.validate(Json.str(test, "expectedSql"), engine, physical);
     String id = Json.id("eval");
     var run =
         Json.obj(

@@ -34,9 +34,23 @@ public class RegistryController {
 
   Map<String, Object> safe(Map<String, Object> w) {
     var out = new LinkedHashMap<>(w);
-    if (!store.admin())
-      for (String k : List.of("host", "port", "database", "defaultSchema", "username"))
-        out.remove(k);
+    if (!store.admin()) {
+      for (String k :
+          List.of(
+              "host",
+              "port",
+              "database",
+              "defaultSchema",
+              "username",
+              "ingestionUsername",
+              "importUsername")) out.remove(k);
+    } else {
+      String id = Json.str(w, "warehouseId");
+      out.put("importUsername", store.importUsername(id));
+      out.put("ingestionUsername", store.ingestionUsername(id));
+    }
+    out.remove("importCredentialReference");
+    out.remove("ingestionCredentialReference");
     return out;
   }
 
@@ -54,6 +68,40 @@ public class RegistryController {
     return safe(store.warehouse(id));
   }
 
+  @GetMapping("/warehouses/{id}/access")
+  @PreAuthorize("hasRole('ADMIN')")
+  Object warehouseAccess(@PathVariable String id) {
+    store.warehouse(id);
+    return store.warehouseAccess(id);
+  }
+
+  @PostMapping("/warehouses/{id}/access")
+  @PreAuthorize("hasRole('ADMIN')")
+  ResponseEntity<?> grantWarehouseAccess(
+      @PathVariable String id, @RequestBody Map<String, Object> request) {
+    fields(request, Set.of("subject"));
+    required(request, "subject");
+    String subject = Json.str(request, "subject");
+    if (subject.length() > 255 || subject.chars().anyMatch(Character::isISOControl))
+      throw ApiException.bad("OIDC subject không hợp lệ.");
+    store.warehouse(id);
+    store.grantWarehouseAccess(id, subject);
+    store.audit("WAREHOUSE_ACCESS_GRANT", id, Json.obj("subject", subject));
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(Json.obj("subject", subject, "warehouseId", id));
+  }
+
+  @DeleteMapping("/warehouses/{id}/access")
+  @PreAuthorize("hasRole('ADMIN')")
+  ResponseEntity<?> revokeWarehouseAccess(@PathVariable String id, @RequestParam String subject) {
+    if (subject.isBlank() || subject.length() > 255)
+      throw ApiException.bad("OIDC subject không hợp lệ.");
+    store.warehouse(id);
+    store.revokeWarehouseAccess(id, subject);
+    store.audit("WAREHOUSE_ACCESS_REVOKE", id, Json.obj("subject", subject));
+    return ResponseEntity.noContent().build();
+  }
+
   @PostMapping("/warehouses")
   @PreAuthorize("hasRole('ADMIN')")
   ResponseEntity<?> create(@RequestBody Map<String, Object> b) {
@@ -67,13 +115,19 @@ public class RegistryController {
             "database",
             "defaultSchema",
             "username",
-            "credentialReference"));
+            "credentialReference",
+            "importCredentialReference",
+            "importUsername",
+            "ingestionUsername",
+            "ingestionCredentialReference"));
     required(b, "name", "engine", "host", "database", "username", "credentialReference");
     adapters.validate(b);
     adapters.password(Json.str(b, "credentialReference"));
     String id = Json.id("wh");
     var doc = new LinkedHashMap<>(b);
     doc.remove("credentialReference");
+    doc.remove("importCredentialReference");
+    doc.remove("ingestionCredentialReference");
     doc.putAll(
         Json.obj(
             "warehouseId",
@@ -86,7 +140,25 @@ public class RegistryController {
             Instant.now().toString(),
             "updatedAt",
             Instant.now().toString()));
-    store.insertWarehouse(doc, Json.str(b, "credentialReference"));
+    String importCredentialReference =
+        b.containsKey("importCredentialReference")
+            ? Json.str(b, "importCredentialReference")
+            : null;
+    if (importCredentialReference != null) adapters.password(importCredentialReference);
+    String importUsername = Json.str(b, "importUsername");
+    validateIngestionWriter(importUsername, importCredentialReference);
+    String ingestionUsername = Json.str(b, "ingestionUsername");
+    String ingestionCredentialReference = Json.str(b, "ingestionCredentialReference");
+    validateIngestionWriter(ingestionUsername, ingestionCredentialReference);
+    doc.put("ingestionUsername", ingestionUsername);
+    doc.put("importUsername", importUsername);
+    store.insertWarehouse(
+        doc,
+        Json.str(b, "credentialReference"),
+        importCredentialReference,
+        importUsername,
+        ingestionUsername,
+        ingestionCredentialReference);
     store.audit("WAREHOUSE_REGISTER", id);
     return ResponseEntity.created(java.net.URI.create("/api/v1/warehouses/" + id)).body(safe(doc));
   }
@@ -104,11 +176,17 @@ public class RegistryController {
             "defaultSchema",
             "username",
             "credentialReference",
+            "importCredentialReference",
+            "importUsername",
+            "ingestionUsername",
+            "ingestionCredentialReference",
             "status"));
     var w = store.warehouse(id);
     var changed = new LinkedHashMap<>(w);
     changed.putAll(b);
     changed.remove("credentialReference");
+    changed.remove("importCredentialReference");
+    changed.remove("ingestionCredentialReference");
     adapters.validate(changed);
     String reference =
         b.containsKey("credentialReference")
@@ -129,9 +207,49 @@ public class RegistryController {
       }
     }
     changed.put("updatedAt", Instant.now().toString());
+    if (b.containsKey("importCredentialReference")) {
+      changed.put("importUsername", store.importUsername(id));
+    }
+    if (b.containsKey("importUsername") || b.containsKey("importCredentialReference")) {
+      String importUsername =
+          b.containsKey("importUsername")
+              ? Json.str(b, "importUsername")
+              : store.importUsername(id);
+      String importReference =
+          b.containsKey("importCredentialReference")
+              ? Json.str(b, "importCredentialReference")
+              : store.importCredential(id);
+      validateIngestionWriter(importUsername, importReference);
+      changed.put("importUsername", importUsername);
+      store.updateImportWriter(id, importUsername, importReference);
+    }
+    if (b.containsKey("ingestionUsername") || b.containsKey("ingestionCredentialReference")) {
+      String ingestionUsername =
+          b.containsKey("ingestionUsername")
+              ? Json.str(b, "ingestionUsername")
+              : store.ingestionUsername(id);
+      String ingestionCredentialReference =
+          b.containsKey("ingestionCredentialReference")
+              ? Json.str(b, "ingestionCredentialReference")
+              : store.ingestionCredential(id);
+      validateIngestionWriter(ingestionUsername, ingestionCredentialReference);
+      changed.put("ingestionUsername", ingestionUsername);
+      store.updateIngestionCredential(id, ingestionUsername, ingestionCredentialReference);
+    }
     store.updateWarehouse(changed, reference);
     store.audit("WAREHOUSE_UPDATE", id);
     return safe(changed);
+  }
+
+  private void validateIngestionWriter(String username, String reference) {
+    if ((username == null || username.isBlank()) && (reference == null || reference.isBlank()))
+      return;
+    if (username == null
+        || !username.matches("[A-Za-z0-9_.@-]{1,255}")
+        || reference == null
+        || reference.isBlank())
+      throw ApiException.bad("Cần khai báo cả ingestionUsername và ingestionCredentialReference.");
+    adapters.password(reference);
   }
 
   @PostMapping("/warehouses/{id}/test")

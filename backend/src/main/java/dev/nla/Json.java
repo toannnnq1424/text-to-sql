@@ -5,7 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.*;
 
 public final class Json {
-  private static final ObjectMapper MAPPER = new ObjectMapper().findAndRegisterModules();
+  private static final ObjectMapper MAPPER =
+      new ObjectMapper()
+          .findAndRegisterModules()
+          .enable(com.fasterxml.jackson.databind.DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
 
   private Json() {}
 

@@ -27,4 +27,8 @@ public final class SqlServerWarehouseAdapter extends JdbcWarehouseAdapter {
         + tls
         + ";trustServerCertificate=false;loginTimeout=5;socketTimeout=20000;applicationIntent=ReadOnly";
   }
+
+  protected String jdbcWriterUrl(Map<String, Object> warehouse) {
+    return jdbcUrl(warehouse).replace("applicationIntent=ReadOnly", "applicationIntent=ReadWrite");
+  }
 }

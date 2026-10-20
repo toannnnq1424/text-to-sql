@@ -12,6 +12,8 @@ public interface WarehouseAdapter {
 
   Connection connect(Map<String, Object> warehouse, String password) throws SQLException;
 
+  Connection connectForWrite(Map<String, Object> warehouse, String password) throws SQLException;
+
   boolean testConnection(Map<String, Object> warehouse, String password) throws SQLException;
 
   List<String> discoverSchemas(Connection connection) throws SQLException;

@@ -36,13 +36,22 @@ public class PlatformController {
                 .map(x -> x.getAuthority().replace("ROLE_", ""))
                 .filter(Set.of("ADMIN", "OPERATOR", "ANALYST", "VIEWER")::contains)
                 .toList();
+    String name = store.actor();
+    if (auth
+        instanceof
+        org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
+            jwt) {
+      name = Objects.toString(jwt.getToken().getClaims().get("preferred_username"), store.actor());
+    }
     if (env.getProperty("nla.local", Boolean.class, false) && roles.isEmpty())
       roles = List.of("VIEWER");
     return Json.obj(
         "subject",
         store.actor(),
         "name",
-        store.admin() ? "Local Administrator" : "Local Reader",
+        env.getProperty("nla.local", Boolean.class, false)
+            ? store.admin() ? "Local Administrator" : "Local Reader"
+            : name,
         "roles",
         roles,
         "local",

@@ -13,6 +13,13 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.*;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
@@ -75,6 +82,38 @@ public class Security {
           },
           AnonymousAuthenticationFilter.class);
     } else {
+      String issuer = env.getProperty("OIDC_ISSUER_URI", "");
+      String audience = env.getProperty("OIDC_AUDIENCE", "");
+      if (issuer.isBlank() || audience.isBlank())
+        throw new IllegalStateException(
+            "OIDC_ISSUER_URI and OIDC_AUDIENCE are required outside the local profile");
+      String jwkSetUri = env.getProperty("OIDC_JWK_SET_URI", "");
+      var decoder =
+          jwkSetUri.isBlank()
+              ? NimbusJwtDecoder.withIssuerLocation(issuer).build()
+              : NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
+      OAuth2TokenValidator<Jwt> issuerValidator = JwtValidators.createDefaultWithIssuer(issuer);
+      OAuth2TokenValidator<Jwt> audienceValidator =
+          jwt -> {
+            Object claim = jwt.getClaims().get("aud");
+            boolean valid =
+                claim instanceof String value
+                    ? audience.equals(value)
+                    : claim instanceof Collection<?> values && values.contains(audience);
+            return valid
+                ? OAuth2TokenValidatorResult.success()
+                : OAuth2TokenValidatorResult.failure(
+                    new OAuth2Error("invalid_token", "Required audience is missing", null));
+          };
+      OAuth2TokenValidator<Jwt> subjectValidator =
+          jwt ->
+              jwt.getSubject() != null && !jwt.getSubject().isBlank()
+                  ? OAuth2TokenValidatorResult.success()
+                  : OAuth2TokenValidatorResult.failure(
+                      new OAuth2Error("invalid_token", "Required subject is missing", null));
+      decoder.setJwtValidator(
+          new DelegatingOAuth2TokenValidator<>(
+              issuerValidator, audienceValidator, subjectValidator));
       JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
       converter.setJwtGrantedAuthoritiesConverter(
           jwt -> {
@@ -89,7 +128,8 @@ public class Security {
                     .toList()
                 : List.of();
           });
-      http.oauth2ResourceServer(o -> o.jwt(j -> j.jwtAuthenticationConverter(converter)));
+      http.oauth2ResourceServer(
+          o -> o.jwt(j -> j.decoder(decoder).jwtAuthenticationConverter(converter)));
     }
     return http.build();
   }

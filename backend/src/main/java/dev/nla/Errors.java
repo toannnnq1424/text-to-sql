@@ -7,6 +7,7 @@ import java.util.*;
 import org.slf4j.MDC;
 import org.springframework.http.*;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
@@ -49,6 +50,13 @@ public class Errors {
         .body(
             Json.obj(
                 "error", body("INVALID_REQUEST", "Dữ liệu yêu cầu không hợp lệ.", Json.obj())));
+  }
+
+  @ExceptionHandler(AccessDeniedException.class)
+  ResponseEntity<?> denied(AccessDeniedException e) {
+    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+        .body(
+            Json.obj("error", body("FORBIDDEN", "Không có quyền thực hiện thao tác.", Json.obj())));
   }
 
   @ExceptionHandler(Exception.class)

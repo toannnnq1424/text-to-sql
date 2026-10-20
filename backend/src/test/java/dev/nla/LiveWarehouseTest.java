@@ -93,23 +93,25 @@ class LiveWarehouseTest {
 
   @ParameterizedTest
   @ValueSource(strings = {"POSTGRESQL", "MYSQL", "SQL_SERVER"})
-  void writerCanOperateOnlyItsMart(String engine) throws Exception {
+  void writerCanOperateWithinAllFourLayersAndNotChinook(String engine) throws Exception {
     Spec s = spec(engine);
     var writer = new LinkedHashMap<>(s.warehouse);
     writer.put("username", "nla_writer");
     String password = System.getenv("NLA_PIPELINE_" + s.suffix + "_PASSWORD");
     try (Connection c = s.adapter.connect(writer, password)) {
       c.setAutoCommit(false);
-      String stage =
-          s.adapter.quoteIdentifier(s.table) + "." + s.adapter.quoteIdentifier("nla_stage_sales");
-      try (Statement st = c.createStatement()) {
-        st.executeUpdate("DELETE FROM " + stage + " WHERE 1=0");
-      }
-      try (PreparedStatement st =
-          c.prepareStatement("INSERT INTO " + stage + " (country,total) VALUES (?,?)")) {
-        st.setString(1, "NLA_TEST_ROLLBACK");
-        st.setBigDecimal(2, new java.math.BigDecimal("1.00"));
-        st.executeUpdate();
+      for (String layer :
+          List.of("nla_raw_sales", "nla_stage_sales", "nla_warehouse_sales", "nla_mart_sales")) {
+        String target = s.adapter.quoteIdentifier(s.table) + "." + s.adapter.quoteIdentifier(layer);
+        try (Statement st = c.createStatement()) {
+          st.executeUpdate("DELETE FROM " + target + " WHERE 1=0");
+        }
+        try (PreparedStatement st =
+            c.prepareStatement("INSERT INTO " + target + " (country,total) VALUES (?,?)")) {
+          st.setString(1, "NLA_TEST_ROLLBACK");
+          st.setBigDecimal(2, new java.math.BigDecimal("1.00"));
+          st.executeUpdate();
+        }
       }
       c.rollback();
       String target = s.adapter.quoteIdentifier(s.table) + "." + s.adapter.quoteIdentifier(s.key);

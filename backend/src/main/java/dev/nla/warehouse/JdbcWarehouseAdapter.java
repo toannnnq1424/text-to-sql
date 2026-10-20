@@ -14,6 +14,10 @@ public abstract class JdbcWarehouseAdapter implements WarehouseAdapter {
 
   protected abstract String jdbcUrl(Map<String, Object> w);
 
+  protected String jdbcWriterUrl(Map<String, Object> warehouse) {
+    return jdbcUrl(warehouse);
+  }
+
   public Connection connect(Map<String, Object> w, String password) throws SQLException {
     Properties props = new Properties();
     props.setProperty("user", Json.str(w, "username"));
@@ -25,6 +29,20 @@ public abstract class JdbcWarehouseAdapter implements WarehouseAdapter {
       if (key != null && !key.isBlank()) props.setProperty("serverRSAPublicKeyFile", key);
     }
     return DriverManager.getConnection(jdbcUrl(w), props);
+  }
+
+  public Connection connectForWrite(Map<String, Object> warehouse, String password)
+      throws SQLException {
+    Properties props = new Properties();
+    props.setProperty("user", Json.str(warehouse, "username"));
+    props.setProperty("password", password);
+    props.setProperty("connectTimeout", engine().equals("POSTGRESQL") ? "5" : "5000");
+    props.setProperty("socketTimeout", engine().equals("POSTGRESQL") ? "20" : "20000");
+    if (engine().equals("MYSQL") && !tls) {
+      String key = System.getenv("NLA_MYSQL_RSA_PUBLIC_KEY");
+      if (key != null && !key.isBlank()) props.setProperty("serverRSAPublicKeyFile", key);
+    }
+    return DriverManager.getConnection(jdbcWriterUrl(warehouse), props);
   }
 
   public boolean testConnection(Map<String, Object> w, String password) throws SQLException {
