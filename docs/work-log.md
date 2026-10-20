@@ -196,3 +196,13 @@ Các entry triển khai tiếp theo thêm phía dưới; không đánh dấu FE/
 - Kiểm chứng: local link/JSON/hash checks đã chạy ở source branch; `git diff --check` PASS cho merge; không thêm application source/dependencies từ hai downloaded repos.
 - Còn thiếu / tiếp nối: BE/FE/OIDC và kiểm chứng combined SHA vẫn đang thực hiện; connector tương lai không phải current runtime support.
 - Commit/push: commit merge đi cùng entry; push/SHA đối chiếu sau integration checks.
+
+### 2026-10-20 17:02 UTC+07 — Evaluation domain thứ hai qua Java/database thật / conversation chính
+- Nhánh / commit subject: `module/integration-final`; `test: verify cross-domain execution and decimal means`.
+- Phạm vi: local synthetic acceptance runner, support-domain corpus AVG mapping và evaluation documentation.
+- Trạng thái: VERIFIED cho 108 câu hỏi Việt/Anh/rejection qua Java→Python→PostgreSQL/MySQL/SQL Server trên backend snapshot local8086; nghiệm thu combined Git SHA và provider API thật vẫn chờ.
+- Đã làm: tạo table tên ngẫu nhiên với 12 bản ghi synthetic, đăng ký dataset/semantic model qua API Java thật, chạy 36 cases mỗi engine và so sánh độc lập expected rows từ SQLite (mean tolerance0.000001), chart/rejection status/history ID. Dọn table và disable dataset test để giữ provenance history; không bootstrap/seed fixture vào runtime/UI sản phẩm. Lần chạy đầu phát hiện AVG(integer) bị SQL Server truncate và MySQL scale4; sửa examples/metrics/expected SQL sang AVG(CAST(... AS DECIMAL(38,10))) thay vì nới tolerance để che sai khác.
+- Kiểm chứng: Python AI38PASS/1SKIP (provider thực chưa có config); real cross-domain108/108PASS; Black/isort/compile/diff checkPASS. Report không có secrets/raw rows ở ignored .local/cross-domain-report.json. Cùng Chinook corpus, inventory42logical intents/2domains/3dialects có candidate tests; acceptance này chứng minh thêm 18logical intents synthetic (36phrasings×3engines), không tự suy ra toàn bộ evaluation platform đã generic.
+- Còn thiếu / phụ thuộc: Java built-in evaluation suite hiện còn Chinook-specific; combined app SHA, FE browser và deployment/OIDC final rerun đang thực hiện. Provider thật NOT RUN do thiếu cấu hình. Không claim vượt qua các mục này bằng test fixture.
+- Việc tiếp nối: ghép module branches và chạy lại caller/database tests trên code tích hợp; rà soát evaluation suite config cùng shared API.
+- Commit/push: entry đi cùng commit; push/SHA xác minh sau khi kết thúc integration.
