@@ -57,7 +57,7 @@ public class SemanticPlannerClient {
       var response =
           http.send(
               HttpRequest.newBuilder(uri)
-                  .timeout(Duration.ofSeconds(10))
+                  .timeout(Duration.ofSeconds(QueryDeadline.seconds(10)))
                   .header("Content-Type", "application/json")
                   .header("Authorization", "Bearer " + token)
                   .header("X-Correlation-ID", correlationId)

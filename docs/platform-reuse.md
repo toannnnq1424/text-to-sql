@@ -4,7 +4,7 @@
 
 Theo yêu cầu trực tiếp của người dùng ngày 2026-10-20, ưu tiên tận dụng sâu hai bộ mã nguồn trong Downloads thay vì tự viết lại những phần đã có implementation phù hợp. Tên dịch vụ/thành phần của sản phẩm dùng `semantic-engine` và `data-tool-runtime`; giao diện, logo, tài liệu hướng dẫn người dùng và telemetry của sản phẩm dùng tên Natural Language Analytics Warehouse.
 
-Theo yêu cầu bổ sung nhập toàn bộ source, hai snapshot hiện nằm trong `vendor/upstream/`, với417.117 dòng code theo [inventory](integrations/full-source-inventory.json). **SDK semantic được cài từ source local và gọi trực tiếp; Go executor import trực tiếp ba native source factories của source local qua module replace.** Đây là thay đổi so với adaptation nhỏ trước đây. [Full source adoption](integrations/full-source-adoption.md) ghi caller, build, hai file upstream sửa và một extension của fork, tests và phần chưa kích hoạt. [Snapshot identity](integrations/reviewed-snapshots.json) vẫn giữ hash nguồn gốc. Không coi các connector/server chỉ mới được nhập source là đã hoạt động trong app.
+Theo yêu cầu bổ sung nhập toàn bộ source, hai snapshot hiện nằm trong `vendor/upstream/`, với417.117 dòng code theo [inventory](integrations/full-source-inventory.json). **SDK semantic được cài từ source local và gọi trực tiếp; Go executor import trực tiếp ba native source factories của source local qua module replace.** Đây là thay đổi so với adaptation nhỏ trước đây. [Full source adoption](integrations/full-source-adoption.md) ghi caller, build, các patch có hash của fork, tests và phần chưa kích hoạt. [Snapshot identity](integrations/reviewed-snapshots.json) vẫn giữ hash nguồn gốc. Không coi các connector/server chỉ mới được nhập source là đã hoạt động trong app.
 
 Người dùng cho biết đã mua và được phép xử lý các bộ nguồn. Các file được kiểm tra hiện có giấy phép gốc Apache-2.0, không phải MIT; không thấy Git metadata trong hai thư mục tải xuống nên không tự suy đoán commit từ hậu tố `main`. Chưa có một thỏa thuận cấp quyền riêng trong các file đã kiểm tra.
 
@@ -87,4 +87,10 @@ Luồng đăng ký nguồn mới dùng Catalog/adapter discovery thật, bao g�
 
 ## Model local/API và bộ AI đầy đủ
 
-Engine SDK đang dùng source gốc trong repo, cùng hai file upstream sửa và một extension của fork đã ghi nhận. Wren AI Service là phần riêng, không có trong thư mục Engine đã tải; chưa được nhập/tích hợp toàn bộ. [Model local/API](llm-provider.md) giải thích Ollama inference và cấu hình provider của app. Không cần tự train để chạy model đã có; không coi native SQL planning hay deterministic matching là model inference.
+Engine SDK đang dùng source gốc trong repo, cùng các patch có hash của fork đã ghi nhận. Wren AI Service là phần riêng, không có trong thư mục Engine đã tải; chưa được nhập/tích hợp toàn bộ. [Model local/API](llm-provider.md) giải thích Ollama inference và cấu hình provider của app. Không cần tự train để chạy model đã có; không coi native SQL planning hay deterministic matching là model inference.
+
+## Business workbench và model local
+
+Luồng mới và điểm gọi source kit được ghi tại [semantic workbench](semantic-workbench.md). BusinessCompiler và TransformCompiler là specialization trong source fork: parse/resolve AST theo metadata được cấp phép, output qua native plan và Java guard. MemoryStore/schema_indexer thực của kit lưu LanceDB với Ollama embeddings local, được UI Tri thức AI và provider context selection gọi thật. Java thực thi các lớp biến đổi độc lập và đăng ký mart, còn UI Ngữ nghĩa/Pipelines quản lý definition và caller. Bằng chứng cuối xem work log; không suy ra cloud support từ source presence.
+
+Linux/amd64 dùng bản `lancedb-compat==0.40.0` chính thức có CPU baseline x86-64-v2; wheel thông thường cùng version dùng AVX2 và đã segfault dưới emulation trên host arm64. Docker build phải thực thi list/create/vector search để phát hiện lỗi native này trước deployment. Đây là cùng API/source-kit MemoryStore, không thay bằng mock hay in-memory index. [CPU wheel notes](https://github.com/lancedb/lancedb/blob/main/python/README.md).

@@ -21,7 +21,7 @@ Endpoint phải hỗ trợ Chat Completions với JSON object output theo contra
 
 ## Dùng Ollama local
 
-Cài/chạy Ollama theo [hướng dẫn chính thức](https://docs.ollama.com/quickstart), tải model bạn chọn bằng `ollama pull <model-name>`. Dùng đúng tên model đã có trong `ollama list`. Dự án không tự tải model nhiều GB hoặc dùng model cloud mặc định.
+Để giữ online provider.env nguyên vẹn, dùng profile và các lệnh ở [Ollama local](ollama-local.md). Cài/chạy Ollama theo [hướng dẫn chính thức](https://docs.ollama.com/quickstart), tải model bạn chọn bằng `ollama pull <model-name>`. Dùng đúng tên model đã có trong `ollama list`. Lệnh setup local chỉ tải model khi người dùng chạy theo [Ollama local](ollama-local.md); không dùng model cloud mặc định.
 
 Khi AI service chạy trực tiếp trên host:
 
@@ -46,4 +46,4 @@ Thử một câu hỏi ngoài semantic example, đọc trường `model` và que
 ai-service/.venv/bin/python -m pytest ai-service/test_app.py -k real_provider
 ```
 
-Bài test phải chạy với biến được nạp an toàn vào tiến trình (launcher không tự nạp chúng cho một shell pytest riêng). Không in key hoặc raw prompt vào log. Hiện real provider và Ollama inference đều **NOT RUN**, vì người dùng đã hoãn cung cấp model/key; không mô tả deterministic corpus PASS như AI thật PASS. Đổi model không đòi hỏi huấn luyện lại schema nhưng metadata/semantic definitions đúng vẫn bắt buộc.
+Bài test phải chạy với biến được nạp an toàn vào tiến trình (launcher không tự nạp chúng cho một shell pytest riêng). Không in key hoặc raw prompt vào log. Model online vẫn **NOT RUN** theo yêu cầu giữ nguyên key/cấu hình. Đợt workbench có kiểm chứng riêng Ollama local và embeddings thực; xem work log cho bằng chứng cuối, không mô tả deterministic corpus PASS như AI thật PASS. Đổi model không đòi hỏi huấn luyện lại schema nhưng metadata/semantic definitions đúng vẫn bắt buộc.

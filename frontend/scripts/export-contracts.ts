@@ -2,7 +2,27 @@ import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import * as s from "../src/api/schema";
+import * as w from "../src/api/workbenchSchema";
 const schemas: Record<string, z.ZodType> = {
+  SemanticDocument: w.SemanticDocumentSchema,
+  SemanticValidation: w.SemanticValidationSchema,
+  SemanticSelection: w.SemanticSelectionSchema,
+  KnowledgeStatus: w.KnowledgeStatusSchema,
+  KnowledgeExamples: w.KnowledgeExamplesSchema,
+  KnowledgeSearch: w.KnowledgeSearchSchema,
+  KnowledgeSearchInput: w.KnowledgeSearchInputSchema,
+  KnowledgePromotion: z.strictObject({ queryId: z.string().min(1) }),
+  Pipeline: w.PipelineSchema,
+  PipelineInput: w.PipelineInputSchema,
+  PipelineUpdate: z.union([
+    w.PipelineInputSchema,
+    z.strictObject({ status: z.enum(["ACTIVE", "DISABLED"]) }),
+  ]),
+  PipelinePreview: w.PipelinePreviewSchema,
+  PipelineRun: w.PipelineRunSchema,
+  PipelineRunInput: z.strictObject({
+    idempotencyKey: z.string().min(1).max(200),
+  }),
   Warehouse: s.WarehouseSchema,
   Dataset: s.DatasetSchema,
   Query: s.QuerySchema.omit({ chart: true }).extend({
@@ -81,6 +101,8 @@ const schemas: Record<string, z.ZodType> = {
   Health: z.object({ status: z.literal("UP") }),
 };
 for (const name of [
+  "Pipeline",
+  "PipelineRun",
   "Warehouse",
   "Dataset",
   "Table",
@@ -201,6 +223,47 @@ for (const [resource, type, param] of [
   if (["tables", "metrics", "dimensions"].includes(resource))
     add("get", `/datasets/{id}/${resource}/{itemId}`, type);
 }
+add("get", "/datasets/{id}/semantic-model", "SemanticDocument");
+add("put", "/datasets/{id}/semantic-model", "Dataset", "SemanticDocument");
+add(
+  "post",
+  "/datasets/{id}/semantic-model/validate",
+  "SemanticValidation",
+  "SemanticDocument",
+);
+add("post", "/datasets/{id}/semantic-query", "Query", "SemanticSelection");
+add("get", "/datasets/{id}/knowledge", "KnowledgeStatus");
+add("delete", "/datasets/{id}/knowledge", "KnowledgeStatus");
+add("post", "/datasets/{id}/knowledge/index", "KnowledgeStatus");
+add(
+  "post",
+  "/datasets/{id}/knowledge/search",
+  "KnowledgeSearch",
+  "KnowledgeSearchInput",
+);
+add("get", "/datasets/{id}/knowledge/examples", "KnowledgeExamples");
+add(
+  "post",
+  "/datasets/{id}/knowledge/examples",
+  "KnowledgeExamples",
+  "KnowledgePromotion",
+);
+add(
+  "delete",
+  "/datasets/{id}/knowledge/examples/{entryId}",
+  "KnowledgeExamples",
+);
+add("get", "/pipelines", "PagePipeline", undefined, "200", list);
+add("post", "/pipelines", "Pipeline", "PipelineInput", "201");
+add("post", "/pipelines/preview", "PipelinePreview", "PipelineInput");
+add("get", "/pipelines/runs", "PagePipelineRun", undefined, "200", [
+  ...list,
+  "pipelineId",
+]);
+add("get", "/pipelines/runs/{id}", "PipelineRun");
+add("get", "/pipelines/{id}", "Pipeline");
+add("patch", "/pipelines/{id}", "Pipeline", "PipelineUpdate");
+add("post", "/pipelines/{id}/run", "PipelineRun", "PipelineRunInput", "202");
 add("post", "/query", "Query", "QueryRequest", "201");
 add("get", "/query/history", "PageQuerySummary", undefined, "200", [
   ...list,
@@ -255,9 +318,34 @@ add(
   "IngestionSourceUpdate",
 );
 add("post", "/warehouse/ingestion/sources/{id}/test", "IngestionSourceTest");
-add("post", "/warehouse/ingestion/sources/preview", "IngestionSourcePreview", "IngestionSourcePreviewInput");
-add("post", "/warehouse/ingestion/sources/validate", "IngestionSourceValidation", "IngestionSourceInput");
-add("get", "/warehouse/ingestion/sources/targets", "PageTable", undefined, "200", ["warehouseId", "datasetId", "page", "pageSize", "search", "sort", "direction"]);
+add(
+  "post",
+  "/warehouse/ingestion/sources/preview",
+  "IngestionSourcePreview",
+  "IngestionSourcePreviewInput",
+);
+add(
+  "post",
+  "/warehouse/ingestion/sources/validate",
+  "IngestionSourceValidation",
+  "IngestionSourceInput",
+);
+add(
+  "get",
+  "/warehouse/ingestion/sources/targets",
+  "PageTable",
+  undefined,
+  "200",
+  [
+    "warehouseId",
+    "datasetId",
+    "page",
+    "pageSize",
+    "search",
+    "sort",
+    "direction",
+  ],
+);
 add(
   "post",
   "/warehouse/ingestion/run",

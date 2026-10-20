@@ -5,9 +5,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 COPY ai-service/requirements.txt ./requirements.txt
 COPY ai-service/sdk-requirements.txt ./sdk-requirements.txt
+COPY ai-service/check_memory_runtime.py ./check_memory_runtime.py
+COPY ai-service/fix_lancedb_compat.py ./fix_lancedb_compat.py
 RUN pip install --no-cache-dir -r requirements.txt -r sdk-requirements.txt \
+    && python fix_lancedb_compat.py \
+    && python check_memory_runtime.py \
     && groupadd --gid 10001 nla \
-    && useradd --uid 10001 --gid nla --no-create-home nla
+    && useradd --uid 10001 --gid nla --no-create-home nla \
+    && mkdir -p /var/lib/nla/knowledge \
+    && chown 10001:10001 /var/lib/nla/knowledge
 COPY vendor/upstream/semantic-engine/wren/ /opt/upstream/semantic-sdk/
 COPY vendor/upstream/semantic-engine/LICENSE /app/third-party/licenses/semantic-sdk/LICENSE
 RUN pip install --no-cache-dir --no-deps /opt/upstream/semantic-sdk

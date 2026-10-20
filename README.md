@@ -14,6 +14,8 @@ React → Java Spring Boot → Python AI Service / provider API
 
 React chỉ gọi Java. Java xác thực người dùng, kiểm tra SQL trước khi giao executor đọc warehouse. Python sinh candidate rồi gọi SDK semantic từ source đã đưa vào repo để lập kế hoạch/rewrite và trả lineage; Java kiểm tra lại SQL sau rewrite. Dịch vụ đọc file nhận upload riêng, không nhận credential hay truy cập warehouse.
 
+Các màn **Ngữ nghĩa**, **Tri thức AI** và **Pipelines** có hướng dẫn tại [semantic workbench](docs/semantic-workbench.md). Để chạy model trên máy bằng Ollama và giữ riêng cấu hình API online, xem [Ollama local](docs/ollama-local.md).
+
 ## Nạp file từ giao diện
 
 Mở **Nạp dữ liệu → Nạp file**, chọn CSV/TSV/TXT, XLSX, JSON/JSONL/NDJSON, Parquet, Arrow/Feather/IPC, ORC hoặc Avro. App đọc toàn bộ file, tự nhận diện header/cột/kiểu dữ liệu, cho xem trước20 dòng và chỉnh mapping. Chọn warehouse cùng namespace được tài khoản import cấp quyền CREATE, đặt tên bảng/dataset rồi **Kiểm tra và tạo kế hoạch → Xác nhận và nạp dữ liệu**. Không phải nhập từng cột hoặc từng INSERT; các bản ghi được nạp theo batch qua bốn lớp và mart được đăng ký thành Dataset trong Catalog.

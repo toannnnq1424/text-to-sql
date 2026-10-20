@@ -21,6 +21,41 @@
       "upstreamSha256": null,
       "runtimeSha256": "fa7c4f76811f510b734b5e8e16dce4bc718e07ad67652c90e1c9f269afc2114a",
       "reason": "Project-owned planner specialization inside the source fork: physical-to-logical binding, immutable typed lineage, select-only nested AST policy, native model resolution, post-rewrite source-set check, SDK type normalization and safe reason codes. Replaces app-owned duplicate planning logic."
+    },
+    {
+      "path": "vendor/upstream/semantic-engine/wren/src/wren/nla_business.py",
+      "kind": "added",
+      "upstreamSha256": null,
+      "runtimeSha256": "7088b4829a053adfadac3d8ca3ead9034694c007fd630f71a96175c700bbed54",
+      "reason": "NLA source-fork business compiler: AST-bound configured aggregate metrics/dimensions, safe cardinality joins, ambiguity/grain rejection and typed filter literals; output remains a candidate for native planning and Java guard."
+    },
+    {
+      "path": "vendor/upstream/semantic-engine/wren/src/wren/nla_transform.py",
+      "kind": "added",
+      "upstreamSha256": null,
+      "runtimeSha256": "80562ad153b41339d2195e39331d7d1468a434651d7c923661dde58eea446388",
+      "reason": "NLA source-fork transformation compiler: single-input scalar/aggregate expressions, strict physical column binding, legal grouping, safe function allowlist and target dialect generation for real Java pipeline consumers."
+    },
+    {
+      "path": "vendor/upstream/semantic-engine/wren/src/wren/memory/__init__.py",
+      "kind": "modified",
+      "upstreamSha256": "524d269ee9643a22948b0586398afb7dabfd73c0ee12909a255f9688bb88a440",
+      "runtimeSha256": "7118e3324c986e5231fe9ca44faa8e205c75962c66bd59c829e650e1a3ae6dc7",
+      "reason": "Inject the application-owned local embedding adapter into the real source-kit memory store without downloading a second inference runtime."
+    },
+    {
+      "path": "vendor/upstream/semantic-engine/wren/src/wren/memory/store.py",
+      "kind": "modified",
+      "upstreamSha256": "b3fcec6561ebeb802d5ca50fc23778de94e55fb856fa9269af37a28c4f9e2858",
+      "runtimeSha256": "3be13997be72e7031e42b14f43b2ca364f678272394107f73ddc41360a20dc19",
+      "reason": "Accept an injected embedding function while preserving source-kit LanceDB schemas, search, query history and persistence implementation."
+    },
+    {
+      "path": "vendor/upstream/semantic-engine/wren/src/wren/memory/schema_indexer.py",
+      "kind": "modified",
+      "upstreamSha256": "95c14466966fc38b58fa0185f233ff87c7900afa2c02765591f383cf91d5ca72",
+      "runtimeSha256": "09620a6a5747c75119ec05826f858a78d5548d9619df6dd2d34d5f4d68994d9d",
+      "reason": "Index configured business metrics, dimensions and rules as source-kit schema records under the same manifest fingerprint; preserve physical metadata indexing."
     }
   ]
 }

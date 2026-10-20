@@ -23,10 +23,10 @@ class WrenMemory:
         LanceDB storage directory.  Defaults to ``~/.wren/memory/``.
     """
 
-    def __init__(self, path: str | Path | None = None):
+    def __init__(self, path: str | Path | None = None, *, embedding_function=None):
         from wren.memory.store import MemoryStore  # noqa: PLC0415
 
-        self._store = MemoryStore(path=path)
+        self._store = MemoryStore(path=path, embedding_function=embedding_function)
 
     def index_manifest(
         self,
@@ -39,9 +39,7 @@ class WrenMemory:
 
         Returns {"schema_items": int, "seed_queries": int}.
         """
-        return self._store.index_schema(
-            manifest, replace=replace, seed_queries=seed_queries
-        )
+        return self._store.index_schema(manifest, replace=replace, seed_queries=seed_queries)
 
     @staticmethod
     def describe_schema(manifest: dict) -> str:

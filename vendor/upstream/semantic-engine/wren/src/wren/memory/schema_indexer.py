@@ -150,6 +150,34 @@ def extract_schema_items(manifest: dict) -> list[dict]:
     for view in manifest.get("views", []):
         items.append(_view_record(view, mdl_h, now))
 
+    # NLA fork: curated business definitions are first-class retrievable items.
+    # They participate in manifest_hash; changing meaning invalidates the index.
+    for item_type, key in (
+        ("metric", "semanticMetrics"),
+        ("dimension", "semanticDimensions"),
+        ("business_rule", "businessRules"),
+    ):
+        for position, value in enumerate(manifest.get(key, [])):
+            item = (
+                value
+                if isinstance(value, dict)
+                else {"name": f"rule_{position}", "description": value}
+            )
+            name = item.get("name", f"{item_type}_{position}")
+            text = json.dumps(item, ensure_ascii=False, sort_keys=True)
+            items.append(
+                {
+                    "text": f"{item_type}: {name} {text}",
+                    "item_type": item_type,
+                    "model_name": item.get("modelName", ""),
+                    "item_name": name,
+                    "data_type": item.get("dataType", ""),
+                    "expression": item.get("expression", ""),
+                    "is_calculated": item_type == "metric",
+                    "mdl_hash": mdl_h,
+                    "indexed_at": now,
+                }
+            )
     return items
 
 
@@ -222,10 +250,7 @@ def _relationship_record(rel: dict, mdl_h: str, now: datetime) -> dict:
 
     left = models[0] if len(models) > 0 else "?"
     right = models[1] if len(models) > 1 else "?"
-    text = (
-        f"Relationship '{name}': {left} → {right} ({join_type}). "
-        f"Condition: {condition}."
-    )
+    text = f"Relationship '{name}': {left} → {right} ({join_type}). " f"Condition: {condition}."
 
     return {
         "text": text,

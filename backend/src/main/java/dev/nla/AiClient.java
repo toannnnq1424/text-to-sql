@@ -21,6 +21,107 @@ public class AiClient {
     this.env = env;
   }
 
+  public Map<String, Object> invoke(String path, Map<String, Object> request, int timeoutSeconds) {
+    if (!Set.of(
+            "business-plan",
+            "business-validate",
+            "knowledge/status",
+            "knowledge/index",
+            "knowledge/search",
+            "knowledge/examples",
+            "knowledge/remember",
+            "knowledge/forget",
+            "knowledge/reset",
+            "transform-plan")
+        .contains(path)) throw ApiException.bad("Private capability không hợp lệ.");
+    String base = env.getProperty("nla.python-url", "");
+    String token = env.getProperty("nla.python-token", "");
+    if (base.isBlank() || token.length() < 32)
+      throw new ApiException(
+          HttpStatus.SERVICE_UNAVAILABLE, "LLM_ERROR", "Chưa cấu hình dịch vụ xử lý.");
+    try {
+      URI uri = URI.create(base + "/internal/v1/" + path);
+      if (!Set.of("http", "https").contains(uri.getScheme()) || uri.getUserInfo() != null)
+        throw new IllegalArgumentException();
+      var response =
+          http.send(
+              HttpRequest.newBuilder(uri)
+                  .timeout(Duration.ofSeconds(QueryDeadline.seconds(timeoutSeconds)))
+                  .header("Content-Type", "application/json")
+                  .header("Authorization", "Bearer " + token)
+                  .header("X-Correlation-ID", Json.str(request, "correlationId"))
+                  .POST(HttpRequest.BodyPublishers.ofString(Json.write(request)))
+                  .build(),
+              HttpResponse.BodyHandlers.ofString());
+      if (response.body().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 1048576)
+        throw new ApiException(HttpStatus.BAD_GATEWAY, "LLM_ERROR", "Phản hồi vượt giới hạn.");
+      var body = Json.read(response.body());
+      if (response.statusCode() != 200) {
+        String code = Json.str(Json.map(body.get("error")), "code");
+        if (code.equals("SEMANTIC_MODEL_INVALID"))
+          throw new ApiException(
+              HttpStatus.UNPROCESSABLE_ENTITY,
+              code,
+              "Ngữ nghĩa không hợp lệ: kiểm tra tên cột, biểu thức tổng hợp, dimensions và đường"
+                  + " join giữ đúng mức hạt.");
+        if (code.equals("INVALID_REQUEST")) throw ApiException.bad("Cấu hình xử lý không hợp lệ.");
+        throw new ApiException(
+            HttpStatus.SERVICE_UNAVAILABLE,
+            "KNOWLEDGE_UNAVAILABLE",
+            "Bộ xử lý tri thức chưa sẵn sàng; kiểm tra model local và chỉ mục của dataset.");
+      }
+      if (path.equals("business-plan")) validateCandidate(body);
+      return body;
+    } catch (ApiException exception) {
+      throw exception;
+    } catch (java.net.http.HttpTimeoutException exception) {
+      throw new ApiException(
+          HttpStatus.GATEWAY_TIMEOUT, "QUERY_TIMEOUT", "Xử lý vượt thời gian cho phép.");
+    } catch (Exception exception) {
+      throw new ApiException(
+          HttpStatus.SERVICE_UNAVAILABLE, "LLM_ERROR", "Không kết nối được dịch vụ xử lý.");
+    }
+  }
+
+  static void validateCandidate(Map<String, Object> body) {
+    Set<String> fields =
+        Set.of(
+            "sql",
+            "explanation",
+            "assumptions",
+            "selectedMetrics",
+            "selectedDimensions",
+            "chartRecommendation",
+            "confidence",
+            "model");
+    if (!body.keySet().equals(fields)
+        || !(body.get("confidence") instanceof Number confidence)
+        || !Double.isFinite(confidence.doubleValue())
+        || confidence.doubleValue() < 0
+        || confidence.doubleValue() > 1) throw invalidCandidate();
+    for (String field : List.of("sql", "explanation", "model")) {
+      int bound = field.equals("sql") ? 100000 : field.equals("model") ? 500 : 10000;
+      if (!(body.get(field) instanceof String text)
+          || text.length() > bound
+          || (!field.equals("explanation") && text.isBlank())) throw invalidCandidate();
+    }
+    for (String field : List.of("assumptions", "selectedMetrics", "selectedDimensions")) {
+      if (!(body.get(field) instanceof List<?> values)
+          || values.size() > 100
+          || values.stream()
+              .anyMatch(value -> !(value instanceof String text) || text.length() > 10000))
+        throw invalidCandidate();
+    }
+    if (!(body.get("chartRecommendation") instanceof Map<?, ?> chart)
+        || !(chart.get("type") instanceof String type)
+        || type.isBlank()
+        || type.length() > 40) throw invalidCandidate();
+  }
+
+  private static ApiException invalidCandidate() {
+    return new ApiException(HttpStatus.BAD_GATEWAY, "LLM_ERROR", "Phản hồi bộ xử lý sai contract.");
+  }
+
   public Map<String, Object> generate(Map<String, Object> request, String mode) {
     String base = env.getProperty("nla.python-url", "");
     String token = env.getProperty("nla.python-token", "");
@@ -34,7 +135,7 @@ public class AiClient {
       var response =
           http.send(
               HttpRequest.newBuilder(uri)
-                  .timeout(Duration.ofSeconds(35))
+                  .timeout(Duration.ofSeconds(QueryDeadline.seconds(35)))
                   .header("Content-Type", "application/json")
                   .header("X-Execution-Mode", mode)
                   .header("Authorization", "Bearer " + token)
@@ -60,27 +161,7 @@ public class AiClient {
         throw new ApiException(
             HttpStatus.BAD_GATEWAY, "LLM_ERROR", "Dịch vụ AI không xử lý được câu hỏi.");
       }
-      Set<String> fields =
-          Set.of(
-              "sql",
-              "explanation",
-              "assumptions",
-              "selectedMetrics",
-              "selectedDimensions",
-              "chartRecommendation",
-              "confidence",
-              "model");
-      if (!body.keySet().equals(fields)
-          || !(body.get("confidence") instanceof Number n)
-          || n.doubleValue() < 0
-          || n.doubleValue() > 1
-          || Json.str(body, "sql").isBlank())
-        throw new ApiException(HttpStatus.BAD_GATEWAY, "LLM_ERROR", "Phản hồi AI sai contract.");
-      for (String field : List.of("assumptions", "selectedMetrics", "selectedDimensions"))
-        if (!(body.get(field) instanceof List<?> list)
-            || list.stream().anyMatch(v -> !(v instanceof String)))
-          throw new ApiException(
-              HttpStatus.BAD_GATEWAY, "LLM_ERROR", "Phản hồi AI sai kiểu dữ liệu.");
+      validateCandidate(body);
       return body;
     } catch (ApiException e) {
       throw e;

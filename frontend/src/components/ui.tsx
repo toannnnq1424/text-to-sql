@@ -100,8 +100,11 @@ export function Badge({ status }: { status: string }) {
     "UP",
     "HEALTHY",
     "PUBLISHED",
+    "READY",
   ].includes(status.toUpperCase());
-  const running = ["PENDING", "RUNNING"].includes(status.toUpperCase());
+  const running = ["PENDING", "RUNNING", "INDEXING"].includes(
+    status.toUpperCase(),
+  );
   const warning = [
     "PARTIAL",
     "INVALID_SCHEMA",
@@ -109,6 +112,8 @@ export function Badge({ status }: { status: string }) {
     "DISABLED",
     "SKIPPED",
     "ROLLED_BACK",
+    "EMPTY",
+    "STALE",
   ].includes(status.toUpperCase());
   return (
     <span

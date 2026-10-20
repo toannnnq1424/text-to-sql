@@ -63,6 +63,8 @@ services:
     env_file:
       - path: ../.local/compose-app/ai.env
         format: raw
+    volumes:
+      - app-knowledge:/var/lib/nla/knowledge
     networks:
       - app-private
       - ai-egress
@@ -171,6 +173,7 @@ services:
 
 volumes:
   app-uploads:
+  app-knowledge:
 
 networks:
   executor-private:

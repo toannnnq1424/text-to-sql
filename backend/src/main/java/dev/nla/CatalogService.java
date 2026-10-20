@@ -80,10 +80,19 @@ public class CatalogService {
           tables(datasetId).stream()
               .map(CatalogService::key)
               .collect(java.util.stream.Collectors.toSet());
-      return tables(datasetId).stream()
-          .flatMap(t -> Json.objects(t.get("foreignKeys")).stream())
-          .filter(rel -> allowed.contains(key(Json.map(Json.map(rel.get("to")).get("table")))))
-          .toList();
+      var discovered =
+          tables(datasetId).stream()
+              .flatMap(t -> Json.objects(t.get("foreignKeys")).stream())
+              .filter(rel -> allowed.contains(key(Json.map(Json.map(rel.get("to")).get("table")))))
+              .toList();
+      Map<String, Map<String, Object>> combined = new LinkedHashMap<>();
+      for (var relation : discovered) combined.put(relationIdentity(relation), relation);
+      for (var relation : Json.objects(sem.get("relationships"))) {
+        if (allowed.contains(key(Json.map(Json.map(relation.get("from")).get("table"))))
+            && allowed.contains(key(Json.map(Json.map(relation.get("to")).get("table")))))
+          combined.put(relationIdentity(relation), relation);
+      }
+      return new ArrayList<>(combined.values());
     }
     if (!Set.of("metrics", "dimensions", "examples").contains(kind)) throw ApiException.notFound();
     return Json.objects(sem.get(kind));
@@ -95,6 +104,7 @@ public class CatalogService {
     validateSemantic(sem, physical);
     sem.put("tables", physical);
     sem.put("relationships", collection(datasetId, "relationships"));
+    validateJoinCardinality(datasetId, sem);
     sem.put("referenceTime", java.time.Instant.now().toString());
     return sem;
   }
@@ -107,6 +117,24 @@ public class CatalogService {
           Json.objects(t.get("columns")).stream()
               .map(c -> Json.str(c, "name"))
               .collect(java.util.stream.Collectors.toSet()));
+    Set<String> endpoints = new HashSet<>();
+    for (var relation : Json.objects(sem.get("relationships"))) {
+      String identity = relationIdentity(relation);
+      if (!endpoints.add(identity))
+        throw new ApiException(
+            HttpStatus.CONFLICT, "SEMANTIC_MODEL_INVALID", "Join bị khai báo lặp hoặc mâu thuẫn.");
+      if (!Set.of("ONE_TO_ONE", "MANY_TO_ONE", "ONE_TO_MANY", "MANY_TO_MANY")
+          .contains(Json.str(relation, "cardinality")))
+        throw ApiException.bad("Cardinality không hợp lệ.");
+      for (String side : List.of("from", "to")) {
+        var endpoint = Json.map(relation.get(side));
+        if (!fields
+            .getOrDefault(key(Json.map(endpoint.get("table"))), Set.of())
+            .contains(Json.str(endpoint, "column")))
+          throw new ApiException(
+              HttpStatus.CONFLICT, "SEMANTIC_MODEL_INVALID", "Join tham chiếu cột ngoài dataset.");
+      }
+    }
     for (var d : Json.objects(sem.get("dimensions")))
       if (!fields
           .getOrDefault(key(Json.map(d.get("table"))), Set.of())
@@ -131,6 +159,92 @@ public class CatalogService {
       } catch (Exception e) {
         throw new ApiException(
             HttpStatus.CONFLICT, "SEMANTIC_MODEL_INVALID", "Biểu thức metric không hợp lệ.");
+      }
+    }
+  }
+
+  private static String relationIdentity(Map<String, Object> relation) {
+    var from = Json.map(relation.get("from"));
+    var to = Json.map(relation.get("to"));
+    String left = key(Json.map(from.get("table"))) + "." + Json.str(from, "column");
+    String right = key(Json.map(to.get("table"))) + "." + Json.str(to, "column");
+    return left.compareTo(right) < 0 ? left + "|" + right : right + "|" + left;
+  }
+
+  public void validateJoinCardinality(String datasetId, Map<String, Object> semantic) {
+    if (Json.objects(semantic.get("relationships")).isEmpty()) return;
+    var dataset = store.dataset(datasetId);
+    var warehouse = store.warehouse(Json.str(dataset, "warehouseId"));
+    var adapter = adapters.get(warehouse);
+    var physical = tables(datasetId);
+    Set<String> verified = new HashSet<>();
+    long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(5);
+    int scanned = 0;
+    for (var relation : Json.objects(semantic.get("relationships"))) {
+      String cardinality = Json.str(relation, "cardinality");
+      List<String> uniqueSides =
+          switch (cardinality) {
+            case "MANY_TO_ONE" -> List.of("to");
+            case "ONE_TO_MANY" -> List.of("from");
+            case "ONE_TO_ONE" -> List.of("from", "to");
+            default -> List.of();
+          };
+      for (String side : uniqueSides) {
+        var endpoint = Json.map(relation.get(side));
+        var table = Json.map(endpoint.get("table"));
+        String column = Json.str(endpoint, "column");
+        String identity = key(table) + "." + column;
+        if (!verified.add(identity)) continue;
+        var actual =
+            physical.stream()
+                .filter(item -> key(item).equals(key(table)))
+                .findFirst()
+                .orElseThrow(() -> ApiException.bad("Join nằm ngoài dataset."));
+        if (List.of(column).equals(actual.get("primaryKey"))) continue;
+        // A declared one-side is a data invariant, not an unchecked UI assertion.
+        // Verify it again for query context if physical constraints do not prove it.
+        long remaining =
+            java.util.concurrent.TimeUnit.NANOSECONDS.toSeconds(deadline - System.nanoTime());
+        if (++scanned > 8 || remaining < 1)
+          throw new ApiException(
+              HttpStatus.UNPROCESSABLE_ENTITY,
+              "SEMANTIC_MODEL_INVALID",
+              "Không thể chứng minh cardinality trong ngân sách kiểm tra; bổ sung khóa vật lý hoặc"
+                  + " giảm quan hệ chưa có ràng buộc.");
+        String identifier = adapter.quoteIdentifier(column);
+        String sql =
+            "SELECT "
+                + identifier
+                + " FROM "
+                + adapter.quoteIdentifier(Json.str(table, "schema"))
+                + "."
+                + adapter.quoteIdentifier(Json.str(table, "name"))
+                + " WHERE "
+                + identifier
+                + " IS NOT NULL GROUP BY "
+                + identifier
+                + " HAVING COUNT(*) > 1";
+        try {
+          var result =
+              adapter.executeReadOnlyQuery(
+                  warehouse,
+                  adapters.password(store.credential(Json.str(warehouse, "warehouseId"))),
+                  adapter.applySafeLimit(sql, 1),
+                  1,
+                  1024,
+                  QueryDeadline.seconds((int) Math.min(3, remaining)));
+          if (!Json.objects(result.get("rows")).isEmpty())
+            throw new ApiException(
+                HttpStatus.CONFLICT,
+                "SEMANTIC_MODEL_INVALID",
+                "Cardinality không khớp dữ liệu: phía khai báo duy nhất có giá trị trùng.");
+        } catch (SQLException exception) {
+          throw new ApiException(
+              HttpStatus.UNPROCESSABLE_ENTITY,
+              "SEMANTIC_MODEL_INVALID",
+              "Không kiểm chứng được cardinality trong giới hạn an toàn; kiểm tra khóa hoặc định"
+                  + " nghĩa join.");
+        }
       }
     }
   }

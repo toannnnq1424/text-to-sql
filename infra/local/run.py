@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 from urllib.parse import urlparse
 
+from llm_profile import knowledge_environment, profile_environment
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -24,7 +26,7 @@ def service_environment(service: str, authentication: str) -> dict[str, str]:
 
     def allowed(key: str) -> bool:
         if service == "ai":
-            return key == "PYTHON_AI_TOKEN" or key.startswith("LLM_")
+            return key == "PYTHON_AI_TOKEN" or key.startswith(("LLM_", "KNOWLEDGE_"))
         if service == "frontend":
             return key.startswith("VITE_") or key == "API_PROXY_TARGET"
         return key.startswith(
@@ -54,6 +56,7 @@ def service_environment(service: str, authentication: str) -> dict[str, str]:
                 "NLA_",
                 "METADATA_",
                 "LLM_",
+                "KNOWLEDGE_",
                 "PYTHON_AI_",
                 "OIDC_",
                 "VITE_",
@@ -77,9 +80,10 @@ def service_environment(service: str, authentication: str) -> dict[str, str]:
         or (service == "backend" and key.startswith("OIDC_"))
     }
     load_environment(ROOT / ".local" / "docker.env", env, allowed)
-    provider = ROOT / ".local" / "compose-app" / "provider.env"
-    if service != "frontend" and provider.is_file():
-        load_environment(provider, env, allowed)
+    if service != "frontend":
+        env.update({key: value for key, value in profile_environment(ROOT).items() if allowed(key)})
+    if service == "ai":
+        env.update(knowledge_environment(ROOT))
     if authentication == "oidc":
         load_environment(
             ROOT / ".local" / "oidc" / "runtime.env",

@@ -59,3 +59,10 @@ Remaining limitation:
 ```
 
 Tính năng mandatory không được đánh dấu done bằng placeholder, TODO hoặc UnsupportedOperationException. SQL Import/ingestion/login chưa được pass chỉ bằng UI/API shape; cần end-to-end security, failure handling và three-engine evidence. Local training vẫn là tùy chọn.
+
+## Workbench và local model
+
+- Semantic editor: active physical context → validate expression/references/cardinality → activate phiên bản mới; structured metrics/dimensions/filter → native plan → Java guard → DB3 → immutable Query/history. Sai grain/column/version/timezone và unauthorized role/resource bị từ chối.
+- Knowledge: real source-kit LanceDB index/search, local embeddings, persisted status/counts, stale fingerprint, approval/delete/reset; không data rows/secrets, SQL examples phải còn hợp lệ. Real API mode qua local Ollama phải chứng minh model + SQL + giá trị DB3; deterministic/mock không thay thế.
+- Pipeline: actual source → independently projected/filtered/aggregated RAW/STAGING/WAREHOUSE/MART, preview không DDL và nói rõ sample, canonical precision/time, full-source quota fail closed, persisted async/idempotency/collision, reader-verifiable mart Dataset. PG/MSSQL rollback khác MySQL partial/outcome-unknown; không tự drop dữ liệu ngoài identity test.
+- UI: ba sidebar routes mới, active warehouse/dataset, loading/empty/error/permission, controls lấy metadata thật và ngăn submit draft chưa validate; screenshot cùng style mock, actual OIDC caller3engines. Source-kit CPU compatibility phải chạy vector operations trong image build.

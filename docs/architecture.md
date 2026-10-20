@@ -47,3 +47,9 @@ Pipeline quản trị chạy theo cấu hình nguồn đã đăng ký: raw → s
 ## Deployment mục tiêu
 
 Compose phải có `postgres`, `mysql`, `sqlserver`, `backend`, `python-ai`, `frontend`; metadata database tách namespace/database với demo warehouse. Chỉ Java public cho API; Python trên private network với service authentication. Pin phiên bản dependency/image khi triển khai. Kiểm tra môi trường host hỗ trợ SQL Server image/Testcontainers; không báo pass nếu engine thật không chạy được, dùng CI host tương thích nếu cần.
+
+## Workbench cho ngữ nghĩa, tri thức và chuyển đổi
+
+Chi tiết [semantic workbench](semantic-workbench.md), [contract](contracts/semantic-workbench.md). Structured metric selections và ba layer transformations gọi source-fork AST compilers; Python không thực thi warehouse SQL. LanceDB MemoryStore/schema indexer của SDK dùng local embeddings, phân vùng theo identity/dialect/fingerprint và chỉ recall ví dụ còn hợp lệ. Java sở hữu quyền, lifecycle/persistence, reader/import writer, SQL guard và kết quả thật. Transformation preview chỉ SELECT sample; run tạo bốn bảng mới với schema riêng, snapshot/idempotency, bounded async và báo transaction/partial outcome theo engine. Các UI mới gọi cùng Java API; không có đường browser→Python hoặc credentials→LLM.
+
+Online và Ollama profile tách biệt. Volume knowledge tách metadata/warehouse, chỉ Python có quyền ghi. Native vector CPU compatibility phải qua buildgate; source presence không là bằng chứng runtime/caller.

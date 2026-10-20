@@ -59,3 +59,13 @@ tzdata==2026.5
 urllib3==2.8.0
 uvicorn==0.38.0
 wren-core-py==0.4.0
+
+# Source-kit persistent memory (local Ollama embedding injection avoids torch).
+deprecation==2.1.0
+lance-namespace==0.13.0
+lance-namespace-urllib3-client==0.13.0
+# Official x86-64-v2 wheel avoids Haswell-only instructions under amd64 emulation.
+lancedb-compat==0.40.0; platform_system == "Linux" and platform_machine == "x86_64"
+lancedb==0.40.0; platform_system != "Linux" or platform_machine != "x86_64"
+overrides==7.7.0
+tqdm==4.70.1
