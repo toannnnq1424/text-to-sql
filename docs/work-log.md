@@ -414,3 +414,14 @@ Các entry triển khai tiếp theo thêm phía dưới; không đánh dấu FE/
 - Fixed queued cancel cleanup, cancellation after physical commit, atomic metadata Dataset/audit/SUCCESS finalization and upload/audit transaction; MySQL BOOLEAN uses BIT(1) for native result typing. Repository bean is proxyable. Exact nested JSON numbers and common cell bounds are preserved; formula headers fail closed. Added actor-authorized discard to release uploaded files safely. Parser image now uses the existing pinned multiarch Python base; bounded tmpfs fits concurrent spools. Formatter includes file-service.
 - PASS:18 parser tests; live Java API9 CSV/XLSX/Parquet→database pairs (PG/MySQL/SQLServer) verify upload/full mapping/digest rejection/idempotency/reader persistence/decimal aggregate/registered Catalog. Active cancellation of100,000 rows PASS on DB3 with no Dataset registered; PG/MS rollback and MySQL partial DDL reported correctly. Exact generated-table cleanup completed. SQLServer row-count test parser fixed to use SET NOCOUNT ON; no runtime count defect.
 - Earlier startup check found final Repository preventing CGLIB proxy, fixed and Java boot/migration/API acceptance now PASS. Final atomic/discard follow-up and latest native executor follow-up still require packaged regression; real provider remains deferred.
+## 2026-10-20T21:31+07:00 — Runtime agent / compatibility and result precision review
+
+- Branch: `module/data-tool-runtime`; commit subject: `fix: preserve pipeline budgets and native UUID result values`.
+- Review caught the existing source registry supports50MiB result budgets; extended the private runtime to preserve that committed contract rather than reject valid pipelines above10MiB. Added64MiB aggregate active result-budget admission alongside8-request concurrency, returning RUNTIME_BUSY before opening another source when memory admission is exhausted.
+- Preserved native PostgreSQL UUID and SQL Server UNIQUEIDENTIFIER values using upstream UUID normalization plus the driver's byte-order-aware scanner. Added exact UUID expectations to live DB3 typed-result tests, retaining canonical STRING output.
+- PASS: all7 Go tests under race detector, including actual PG/MySQL/MSSQL typed UUID/BIGINT/DECIMAL/boolean/null/date/UTC/cancel/recovery subtests and50MiB compatibility/aggregate admission rejection. Formatter and diff check PASS. Combined application acceptance remains pending root integration; no new provider acceptance claimed.
+
+## 2026-10-20T22:03+07:00 — Root / native source compatibility follow-up
+
+- Branch `module/source-platform-integration`; merge subject `merge: preserve native runtime source budgets and scalar types`.
+- Integrated published9266957 compatibility fixes:50MiB configured ingestion source budget, bounded64MiB aggregate reservations, native UUID result typing. Component7 Go race/DB3 tests and Docker build PASS; combined Compose verification remains pending.
