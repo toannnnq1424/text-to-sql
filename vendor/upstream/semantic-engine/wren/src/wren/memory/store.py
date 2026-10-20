@@ -6,7 +6,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pyarrow as pa
-
 from wren.memory.embeddings import (
     _DEFAULT_DIM,
     _DEFAULT_MODEL,
@@ -85,6 +84,7 @@ class MemoryStore:
         self,
         path: str | Path | None = None,
         model_name: str | None = None,
+        embedding_function=None,
     ):
         import lancedb  # noqa: PLC0415
 
@@ -92,7 +92,7 @@ class MemoryStore:
         resolved.mkdir(parents=True, exist_ok=True)
         self._path = resolved
         self._db = lancedb.connect(str(resolved))
-        self._embed_fn = get_embedding_function(model_name or _DEFAULT_MODEL)
+        self._embed_fn = embedding_function or get_embedding_function(model_name or _DEFAULT_MODEL)
         # Trigger model loading silently and derive vector dimension.
         self._dim = warm_up(self._embed_fn)
 

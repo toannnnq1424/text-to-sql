@@ -14,6 +14,8 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+from llm_profile import knowledge_environment, profile_environment
+
 ROOT = Path(__file__).resolve().parents[2]
 LOCAL = ROOT / ".local" / "compose-app"
 PUBLIC = ROOT / "infra" / "application.env.example"
@@ -112,10 +114,16 @@ def configure() -> None:
     ai = environment(LOCAL / "ai.env")
     if len(ai.get("PYTHON_AI_TOKEN", "")) < 32:
         raise SystemExit("Private AI service token is missing or too short.")
-    provider = {}
-    if (LOCAL / "provider.env").exists():
-        provider = environment(LOCAL / "provider.env")
-    for key in ("LLM_BASE_URL", "LLM_MODEL", "LLM_API_KEY", "LLM_TIMEOUT_MS"):
+    provider = profile_environment(ROOT, container=True)
+    for key in (
+        "LLM_BASE_URL",
+        "LLM_MODEL",
+        "LLM_API_KEY",
+        "LLM_TIMEOUT_MS",
+        "LLM_REASONING_EFFORT",
+        "LLM_MAX_OUTPUT_TOKENS",
+        "LLM_STRUCTURED_OUTPUT",
+    ):
         value = provider.get(key, os.getenv(key, ""))
         if value:
             ai[key] = value
@@ -126,6 +134,7 @@ def configure() -> None:
         raise SystemExit(
             "Configure provider URL, model and key together in the private provider.env."
         )
+    ai.update(knowledge_environment(ROOT, container=True))
     write_environment(LOCAL / "ai.env", ai)
     for filename, token_name in (
         ("data-runtime.env", "DATA_TOOL_RUNTIME_TOKEN"),

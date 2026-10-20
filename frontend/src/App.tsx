@@ -48,6 +48,15 @@ const Home = lazy(() =>
   SqlImport = lazy(() =>
     import("./pages/SqlImportPage").then((m) => ({ default: m.SqlImportPage })),
   );
+const Semantic = lazy(() =>
+  import("./pages/SemanticPage").then((m) => ({ default: m.SemanticPage })),
+);
+const Knowledge = lazy(() =>
+  import("./pages/KnowledgePage").then((m) => ({ default: m.KnowledgePage })),
+);
+const Pipelines = lazy(() =>
+  import("./pages/PipelinesPage").then((m) => ({ default: m.PipelinesPage })),
+);
 export const client = new QueryClient({ defaultOptions: queryClientDefaults });
 export function AppRoutes() {
   return (
@@ -67,6 +76,9 @@ export function AppRoutes() {
           />
           <Route path="catalog/:section" element={<Catalog />} />
           <Route path="catalog/:section/:itemId" element={<Catalog />} />
+          <Route path="semantic" element={<Semantic />} />
+          <Route path="knowledge" element={<Knowledge />} />
+          <Route path="pipelines" element={<Pipelines />} />
           <Route path="warehouses" element={<Warehouses />} />
           <Route path="ingestion" element={<Ingestion />} />
           <Route path="ingestion/:runId" element={<Ingestion />} />

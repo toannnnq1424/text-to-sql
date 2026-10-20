@@ -45,7 +45,15 @@ def test_generated_configuration_separates_ai_readers_and_administrators(tmp_pat
     assert backend["PYTHON_AI_TOKEN"] == ai["PYTHON_AI_TOKEN"]
     assert len(ai["PYTHON_AI_TOKEN"]) >= 32
     assert ai["PYTHON_AI_TOKEN"] != "old-host-service-token"
-    assert set(ai) == {"PYTHON_AI_TOKEN"}
+    assert set(ai) == {
+        "PYTHON_AI_TOKEN",
+        "KNOWLEDGE_ENABLED",
+        "KNOWLEDGE_ROOT",
+        "KNOWLEDGE_EMBEDDING_URL",
+        "KNOWLEDGE_EMBEDDING_MODEL",
+    }
+    assert ai["KNOWLEDGE_ENABLED"] == "false"
+    assert ai["KNOWLEDGE_ROOT"] == "/var/lib/nla/knowledge"
     assert "LOCAL_API_TOKEN" not in backend
     assert "NLA_PG_ADMIN_PASSWORD" not in backend
     assert backend["METADATA_JDBC_URL"].endswith("postgres:5432/nla_metadata_compose")

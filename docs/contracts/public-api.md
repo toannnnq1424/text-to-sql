@@ -1,6 +1,6 @@
 # React → Java public API baseline
 
-Base `/api/v1`, JSON camelCase. Đây là đặc tả cần triển khai, chưa có server. Auth bắt buộc khi triển khai: token OIDC/JWT do Java validate; role VIEWER, ANALYST, OPERATOR, ADMIN. Scope resource luôn kiểm tra warehouse/dataset, kể cả history/result/CSV. Provider identity cụ thể cấu hình ở C0; không tự viết password store. Local demo chỉ được dùng dev profile tường minh, không bypass auth trong production.
+Base `/api/v1`, JSON camelCase. Đây là hợp đồng các consumers/runtime; bằng chứng kiểm chứng xem work log. Auth bắt buộc khi triển khai: token OIDC/JWT do Java validate; role VIEWER, ANALYST, OPERATOR, ADMIN. Scope resource luôn kiểm tra warehouse/dataset, kể cả history/result/CSV. Provider identity cụ thể cấu hình ở C0; không tự viết password store. Local demo chỉ được dùng dev profile tường minh, không bypass auth trong production.
 
 VIEWER đọc resource được cấp quyền; ANALYST thêm query/save result; OPERATOR thêm pipeline/evaluation; ADMIN quản lý registry/semantic và cấu hình. Token không đưa vào query string. GET /health chỉ thông tin liveness tối thiểu, chi tiết health có auth.
 
@@ -124,3 +124,7 @@ GET `/monitoring/summary`: filters warehouseId,engine,datasetId,from,to → quer
 GET `/settings`: safe platform settings (locale,timezone,defaultQueryMode,limits,availableModes,providerConfigured,modelDisplayName). PATCH `/settings`: admin cập nhật allowlisted nonsecret defaults/limits trong server bounds; không nhập key qua public settings. Model/provider secrets quản lý deployment env; thay đổi phải audit. UI user preference locale/timezone có thể giữ local, không ảnh hưởng canonical timestamps hay query timezone của dataset.
 
 SQL Import và in-app ingestion là scope bắt buộc theo [scope](../scope.md), không phải future extension. Không có quyền thực thi arbitrary SQL file.
+
+## Semantic workbench, knowledge và transformation pipelines
+
+Các API thêm cho `/semantic`, `/knowledge`, `/pipelines` được chốt ở [semantic-workbench.md](semantic-workbench.md), gồm request/response, phân quyền, preview, version/fingerprint, idempotency và partial outcomes. OpenAPI export tiêu thụ cùng Zod schemas; không tạo bộ DTO riêng ở mỗi UI/service.

@@ -66,3 +66,9 @@ Các số trên là mốc bằng chứng, không là cam kết toàn bộ accept
 Luồng thực đã tích hợp native semantic core→Java AST/lineage→private Go executor, cùng file upload13extension→auto columns/types→preview/mapping/immutable plan→prepared batches4layers→registered Dataset. Source hashes/licenses và private service contracts được giữ trong docs/integrations. DB3 query/browser, support108 và file39pairs+3active cancel có evidence thật; người dùng không phải tạo folder nguồn hoặc nhập từng cột/INSERT. UI có namespace từ writer grants thật, progress/cancel/history và Catalog của bảng đã lưu. Chuẩn bị copy source/UI/contract riêng không được dùng làm bằng chứng hoàn thành.
 
 Bổ sung phát hiện trong kiểm thử tích hợp: đã sửa packaging thiếu server-managed evaluation corpus; quoted PostgreSQL case, physical column qualifiers, CTE scope, queued cancellation, atomic Dataset/run finalization và reader permissions cho file namespace. Chưa cấu hình provider thật nên không claim khả năng trả mọi câu hỏi mới hoặc typo; native planner xử lý SQL candidate, không train model.
+
+## Đợt semantic-memory-pipelines — kiểm chứng đang thực hiện
+
+Yêu cầu mới đã được nối vào ba route `/semantic`, `/knowledge`, `/pipelines`; đọc [hướng dẫn](semantic-workbench.md) và [contract](contracts/semantic-workbench.md). Các mốc NOT RUN ở phần lịch sử phía trên là trạng thái của những lần bàn giao cũ, không được dùng thay bằng chứng đợt này. Work log mới nhất ghi cụ thể phần đã kiểm chứng với Ollama local, compiler nghiệp vụ, LanceDB và pipeline biến đổi độc lập trên cả ba engines. Provider online vẫn không được gọi hoặc thay key theo yêu cầu người dùng.
+
+Native core không hỗ trợ đầy đủ cube/calculated aggregate của probe đã chạy. Fork compiler của dự án tạo SQL vật lý từ aggregate AST được cấu hình rồi đi qua native planning/Java guard; không mô tả như đã bật toàn bộ metric engine của upstream. Full source kit khác full AI Service và khác mọi connector cloud đã hoạt động.

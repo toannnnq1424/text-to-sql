@@ -45,3 +45,13 @@ Runtime content phải có data provenance: physical metadata/query rows lấy t
 - So side-by-side và overlay với ảnh canonical; rà sidebar/topbar bounds, spacing, typography, border/radius, alignment, table density, icon/illustration và selected states. Báo khác biệt còn lại.
 - Chốt visual thresholds/baselines trong FE task sau khi render đầu tiên; không tuyên bố pixel-perfect bằng một con số chưa đo. Không buộc pixel equality với chữ méo/artefact trong ảnh mock.
 - Verify 1440px desktop, 1024px tablet, 390px mobile: sidebar collapse có thao tác mở, bảng scroll ngang, focus visible, không ép nội dung bảng thành chữ quá nhỏ. Skeleton/empty/error cũng phải cùng design language.
+
+## Ngữ nghĩa, Tri thức AI và Pipelines
+
+Ba route `/semantic`, `/knowledge`, `/pipelines` dùng cùng shell cố định và design tokens. Sidebar đặt chúng sau Data Catalog; phần điều hướng cuộn riêng khi chiều cao không đủ, giữ thẻ Workspace/Dataset ở cuối.
+
+- `/semantic` lấy cách trình bày bảng/metric của ảnh04/14: card cấu hình có phiên bản, các tab chỉ số/chiều/quan hệ/quy tắc/ví dụ, field có nhãn và SQL nhiều dòng. Chỉ ADMIN được chỉnh sửa. Kiểm tra cấu hình trước khi kích hoạt; sửa draft làm mất kết quả validation. Khối phân tích chỉ dùng định nghĩa đã lưu, đưa kết quả vào các result tabs hiện có.
+- `/knowledge` có trạng thái chỉ mục/counts/model từ API, thao tác lập lại chỉ mục, tìm ngữ cảnh và ví dụ có provenance. EMPTY/STALE/ERROR hiển thị riêng; không chèn ví dụ hay kết quả tìm kiếm giả. Chỉ ADMIN được duyệt/xóa ví dụ và xóa chỉ mục.
+- `/pipelines` theo nhịp card và bốn lớp của ảnh10. Trình tạo hướng dẫn chọn nguồn/đích → mapping từng lớp → preview/lưu. Biểu thức mặc định lấy tên cột nguồn thật và quote theo dialect đích; tên output được chuẩn hóa thành identifier duy nhất, người dùng chỉnh được. Preview cho thấy schema/dòng/SQL thực mỗi lớp và cảnh báo giới hạn mẫu. Lần chạy lấy trạng thái, số dòng, bảng đã tạo, partial failure và dataset từ server. ADMIN quản lý cấu hình, ADMIN/OPERATOR chạy, người có quyền đọc xem lịch sử.
+
+Các ảnh trên là nguồn style; ba màn mới không có ảnh mock riêng để claim pixel-perfect. Visual review phải dùng screenshot đúng viewport và kiểm tra thêm mobile/keyboard, không lấy test mock API làm evidence backend hoạt động.

@@ -159,7 +159,7 @@ export const QuerySummarySchema = z.object({
   question: z.string(),
   status: QueryStatusSchema,
   model: z.string().nullable(),
-  executionMode: z.enum(["API", "DETERMINISTIC"]),
+  executionMode: z.enum(["API", "DETERMINISTIC", "SEMANTIC"]),
   semanticVersion: id,
   schemaVersion: id,
   latencyMs: count.nullable(),

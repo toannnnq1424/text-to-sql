@@ -59,6 +59,11 @@ export function ResultPage({ history = false }: { history?: boolean }) {
   const rerun = useMutation({
     mutationFn: () => {
       const q = query.data!;
+      if (q.executionMode === "SEMANTIC") {
+        throw new Error(
+          "Mở Ngữ nghĩa nghiệp vụ để chọn lại chỉ số và bộ lọc theo định nghĩa hiện tại.",
+        );
+      }
       return queryApi.run({
         warehouseId: q.warehouseId,
         datasetId: q.datasetId,
@@ -95,10 +100,16 @@ export function ResultPage({ history = false }: { history?: boolean }) {
                     rerun.isPending ||
                     q.status === "RUNNING"
                   }
-                  onClick={() => rerun.mutate()}
+                  onClick={() =>
+                    q.executionMode === "SEMANTIC"
+                      ? navigate("/semantic")
+                      : rerun.mutate()
+                  }
                 >
                   <RefreshCw size={17} />
-                  Chạy lại truy vấn
+                  {q.executionMode === "SEMANTIC"
+                    ? "Mở phân tích nghiệp vụ"
+                    : "Chạy lại truy vấn"}
                 </Button>
                 <Button
                   disabled={!auth.can("ANALYST") || !q.result}
@@ -137,7 +148,9 @@ export function ResultPage({ history = false }: { history?: boolean }) {
                 <strong>
                   {q.executionMode === "DETERMINISTIC"
                     ? "Deterministic (Offline)"
-                    : q.model || "—"}
+                    : q.executionMode === "SEMANTIC"
+                      ? "Compiler ngữ nghĩa"
+                      : q.model || "—"}
                 </strong>
               </div>
               <div>

@@ -10,7 +10,7 @@ Người dùng yêu cầu nhập cả hai source trong Downloads, dùng bộ kit
 | `mcp-toolbox-main` | `vendor/upstream/data-tool-platform` | 2.072 | 274.208 |
 | Tổng | | 3.305 | 417.117 |
 
-Entries gồm file và symlink, không bao gồm Git/cache/build output. Một file `.env` của ví dụ DuckDB bị loại, không đưa cấu hình riêng tư vào Git. Dòng code được đếm theo đuôi Go/Rust/Python/Java/TypeScript/JavaScript/C/C++/SQL/Proto/Shell, không tính Markdown như code. [Inventory](full-source-inventory.json) lưu đường dẫn, kích thước, checksum hoặc symlink target gốc. [Patch manifest](full-source-patches.json) lưu hash trước/sau và lý do của hai file upstream đã sửa và một file extension mới của fork. Source còn lại được giữ nguyên; kiểm tra bằng `python3 infra/upstream/verify.py`.
+Entries gồm file và symlink, không bao gồm Git/cache/build output. Một file `.env` của ví dụ DuckDB bị loại, không đưa cấu hình riêng tư vào Git. Dòng code được đếm theo đuôi Go/Rust/Python/Java/TypeScript/JavaScript/C/C++/SQL/Proto/Shell, không tính Markdown như code. [Inventory](full-source-inventory.json) lưu đường dẫn, kích thước, checksum hoặc symlink target gốc. [Patch manifest](full-source-patches.json) lưu hash trước/sau và lý do của các file upstream đã sửa và extension mới của fork. Source còn lại được giữ nguyên; kiểm tra bằng `python3 infra/upstream/verify.py`.
 
 **Đưa toàn bộ source vào repo không có nghĩa toàn bộ source đang chạy.** Bảng dưới mô tả phần đã có consumer thật. Những binary/server/connector khác nằm trong source kit, chưa được bật hoặc nghiệm thu chỉ vì có mặt trong thư mục.
 
@@ -33,7 +33,7 @@ Java tiếp tục sở hữu OIDC/resource authorization, manifest allowlist, SQ
 
 Snapshot `wren-engine-main` là context/semantic engine, SDK/CLI, connector/server và native core. Nó **không chứa toàn bộ Wren AI Service** với pipeline retrieval/generation/embedding của ứng dụng Wren AI. Xem [README source](../../vendor/upstream/semantic-engine/README.md) và [kiến trúc chính thức](https://docs.getwren.ai/oss/overview/introduction). Không ghi đã apply toàn bộ AI Service khi chỉ cài Engine SDK. Các cloud connectors/CLI/MCP/server còn lại được nhập cùng kit, chưa bật toàn bộ trong sản phẩm.
 
-App hiện có model client riêng gọi API tương thích qua `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`; có thể trỏ về Ollama local theo [hướng dẫn](../llm-provider.md). Chưa tải model Ollama hoặc cấu hình provider thật trong lần kiểm chứng này. Deterministic semantic examples giúp kiểm chứng planner/database; không phải bằng chứng LLM inference, training hoặc chất lượng câu hỏi tự do.
+App hiện có model client riêng gọi API tương thích qua `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`; có thể trỏ về Ollama local theo [hướng dẫn](../llm-provider.md). Ollama local đã được cài và dùng trong đợt workbench theo [hướng dẫn](../ollama-local.md); kiểm chứng cuối nằm ở work log. Model online giữ nguyên cấu hình và không được kiểm thử. Deterministic semantic examples giúp kiểm chứng planner/database; không phải bằng chứng LLM inference, training hoặc chất lượng câu hỏi tự do.
 
 ## Build và kiểm chứng
 
@@ -70,3 +70,9 @@ ai-service/.venv/bin/python -m pytest \
 Installer dùng interpreter trong venv, dependency closure đã pin và editable local SDK. Docker build cài cùng source nhưng không editable. Native core Linux hiện cần amd64; Compose giữ platform tường minh. Native Go build dùng source local qua `data-tool-runtime/go.mod`; không yêu cầu repo tiếp tục nằm trong Downloads.
 
 Các kiểm chứng của lần tích hợp và giới hạn nghiệm thu được ghi trong [work log](../work-log.md): app Python/native tests, upstream unit tests, Java suite, DB3 typed/cancellation và caller UI/API thật. Không coi import417k dòng là nghiệm thu tất cả cloud connectors, SDK query/CLI, metric measure compilation, toàn bộ test upstream, LLM thật hay production load.
+
+## Business workbench và model local
+
+Luồng mới và điểm gọi source kit được ghi tại [semantic workbench](../semantic-workbench.md). BusinessCompiler và TransformCompiler là specialization trong source fork: parse/resolve AST theo metadata được cấp phép, output qua native plan và Java guard. MemoryStore/schema_indexer thực của kit lưu LanceDB với Ollama embeddings local, được UI Tri thức AI và provider context selection gọi thật. Java thực thi các lớp biến đổi độc lập và đăng ký mart, còn UI Ngữ nghĩa/Pipelines quản lý definition và caller. Bằng chứng cuối xem work log; không suy ra cloud support từ source presence.
+
+Linux/amd64 dùng bản `lancedb-compat==0.40.0` chính thức có CPU baseline x86-64-v2; wheel thông thường cùng version dùng AVX2 và đã segfault dưới emulation trên host arm64. Docker build phải thực thi list/create/vector search để phát hiện lỗi native này trước deployment. Đây là cùng API/source-kit MemoryStore, không thay bằng mock hay in-memory index. [CPU wheel notes](https://github.com/lancedb/lancedb/blob/main/python/README.md).

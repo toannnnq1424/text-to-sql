@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import {
+  BookOpen,
+  BrainCircuit,
+  GitBranch,
   Home,
   MessageCircle,
   Clock3,
@@ -35,6 +38,9 @@ export const navigation = [
   { to: "/query", label: "Truy vấn", icon: MessageCircle },
   { to: "/history", label: "Lịch sử truy vấn", icon: Clock3 },
   { to: "/catalog", label: "Data Catalog", icon: Table2 },
+  { to: "/semantic", label: "Ngữ nghĩa nghiệp vụ", icon: BookOpen },
+  { to: "/knowledge", label: "Tri thức AI", icon: BrainCircuit },
+  { to: "/pipelines", label: "Pipelines dữ liệu", icon: GitBranch },
   { to: "/evaluation", label: "Đánh giá", icon: BarChart3 },
   { to: "/ingestion", label: "Nạp dữ liệu", icon: CloudUpload },
   { to: "/import/sql", label: "SQL Import", icon: FileCode2 },

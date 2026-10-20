@@ -14,11 +14,16 @@ public class RegistryController {
   private final Store store;
   private final Adapters adapters;
   private final CatalogService catalog;
+  private final AiClient ai;
+  private final SqlGuard guard;
 
-  public RegistryController(Store store, Adapters adapters, CatalogService catalog) {
+  public RegistryController(
+      Store store, Adapters adapters, CatalogService catalog, AiClient ai, SqlGuard guard) {
     this.store = store;
     this.adapters = adapters;
     this.catalog = catalog;
+    this.ai = ai;
+    this.guard = guard;
   }
 
   static void fields(Map<String, Object> body, Set<String> allowed) {
@@ -470,7 +475,22 @@ public class RegistryController {
       throw ApiException.bad("Timezone không hợp lệ.");
     }
     catalog.validateSemantic(b, catalog.tables(id));
+    SemanticController.validateDocument(id, b, store, catalog, ai, guard);
     var d = store.dataset(id);
+    var oldDefinition = new LinkedHashMap<>(store.semantic(id));
+    oldDefinition.put("relationships", catalog.collection(id, "relationships"));
+    var newDefinition = new LinkedHashMap<>(b);
+    for (String physical : List.of("tables", "referenceTime")) {
+      oldDefinition.remove(physical);
+      newDefinition.remove(physical);
+    }
+    // An unchanged snapshot ID cannot identify two different active definitions.
+    if (Objects.equals(d.get("semanticVersion"), b.get("semanticVersion"))
+        && !oldDefinition.equals(newDefinition))
+      throw new ApiException(
+          HttpStatus.CONFLICT,
+          "SEMANTIC_MODEL_INVALID",
+          "Đổi semanticVersion khi thay đổi định nghĩa.");
     d.put("semanticVersion", b.get("semanticVersion"));
     d.put("schemaVersion", b.get("schemaVersion"));
     d.put("updatedAt", Instant.now().toString());

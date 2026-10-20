@@ -19,6 +19,7 @@ def main():
     python = args.python.absolute()
     if not python.is_file():
         parser.error("Create ai-service/.venv with Python3.11+ first, or pass --python.")
+    subprocess.run([str(python), str(ROOT / "ai-service/prepare_memory_runtime.py")], check=True)
     subprocess.run(
         [
             str(python),
@@ -32,6 +33,8 @@ def main():
         ],
         check=True,
     )
+    subprocess.run([str(python), str(ROOT / "ai-service/fix_lancedb_compat.py")], check=True)
+    subprocess.run([str(python), str(ROOT / "ai-service/check_memory_runtime.py")], check=True)
     subprocess.run(
         [
             str(python),

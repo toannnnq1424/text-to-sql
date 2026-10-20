@@ -47,7 +47,7 @@ Không dùng tên bảng không qualified làm security allowlist. Với MySQL, 
 | generatedSql | string hoặc null nếu chưa sinh được |
 | sqlDialect | engine enum |
 | model | string hoặc null trước khi xác định |
-| executionMode | API / DETERMINISTIC |
+| executionMode | API / DETERMINISTIC / SEMANTIC (structured metric selection; no LLM call) |
 | semanticVersion, schemaVersion | string, versions snapshot lúc chạy |
 | latencyMs | integer hoặc null khi đang chạy |
 | createdAt, completedAt | timestamp; completedAt nullable |

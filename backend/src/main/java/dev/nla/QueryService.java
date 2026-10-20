@@ -32,6 +32,45 @@ public class QueryService {
   }
 
   public Map<String, Object> run(Map<String, Object> b) {
+    return runPrepared(b, null);
+  }
+
+  public Map<String, Object> runSemantic(String datasetId, Map<String, Object> selection) {
+    RegistryController.fields(selection, Set.of("metrics", "dimensions", "filters", "limit"));
+    for (String key : List.of("metrics", "dimensions")) {
+      if (!(selection.get(key) instanceof List<?> names)
+          || names.stream().anyMatch(value -> !(value instanceof String text) || text.isBlank())
+          || names.size() > (key.equals("metrics") ? 10 : 5)
+          || (key.equals("metrics") && names.isEmpty())
+          || new HashSet<>(names).size() != names.size())
+        throw ApiException.bad("Metrics/dimensions không hợp lệ hoặc trùng tên.");
+    }
+    if (!(selection.get("filters") instanceof List<?> filters) || filters.size() > 10)
+      throw ApiException.bad("Bộ lọc tối đa 10 điều kiện.");
+    Object limit = selection.get("limit");
+    if (!(limit instanceof Integer count) || count < 1 || count > 1000)
+      throw ApiException.bad("Giới hạn kết quả phải là số nguyên từ 1 đến 1000.");
+    var dataset = store.dataset(datasetId);
+    String label =
+        "Phân tích: "
+            + String.join(
+                ", ",
+                ((List<?>) selection.getOrDefault("metrics", List.of()))
+                    .stream().map(Object::toString).toList());
+    return runPrepared(
+        Json.obj(
+            "warehouseId",
+            dataset.get("warehouseId"),
+            "datasetId",
+            datasetId,
+            "question",
+            label,
+            "mode",
+            "SEMANTIC"),
+        selection);
+  }
+
+  private Map<String, Object> runPrepared(Map<String, Object> b, Map<String, Object> selection) {
     RegistryController.fields(b, Set.of("warehouseId", "datasetId", "question", "mode"));
     RegistryController.required(b, "warehouseId", "datasetId", "question");
     String question = Json.str(b, "question").strip();
@@ -39,7 +78,8 @@ public class QueryService {
       throw ApiException.bad("Câu hỏi tối đa 1000 ký tự.");
     String mode = Json.str(b, "mode");
     if (mode.isBlank()) mode = "AUTO";
-    if (!Set.of("AUTO", "API", "DETERMINISTIC").contains(mode))
+    if (!Set.of("AUTO", "API", "DETERMINISTIC", "SEMANTIC").contains(mode)
+        || (mode.equals("SEMANTIC") && selection == null))
       throw ApiException.bad("Mode không hợp lệ.");
     var w = store.warehouse(Json.str(b, "warehouseId"));
     var d = store.dataset(Json.str(b, "datasetId"));
@@ -69,7 +109,9 @@ public class QueryService {
             "model",
             null,
             "executionMode",
-            mode.equals("DETERMINISTIC") ? "DETERMINISTIC" : "API",
+            mode.equals("DETERMINISTIC")
+                ? "DETERMINISTIC"
+                : mode.equals("SEMANTIC") ? "SEMANTIC" : "API",
             "semanticVersion",
             d.get("semanticVersion"),
             "schemaVersion",
@@ -103,24 +145,29 @@ public class QueryService {
             "owner",
             store.actor());
     store.putQuery(q);
+    QueryDeadline.start();
     try {
       var context = catalog.context(Json.str(d, "datasetId"));
-      var candidate =
-          ai.generate(
-              Json.obj(
-                  "correlationId",
-                  Json.str(q, "correlationId"),
-                  "warehouseId",
-                  w.get("warehouseId"),
-                  "datasetId",
-                  d.get("datasetId"),
-                  "sqlDialect",
-                  w.get("engine"),
-                  "question",
-                  question,
-                  "semanticContext",
-                  context),
-              mode);
+      var request =
+          Json.obj(
+              "correlationId",
+              Json.str(q, "correlationId"),
+              "warehouseId",
+              w.get("warehouseId"),
+              "datasetId",
+              d.get("datasetId"),
+              "sqlDialect",
+              w.get("engine"),
+              "semanticContext",
+              context);
+      Map<String, Object> candidate;
+      if (selection == null) {
+        request.put("question", question);
+        candidate = ai.generate(request, mode);
+      } else {
+        request.put("selection", selection);
+        candidate = ai.invoke("business-plan", request, 20);
+      }
       q.put("model", candidate.get("model"));
       for (String field : List.of("selectedMetrics", "selectedDimensions")) {
         String category = field.equals("selectedMetrics") ? "metrics" : "dimensions";
@@ -168,7 +215,8 @@ public class QueryService {
                   validated.sql(),
                   ((Number) limits.get("maxRows")).intValue(),
                   ((Number) limits.get("maxBytes")).intValue(),
-                  Math.max(1, ((Number) limits.get("statementTimeoutMs")).intValue() / 1000));
+                  QueryDeadline.seconds(
+                      Math.max(1, ((Number) limits.get("statementTimeoutMs")).intValue() / 1000)));
       q.put("result", result);
       q.put("chart", chart(candidate.get("chartRecommendation"), result));
       q.put("explanation", candidate.get("explanation"));
@@ -210,6 +258,8 @@ public class QueryService {
       q.put(
           "error",
           Errors.body("QUERY_ERROR", "Không xử lý được truy vấn.", Json.obj("queryId", id)));
+    } finally {
+      QueryDeadline.clear();
     }
     q.put("completedAt", Instant.now().toString());
     q.put("latencyMs", (System.nanoTime() - start) / 1000000);
