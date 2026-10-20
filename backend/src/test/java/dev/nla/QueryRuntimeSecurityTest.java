@@ -46,7 +46,14 @@ class QueryRuntimeSecurityTest {
                 List.of(),
                 "selectedDimensions",
                 List.of()));
-    var service = new QueryService(store, catalog, adapters, new SqlGuard(), ai);
+    SemanticPlannerClient planner = mock(SemanticPlannerClient.class);
+    when(planner.plan(anyString(), anyString(), eq(sql), anyMap()))
+        .thenReturn(
+            new SemanticPlannerClient.PlanResult(
+                sql,
+                List.of("nla_model_0"),
+                List.of(Json.obj("schema", "public", "name", "invoice"))));
+    var service = new QueryService(store, catalog, adapters, new SqlGuard(), ai, planner);
     var result =
         service.run(
             Json.obj(

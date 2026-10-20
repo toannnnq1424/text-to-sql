@@ -436,3 +436,15 @@ Các entry triển khai tiếp theo thêm phía dưới; không đánh dấu FE/
 
 - Branch `module/source-platform-integration`; merge subject `merge: integrate bulk file upload user workflow`.
 - Integrated published6d9fc26 frontend13-extension upload/preview/mapping/namespace/plan/run/history workflow; corrected component log count to observed123 tests (not126). Root independently reran123 unit tests, build and formatter PASS. Live browser upload and packaged OIDC acceptance remain pending.
+## 2026-10-20T22:07+07:00 — AI / native semantic core and CTE rewrite integration
+
+- Branch `module/semantic-planner`; subject `feat: plan SQL candidates with native semantic core and source lineage`.
+- Resumed interrupted AI agent work. Added actual pinned native core0.4.0 plus adapted upstream CTERewriter and dialect implementation. Java builds request-scoped models from the authorized physical catalog and discovered relationships, calls authenticated private planning, then reruns SqlGuard and compares independent physical lineage before execution. No credentials, DB connection or execution tools reach Python; planner errors fail closed.
+- Shared private contract, source hashes/Apache notices, Docker dependency packaging and detailed reuse scope are recorded. Existing metric expressions still enter candidate generation; this change does not claim a full upstream product or cloud connector inventory.
+- PASS:52 Python tests/1 real-provider SKIP on isolated pinned Python3.11 environment; native3dialect rewrite, joins, unknown tables, auth/correlation, no silent fallback. Agent separately built amd64 image and SQLServer privateHTTP rewrite smoke; root will rerun packaged query/database equivalence. Root initial test invocation against global Python failed imports, then recreated isolated pinned venv and all52 PASS.
+- PENDING: merged Java/native executor compilation (new constructor dependency), live DB3 query result/corpus regression, final Compose/browser acceptance. Real provider key deferred by user; no real-provider pass claimed.
+
+## 2026-10-20T22:08+07:00 — Root / native semantic core integration
+
+- Branch `module/source-platform-integration`; subject `merge: integrate native semantic planner before guarded execution`.
+- Integrated1a7a1fa actual native semantic core and upstream CTE source into candidate→planner→Java AST/lineage→native executor flow. Preserved shared contract links for file/native tool interfaces. Python52 PASS/1 provider SKIP; packaged DB3/corpus/browser and integrated Java tests PENDING.

@@ -17,6 +17,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from context_index import get_schema_index, normalize_text, overlap_score
+from semantic_planner import PlanRequest, PlanResponse, PlanningFailure, plan_sql
 
 
 class Dialect(str, Enum):
@@ -800,6 +801,37 @@ async def controlled(req: Request, e: Controlled):
             }
         },
     )
+
+
+@app.post(
+    "/internal/v1/semantic-plan",
+    response_model=PlanResponse,
+    response_model_exclude_none=True,
+)
+async def semantic_plan(
+    req: Request,
+    authorization: str = Header(default=""),
+):
+    token = os.getenv("PYTHON_AI_TOKEN", "")
+    if len(token) < 32 or not hmac.compare_digest(authorization, "Bearer " + token):
+        raise Controlled("UNAUTHENTICATED", 401)
+    body = await req.body()
+    if len(body) > 1048576:
+        raise Controlled("INVALID_REQUEST", 413)
+    try:
+        decoded = json.loads(body)
+    except (UnicodeDecodeError, ValueError):
+        raise Controlled("INVALID_REQUEST", 422)
+    try:
+        data = PlanRequest.model_validate(decoded)
+    except ValidationError:
+        raise Controlled("INVALID_REQUEST", 422)
+    if req.headers.get("x-correlation-id") != data.correlationId:
+        raise Controlled("INVALID_REQUEST", 400)
+    try:
+        return plan_sql(data)
+    except PlanningFailure as error:
+        raise Controlled(error.code, 422) from error
 
 
 @app.post("/internal/v1/text-to-sql", response_model=Candidate, response_model_exclude_none=True)

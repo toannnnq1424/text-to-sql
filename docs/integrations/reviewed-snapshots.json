@@ -72,8 +72,8 @@
         }
       ],
       "runtimeIntegrated": true,
-      "integratedScope": "Dependency-free schema description/index/cache approach adapted into AI context selection and provider request payload; no upstream planner, SDK, vector store or connectors.",
-      "integrationEvidence": "docs/integrations/semantic-context.md"
+      "integratedScope": "Dependency-free schema description/index/cache approach in AI selection and provider payload; pinned wren-core-py 0.4.0 native manifest/session planner; adapted CTE rewrite and Wren SQLGlot dialect; no upstream SDK, vector store or connectors.",
+      "integrationEvidence": "docs/integrations/semantic-planner.md"
     },
     {
       "role": "data-tool-runtime",
