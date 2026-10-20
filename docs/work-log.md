@@ -130,6 +130,24 @@ Các entry triển khai tiếp theo thêm phía dưới; không đánh dấu FE/
 - Kiểm chứng: `pytest data/scripts/test_pipeline_config.py` — 15 passed; Black/isort check, compileall và `git diff --check` PASS; `docker_chinook.py provision-import` PASS, kiểm tra tạo/ghi/đọc probe và từ chối tạo ngoài namespace trên cả ba engine; `docker_chinook.py verify` PASS, row counts đúng (15,607 tổng) và reader write denied trên PostgreSQL/MySQL/SQL Server.
 - Còn thiếu / blocker / phụ thuộc: pipeline app vẫn chỉ provision các config Chinook; chưa chứng minh API/UI đăng ký nguồn khác, chạy ingestion generic, hay upload-preview-confirm SQL Import qua caller thật và persistence. Cần tích hợp với BE/FE; OIDC provider cũng chưa cấu hình.
 - Việc tiếp nối: đồng bộ contract branch này vào BE/FE; nghiệm thu import và ingestion bằng API/UI thật, dữ liệu lưu bền trên cả ba engine, và ghi outcome sau khi agent hoàn tất.
+### 2026-10-20 01:56 UTC+07 — Chuẩn hóa code backend / conversation chính
+- Nhánh / commit subject: `module/backend`; `style: format backend code for review`.
+- Phạm vi: format toàn bộ Java backend và tests; bổ sung quy tắc formatter chung để không tiếp tục nén nhiều lệnh trên một dòng.
+- Trạng thái: VERIFIED cho không thay đổi hành vi và regression suite backend; backend acceptance tổng thể INCOMPLETE, vì task này không triển khai SQL Import/ingestion tổng quát/OIDC.
+- Đã làm: format Java bằng Google Java Format; bổ sung hướng dẫn code style và sửa hướng dẫn CONTRIBUTING đã lỗi thời, nói repo chỉ là bộ tài liệu.
+- Kiểm chứng: `NLA_INTEGRATION=true NLA_TESTCONTAINERS=true mvn test` — 27 passed, 0 failed, 0 skipped; gồm 3 adapter Testcontainers và live warehouse tests trên ba engine; `git diff --check` PASS.
+- Còn thiếu / blocker / phụ thuộc: không có thay đổi runtime trong task format; SQL Import end-to-end và các acceptance bắt buộc khác vẫn chưa triển khai/xác minh.
+- Việc tiếp nối: hoàn tất implementation BE theo acceptance; không coi regression test hiện có là bằng chứng SQL Import hoặc ingestion tổng quát đã chạy.
+- Commit/push: entry này đi cùng commit; SHA remote xác minh sau push.
+
+### 2026-10-20 02:34 UTC+07 — Mở rộng ghi pipeline theo schema đã đăng ký / conversation chính
+- Nhánh / commit subject: `module/backend`; dự kiến `feat: validate and write configured pipeline columns`.
+- Phạm vi: `PipelineService`, kiểm tra cấu hình pipeline, ghi staging/mart và unit regression tests.
+- Trạng thái: VERIFIED cho thực thi ingestion Chinook hiện có trên PostgreSQL, MySQL, SQL Server; target ingestion tổng quát và SQL Import vẫn INCOMPLETE.
+- Đã làm: bỏ giả định `country/total` khỏi phần Java ghi pipeline; dùng danh sách cột đã đăng ký, quote identifier theo dialect, bind giá trị theo kiểu dữ liệu metadata nguồn, kiểm tra schema bảng đích, kiểm tra required fields/giới hạn text và giới hạn tài nguyên có trần. Lỗi chạy pipeline không còn mô tả cố định là dữ liệu Chinook.
+- Kiểm chứng: `mvn test` — 27 tests, 0 failures, 5 integration/Testcontainers skipped trong lần unit run; `python3 infra/local/test_backend.py` PASS (Testcontainers cho 3 engine); `python3 infra/local/smoke.py` PASS trên dịch vụ thật, query/ingestion/idempotency/evaluation chạy trên ba database đã provision; Google Java Format và `git diff --check` PASS.
+- Còn thiếu / blocker / phụ thuộc: runtime sources vẫn là ba pipeline Chinook cấu hình sẵn; chưa có đăng ký/configuration UI/API tổng quát, chưa có file upload SQL Import, OIDC provider chưa cấu hình. Unit và Chinook smoke không chứng minh mọi pipeline/schema tùy ý.
+- Việc tiếp nối: mở rộng data configuration và tests trên nhánh `module/ai-data`; triển khai các API/UI mandatory còn thiếu với acceptance end-to-end.
 - Commit/push: entry này đi cùng commit; SHA remote xác minh sau push.
 
 ### 2026-10-20 14:08 UTC+07 — Sửa source allowlist PostgreSQL khớp tên vật lý / conversation chính
@@ -265,3 +283,18 @@ Các entry triển khai tiếp theo thêm phía dưới; không đánh dấu FE/
 - Branch: `module/integration-final`; commit subject: `merge: integrate authenticated application packaging`.
 - Merged `module/runtime-auth` at `787dbc4`; preserved both histories and work log entries. Full application Dockerfiles, private Compose networks, real local IdP and browser verification scripts now accompany integrated Data/AI changes.
 - Checks: merge conflict confined to appended work log and resolved by retaining both; `git diff --check` PASS. Runtime agent evidence applies to its recorded backend source snapshot; final committed integration rebuild/browser tests PENDING. No provider configured; real-provider smoke NOT RUN by user choice while awaiting key.
+### 2026-10-20 19:33 UTC+07 — Hoàn thiện backend ingestion, SQL Import và registry evaluation / conversation BE
+- Nhánh / commit subject: `module/backend`; `feat: complete guarded imports and four-layer ingestion`.
+- Phạm vi: SQL Import đã xác thực và preview, OIDC/resource authorization, registry ingestion có nguồn/đích thật, bốn lớp ghi dữ liệu, evaluation corpus do server quản lý, migration/audit, test thực và contract.
+- Trạng thái: VERIFIED cho kiểm thử backend và HTTP/DB ingestion ba engine cùng luồng PG→MySQL; chưa đánh dấu toàn hệ thống ACCEPTED trước E2E cuối React→Java, đăng nhập provider và AI provider.
+- Đã làm: pipeline source registry lưu cấu hình typed, kiểm tra table/column/type, giới hạn và quyền trên source lẫn target. Mỗi lần chạy thay snapshot trong RAW, ghi STAGING, materialize WAREHOUSE rồi publish MART trong một transaction; từng lớp kiểm row count, lỗi rollback không báo lớp là đã lưu, idempotency theo principal/source/payload. SQL Import dùng canonical plan preview bất biến, parser theo dialect, bind literal, execution queue/deadline và trạng thái tiến độ/persistence; không thực thi nguyên văn file. Thêm tùy chọn internal OIDC JWKS URI trong khi vẫn kiểm issuer/audience/subject; evaluation suite/corpus đọc từ manifest có kiểm soát thay vì hardcode miền trong core. Mọi credential writer theo từng warehouse, write-only qua env reference; không ghi secret vào response/log.
+- Kiểm chứng: `python3 infra/local/test_backend.py -Dnla.data.root=/Users/toanlamsaoduocc/Documents/ChatGPT/text-to-sql-data/data` — 52 tests, 0 failures, 0 skipped; bao gồm Testcontainers PostgreSQL/MySQL/SQL Server, query security, parser/executor SQL Import và live writer privilege. Backend HTTP trên PostgreSQL/MySQL/SQL Server chạy `/test` và `/run` qua đủ bốn target; mỗi run ghi 24 dòng, 4 bước SUCCESS, replay cùng idempotency key trả cùng run ID. HTTP PG→MySQL đăng ký/test/run cũng ghi đủ bốn lớp và 24 dòng. `git diff --check`, Java Google formatter và `python3 -m py_compile infra/local/smoke.py` PASS. Conversation runtime-auth chạy browser OIDC suite trên snapshot riêng (4 role, audience/signature/subject, forbidden resource, renewal/expiry, logout) PASS; cần lặp lại trên commit tích hợp cuối.
+- Còn thiếu / blocker / phụ thuộc: FE browser flow tạo/sửa/test/run/history cần chạy với API sau khi hợp nhất; provisioning/four-layer manifest cần merge từ `module/data-ingestion` SHA `cbed547`; toàn stack React→Java→Python→warehouse và real provider E2E chưa được chạy sau commit; API key/model provider vẫn được chủ dự án hoãn.
+- Việc tiếp nối: hợp nhất module backend và data, chạy lại OIDC/FE/integration browser trên final SHA; chỉ khi caller thực, persistence, AI provider và ba engine đạt acceptance thì cập nhật trạng thái toàn sản phẩm.
+- Commit/push: entry này được commit cùng backend changes; kiểm tra SHA remote/local sau push.
+
+## 2026-10-20T19:40+07:00 — Root / integrated backend contracts and execution
+
+- Branch: `module/integration-final`; commit subject: `merge: integrate guarded imports and ingestion backend`.
+- Merged published BE `c9ae611`, preserving history. Resolved shared contract to actual four-layer source API and retained all work logs; selected updated four-layer smoke script.
+- Checks: `git diff --check` and Python compile PASS. BE agent 52/52 backend tests and actual four-layer HTTP DB3/cross-engine checks apply to its published commit. Final integrated rebuild and UI checks remain PENDING; real provider NOT RUN because key deferred.

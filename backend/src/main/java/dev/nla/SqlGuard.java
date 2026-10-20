@@ -1,35 +1,236 @@
 package dev.nla;
-import org.springframework.stereotype.Component;import org.springframework.http.HttpStatus;import java.util.*;import java.lang.reflect.*;import net.sf.jsqlparser.parser.CCJSqlParserUtil;import net.sf.jsqlparser.statement.Statement;import net.sf.jsqlparser.statement.select.*;import net.sf.jsqlparser.expression.Function;import net.sf.jsqlparser.schema.Column;import net.sf.jsqlparser.schema.Table;
-@Component public class SqlGuard {
- private static final Set<String> FUNCTIONS=Set.of("SUM","COUNT","AVG","MIN","MAX","ROUND","ABS","COALESCE","NULLIF","LOWER","UPPER","LENGTH","CHAR_LENGTH","CONCAT","SUBSTRING","TRIM","DATE_TRUNC","DATE_FORMAT","DATEFROMPARTS","YEAR","MONTH","DAY","EXTRACT","DENSE_RANK","RANK","ROW_NUMBER","LAG","LEAD");
- public record Validated(String sql,List<Map<String,Object>> sourceTables){}
- public Validated validate(String sql,String engine,List<Map<String,Object>> physical){
-  if(sql==null||sql.length()>100000)throw reject("SQL trống hoặc quá dài.");
-  // Comment tokens are forbidden outside quoted literals; AST remains the security boundary.
-  String code=stripLiterals(sql);if(code.contains("--")||code.contains("/*")||code.contains("*/")||code.contains("#"))throw reject("Không chấp nhận SQL comment.");
-  if(engine.equals("SQL_SERVER")&&(code.contains("`")||code.toUpperCase(Locale.ROOT).matches("(?s).*\\bLIMIT\\b.*")))throw dialect();
-  if(!engine.equals("SQL_SERVER")&&code.contains("["))throw dialect();if(engine.equals("POSTGRESQL")&&code.contains("`"))throw dialect();
-  Statement statement;try{var statements=CCJSqlParserUtil.parseStatements(sql,parser->parser.withSquareBracketQuotation(engine.equals("SQL_SERVER")));if(statements.getStatements().size()!=1)throw reject("Chỉ được một SELECT.");statement=statements.getStatements().getFirst();}catch(ApiException e){throw e;}catch(Exception e){throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY,"SQL_VALIDATION_ERROR","Không parse được SQL AST.");}
-  if(!(statement instanceof Select))throw reject("Chỉ cho phép SELECT.");
-  List<Object> nodes=new ArrayList<>();walk(statement,Collections.newSetFromMap(new IdentityHashMap<>()),nodes,0);
-  Set<String> ctes=new HashSet<>(),selectAliases=new HashSet<>();for(Object node:nodes){if(node instanceof WithItem<?> with&&with.getAlias()!=null)ctes.add(unquote(with.getAlias().getName()));if(node instanceof SelectItem<?> item&&item.getAlias()!=null)selectAliases.add(unquote(item.getAlias().getName()));}
-  Set<Table> actualTables=Collections.newSetFromMap(new IdentityHashMap<>());for(Object node:nodes)if(node instanceof PlainSelect select){if(select.getFromItem() instanceof Table t)actualTables.add(t);if(select.getJoins()!=null)for(Join j:select.getJoins())if(j.getRightItem() instanceof Table t)actualTables.add(t);}
-  Map<String,Map<String,Object>> resolved=new HashMap<>();List<Map<String,Object>> sources=new ArrayList<>();
-  for(Object node:nodes){
-   if(node instanceof Statement&&!(node instanceof Select))throw reject("DML/DDL trong CTE hoặc subquery bị từ chối.");
-   if(node instanceof Select select&&(select.getForMode()!=null||select.getForClause()!=null||select.getForUpdateTable()!=null||select.getIsolation()!=null))throw reject("Không cho phép locking hoặc isolation hint.");
-   if(node instanceof PlainSelect select){if((select.getIntoTables()!=null&&!select.getIntoTables().isEmpty())||select.getIntoTempTable()!=null)throw reject("SELECT INTO bị từ chối.");if(!engine.equals("SQL_SERVER")&&select.getTop()!=null)throw dialect();if(select.getJoins()!=null&&select.getJoins().size()>12)throw reject("Quá nhiều joins.");}
-   if(node instanceof Function function){String name=function.getName().toUpperCase(Locale.ROOT);if(!FUNCTIONS.contains(name))throw reject("Function không nằm trong allowlist.");}
-   String type=node.getClass().getSimpleName();if(Set.of("UserVariable","JdbcParameter","JdbcNamedParameter","NextValExpression","OracleHint","TableFunction","LateralSubSelect","Execute","OutputClause").contains(type))throw reject("SQL có biểu thức hoặc nguồn dữ liệu không được phép.");
-   if(node instanceof Table table&&actualTables.contains(table)){String name=unquote(table.getName()),schema=unquote(table.getSchemaName());if(ctes.contains(name)&&schema.isBlank())continue;if(table.getDatabase()!=null&&!Objects.toString(table.getDatabase(),"").isBlank())throw reject("Không cho phép cross-database table.");var matches=physical.stream().filter(t->name.equals(t.get("name"))&&(schema.isBlank()||schema.equals(t.get("schema")))).toList();if(matches.size()!=1)throw reject("Bảng không nằm trong dataset hoặc tên không rõ ràng.");var match=matches.getFirst();resolved.put(name,match);resolved.put(schema+"."+name,match);if(table.getAlias()!=null)resolved.put(unquote(table.getAlias().getName()),match);sources.add(Json.obj("schema",match.get("schema"),"name",match.get("name")));}
+
+import java.lang.reflect.*;
+import java.util.*;
+import net.sf.jsqlparser.expression.Function;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.schema.Column;
+import net.sf.jsqlparser.schema.Table;
+import net.sf.jsqlparser.statement.Statement;
+import net.sf.jsqlparser.statement.select.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Component;
+
+@Component
+public class SqlGuard {
+  private static final Set<String> FUNCTIONS =
+      Set.of(
+          "SUM",
+          "COUNT",
+          "AVG",
+          "MIN",
+          "MAX",
+          "ROUND",
+          "ABS",
+          "COALESCE",
+          "NULLIF",
+          "LOWER",
+          "UPPER",
+          "LENGTH",
+          "CHAR_LENGTH",
+          "CONCAT",
+          "SUBSTRING",
+          "TRIM",
+          "DATE_TRUNC",
+          "DATE_FORMAT",
+          "DATEFROMPARTS",
+          "YEAR",
+          "MONTH",
+          "DAY",
+          "EXTRACT",
+          "DENSE_RANK",
+          "RANK",
+          "ROW_NUMBER",
+          "LAG",
+          "LEAD");
+
+  public record Validated(String sql, List<Map<String, Object>> sourceTables) {}
+
+  public Validated validate(String sql, String engine, List<Map<String, Object>> physical) {
+    if (sql == null || sql.length() > 100000) throw reject("SQL trống hoặc quá dài.");
+    // Comment tokens are forbidden outside quoted literals; AST remains the security boundary.
+    String code = stripLiterals(sql);
+    if (code.contains("--") || code.contains("/*") || code.contains("*/") || code.contains("#"))
+      throw reject("Không chấp nhận SQL comment.");
+    if (engine.equals("SQL_SERVER")
+        && (code.contains("`") || code.toUpperCase(Locale.ROOT).matches("(?s).*\\bLIMIT\\b.*")))
+      throw dialect();
+    if (!engine.equals("SQL_SERVER") && code.contains("[")) throw dialect();
+    if (engine.equals("POSTGRESQL") && code.contains("`")) throw dialect();
+    Statement statement;
+    try {
+      var statements =
+          CCJSqlParserUtil.parseStatements(
+              sql, parser -> parser.withSquareBracketQuotation(engine.equals("SQL_SERVER")));
+      if (statements.getStatements().size() != 1) throw reject("Chỉ được một SELECT.");
+      statement = statements.getStatements().getFirst();
+    } catch (ApiException e) {
+      throw e;
+    } catch (Exception e) {
+      throw new ApiException(
+          HttpStatus.UNPROCESSABLE_ENTITY, "SQL_VALIDATION_ERROR", "Không parse được SQL AST.");
+    }
+    if (!(statement instanceof Select)) throw reject("Chỉ cho phép SELECT.");
+    List<Object> nodes = new ArrayList<>();
+    walk(statement, Collections.newSetFromMap(new IdentityHashMap<>()), nodes, 0);
+    Set<String> ctes = new HashSet<>(), selectAliases = new HashSet<>();
+    for (Object node : nodes) {
+      if (node instanceof WithItem<?> with && with.getAlias() != null)
+        ctes.add(unquote(with.getAlias().getName()));
+      if (node instanceof SelectItem<?> item && item.getAlias() != null)
+        selectAliases.add(unquote(item.getAlias().getName()));
+    }
+    Set<Table> actualTables = Collections.newSetFromMap(new IdentityHashMap<>());
+    for (Object node : nodes)
+      if (node instanceof PlainSelect select) {
+        if (select.getFromItem() instanceof Table t) actualTables.add(t);
+        if (select.getJoins() != null)
+          for (Join j : select.getJoins())
+            if (j.getRightItem() instanceof Table t) actualTables.add(t);
+      }
+    Map<String, Map<String, Object>> resolved = new HashMap<>();
+    List<Map<String, Object>> sources = new ArrayList<>();
+    for (Object node : nodes) {
+      if (node instanceof Statement && !(node instanceof Select))
+        throw reject("DML/DDL trong CTE hoặc subquery bị từ chối.");
+      if (node instanceof Select select
+          && (select.getForMode() != null
+              || select.getForClause() != null
+              || select.getForUpdateTable() != null
+              || select.getIsolation() != null))
+        throw reject("Không cho phép locking hoặc isolation hint.");
+      if (node instanceof PlainSelect select) {
+        if ((select.getIntoTables() != null && !select.getIntoTables().isEmpty())
+            || select.getIntoTempTable() != null) throw reject("SELECT INTO bị từ chối.");
+        if (!engine.equals("SQL_SERVER") && select.getTop() != null) throw dialect();
+        if (select.getJoins() != null && select.getJoins().size() > 12)
+          throw reject("Quá nhiều joins.");
+      }
+      if (node instanceof Function function) {
+        String name = function.getName().toUpperCase(Locale.ROOT);
+        if (!FUNCTIONS.contains(name)) throw reject("Function không nằm trong allowlist.");
+      }
+      String type = node.getClass().getSimpleName();
+      if (Set.of(
+              "UserVariable",
+              "JdbcParameter",
+              "JdbcNamedParameter",
+              "NextValExpression",
+              "OracleHint",
+              "TableFunction",
+              "LateralSubSelect",
+              "Execute",
+              "OutputClause")
+          .contains(type)) throw reject("SQL có biểu thức hoặc nguồn dữ liệu không được phép.");
+      if (node instanceof Table table && actualTables.contains(table)) {
+        String name = unquote(table.getName()), schema = unquote(table.getSchemaName());
+        if (ctes.contains(name) && schema.isBlank()) continue;
+        if (table.getDatabase() != null && !Objects.toString(table.getDatabase(), "").isBlank())
+          throw reject("Không cho phép cross-database table.");
+        var matches =
+            physical.stream()
+                .filter(
+                    t ->
+                        name.equals(t.get("name"))
+                            && (schema.isBlank() || schema.equals(t.get("schema"))))
+                .toList();
+        if (matches.size() != 1)
+          throw reject("Bảng không nằm trong dataset hoặc tên không rõ ràng.");
+        var match = matches.getFirst();
+        resolved.put(name, match);
+        resolved.put(schema + "." + name, match);
+        if (table.getAlias() != null) resolved.put(unquote(table.getAlias().getName()), match);
+        sources.add(Json.obj("schema", match.get("schema"), "name", match.get("name")));
+      }
+    }
+    if (sources.isEmpty()) throw reject("Query phải tham chiếu bảng được phép của dataset.");
+    for (Object node : nodes)
+      if (node instanceof Column col) {
+        String name = unquote(col.getColumnName());
+        if (selectAliases.contains(name)) continue;
+        String qualifier = col.getTable() == null ? "" : unquote(col.getTable().getName());
+        if (ctes.contains(qualifier)) continue;
+        List<Map<String, Object>> candidates;
+        if (!qualifier.isBlank()) {
+          var ref = resolved.get(qualifier);
+          if (ref == null) throw reject("Alias bảng không hợp lệ.");
+          candidates = List.of(ref);
+        } else candidates = new ArrayList<>(new HashSet<>(resolved.values()));
+        long matches =
+            candidates.stream()
+                .filter(
+                    t ->
+                        Json.objects(t.get("columns")).stream()
+                            .anyMatch(c -> name.equals(c.get("name"))))
+                .count();
+        if (matches != 1) throw reject("Cột không tồn tại hoặc tham chiếu không rõ ràng.");
+      }
+    return new Validated(
+        statement.toString().replaceFirst(";\\s*$", ""), sources.stream().distinct().toList());
   }
-  if(sources.isEmpty())throw reject("Query phải tham chiếu bảng được phép của dataset.");
-  for(Object node:nodes)if(node instanceof Column col){String name=unquote(col.getColumnName());if(selectAliases.contains(name))continue;String qualifier=col.getTable()==null?"":unquote(col.getTable().getName());if(ctes.contains(qualifier))continue;List<Map<String,Object>> candidates;if(!qualifier.isBlank()){var ref=resolved.get(qualifier);if(ref==null)throw reject("Alias bảng không hợp lệ.");candidates=List.of(ref);}else candidates=new ArrayList<>(new HashSet<>(resolved.values()));long matches=candidates.stream().filter(t->Json.objects(t.get("columns")).stream().anyMatch(c->name.equals(c.get("name")))).count();if(matches!=1)throw reject("Cột không tồn tại hoặc tham chiếu không rõ ràng.");}
-  return new Validated(statement.toString().replaceFirst(";\\s*$",""),sources.stream().distinct().toList());
- }
- private static String unquote(String text){if(text==null)return "";if(text.length()>=2){char a=text.charAt(0),b=text.charAt(text.length()-1);if((a=='"'&&b=='"')||(a=='`'&&b=='`')||(a=='['&&b==']'))return text.substring(1,text.length()-1).replace("\"\"","\"").replace("``","`").replace("]]","]");}return text;}
- private static String stripLiterals(String text){StringBuilder out=new StringBuilder();boolean quote=false;for(int i=0;i<text.length();i++){char c=text.charAt(i);if(c=='\''){if(quote&&i+1<text.length()&&text.charAt(i+1)=='\''){i++;continue;}quote=!quote;out.append(' ');}else out.append(quote?' ':c);}return out.toString();}
- private static void walk(Object obj,Set<Object> seen,List<Object> out,int depth){if(obj==null||seen.contains(obj))return;if(depth>100||out.size()>10000)throw reject("SQL quá phức tạp.");seen.add(obj);if(obj instanceof Iterable<?> list){for(var child:list)walk(child,seen,out,depth+1);return;}Class<?> type=obj.getClass();if(!type.getName().startsWith("net.sf.jsqlparser.")||type.getName().startsWith("net.sf.jsqlparser.parser."))return;out.add(obj);for(Class<?> c=type;c!=null&&c.getName().startsWith("net.sf.jsqlparser.");c=c.getSuperclass())for(Field field:c.getDeclaredFields()){if(Modifier.isStatic(field.getModifiers())||field.getName().equals("node"))continue;try{field.setAccessible(true);walk(field.get(obj),seen,out,depth+1);}catch(IllegalAccessException e){throw reject("Không đọc được AST.");}}}
- private static ApiException reject(String message){return new ApiException(HttpStatus.UNPROCESSABLE_ENTITY,"SQL_SECURITY_ERROR",message);}
- private static ApiException dialect(){return new ApiException(HttpStatus.UNPROCESSABLE_ENTITY,"SQL_DIALECT_ERROR","SQL không khớp dialect warehouse.");}
+
+  private static String unquote(String text) {
+    if (text == null) return "";
+    if (text.length() >= 2) {
+      char a = text.charAt(0), b = text.charAt(text.length() - 1);
+      if ((a == '"' && b == '"') || (a == '`' && b == '`') || (a == '[' && b == ']'))
+        return text.substring(1, text.length() - 1)
+            .replace("\"\"", "\"")
+            .replace("``", "`")
+            .replace("]]", "]");
+    }
+    return text;
+  }
+
+  private static String stripLiterals(String text) {
+    StringBuilder out = new StringBuilder();
+    boolean quote = false;
+    for (int i = 0; i < text.length(); i++) {
+      char c = text.charAt(i);
+      if (c == '\'') {
+        if (quote && i + 1 < text.length() && text.charAt(i + 1) == '\'') {
+          i++;
+          continue;
+        }
+        quote = !quote;
+        out.append(' ');
+      } else out.append(quote ? ' ' : c);
+    }
+    return out.toString();
+  }
+
+  private static void walk(Object obj, Set<Object> seen, List<Object> out, int depth) {
+    if (obj == null || seen.contains(obj)) return;
+    if (depth > 100 || out.size() > 10000) throw reject("SQL quá phức tạp.");
+    seen.add(obj);
+    if (obj instanceof Iterable<?> list) {
+      for (var child : list) walk(child, seen, out, depth + 1);
+      return;
+    }
+    Class<?> type = obj.getClass();
+    if (!type.getName().startsWith("net.sf.jsqlparser.")
+        || type.getName().startsWith("net.sf.jsqlparser.parser.")) return;
+    out.add(obj);
+    for (Class<?> c = type;
+        c != null && c.getName().startsWith("net.sf.jsqlparser.");
+        c = c.getSuperclass())
+      for (Field field : c.getDeclaredFields()) {
+        if (Modifier.isStatic(field.getModifiers()) || field.getName().equals("node")) continue;
+        try {
+          field.setAccessible(true);
+          walk(field.get(obj), seen, out, depth + 1);
+        } catch (IllegalAccessException e) {
+          throw reject("Không đọc được AST.");
+        }
+      }
+  }
+
+  private static ApiException reject(String message) {
+    return new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "SQL_SECURITY_ERROR", message);
+  }
+
+  private static ApiException dialect() {
+    return new ApiException(
+        HttpStatus.UNPROCESSABLE_ENTITY, "SQL_DIALECT_ERROR", "SQL không khớp dialect warehouse.");
+  }
 }
