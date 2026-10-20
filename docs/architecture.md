@@ -3,8 +3,10 @@
 ```mermaid
 flowchart TD
   FE[React / TypeScript] -->|REST /api/v1| BE[Java 21 / Spring Boot]
-  BE -->|private HTTP /internal/v1| AI[Python / FastAPI]
-  AI --> LLM[Configured LLM API]
+BE -->|private HTTP /internal/v1/text-to-sql| AI[Python / FastAPI AI]
+AI --> LLM[Configured LLM API]
+BE -->|private manifest plan /internal/v1/semantic-plan| PLAN[Native Wren planner in Python]
+PLAN -->|rewritten SQL + lineage candidate| BE
   BE --> PG[(PostgreSQL warehouse)]
   BE --> MY[(MySQL warehouse)]
   BE --> MS[(SQL Server warehouse)]
@@ -18,13 +20,13 @@ Application metadata store lưu registry, semantic versions, query history, audi
 
 ## Định hướng tái sử dụng implementation
 
-Theo yêu cầu ngày 2026-10-20, ưu tiên phần semantic planner/manifest/metadata/connectors và source/tool runtime đã có trong hai snapshot được khảo sát ở [platform-reuse.md](platform-reuse.md). Các thành phần này **chưa có trong deployment hiện tại**. Java tiếp tục authorize/validate/quyết định thực thi; Python AI chỉ sinh candidate. Nếu dùng private connector executor hoặc semantic service, tách nó khỏi AI generation, chỉ nhận request nội bộ đã cấp quyền và kiểm tra lại SQL sau rewrite. Không expose MCP/admin/execute tools trực tiếp cho browser/LLM. Danh mục ngoài ba engine hiện tại ở [future-connectors.md](future-connectors.md) là định hướng do người dùng yêu cầu, cần contract migration/capability model và nghiệm thu riêng khi triển khai.
+Theo yêu cầu ngày 2026-10-20, ưu tiên phần semantic planner/manifest/metadata/connectors và source/tool runtime đã có trong hai snapshot được khảo sát ở [platform-reuse.md](platform-reuse.md). Python hiện tích hợp native Wren planner/rewrite qua private endpoint sau bước sinh candidate. Java vẫn là nơi duy nhất authorize, kiểm tra SQL sau rewrite, so sánh lineage và quyết định thực thi. Không expose MCP/admin/execute tools trực tiếp cho browser/LLM. Danh mục ngoài ba engine hiện tại ở [future-connectors.md](future-connectors.md) là định hướng do người dùng yêu cầu, cần contract migration/capability model và nghiệm thu riêng khi triển khai.
 
 | Phần | Owner | Trách nhiệm |
 |---|---|---|
 | `frontend/` | React | UX, shell, route, API client, result rendering, MSW, visual checks |
-| `backend/` | Java | API, auth, registry, discovery, semantic validation, AST/security, dialect, execution, persistence, evaluation, monitoring |
-| `ai-service/` | Python | Internal API, context/few-shot selection, structured output, provider API, deterministic client |
+| `backend/` | Java | API, auth, registry, discovery, semantic validation, AST/security, dialect, execution, persistence, evaluation, monitoring; compiles authorized semantic manifest and calls planner |
+| `ai-service/` | Python | Internal API, context/few-shot selection, structured provider output, native Wren manifest resolution and SQL rewrite, deterministic client |
 | `data/` | AI/Data phối hợp BE | Canonical demo schema, seeds/generator, ELT, semantic fixtures, evaluation corpus |
 | `infra/` | BE phối hợp mọi phần | Compose/network/env/CI; 3 DB engines + 3 application services |
 | `docs/contracts/` | Chung | Một nguồn sự thật cho DTO/API/fixtures; review tác động cả ba vai trò |
@@ -34,7 +36,7 @@ Một warehouse có nhiều dataset; dataset là phạm vi logic có allowlist +
 
 ## Query pipeline
 
-Validate principal/warehouse/dataset → snapshot schema/semantic versions → select allowed metadata → call Python → validate JSON → parse SQL AST và resolve identifiers → security/allowlist/dialect checks → safe row/byte/time limits → read-only execution → result metadata + chart validation → history/audit → public Query.
+Validate principal/warehouse/dataset → snapshot schema/semantic versions → select allowed metadata → call Python candidate generator → build private manifest from authorized physical context → native Wren resolution/rewrite → validate response → Java parse/resolve/guard rewritten SQL → compare actual physical source set to planner lineage → safe row/byte/time limits → read-only execution → result metadata + chart validation → history/audit → public Query. Planner/LLM errors stop before execution; there is no silent planner bypass.
 
 Python không được truy cập JDBC hoặc credential. Python validation chỉ hỗ trợ chất lượng; Java vẫn kiểm tra độc lập. Chart spec là JSON allowlist, không chứa executable code.
 

@@ -5,6 +5,7 @@
 1. [Domain](domain.md): Warehouse, Dataset, Query, result, chart, pagination.
 2. [Semantic model](semantic-model.md): context Java cung cấp Python.
 3. [Java ↔ Python](java-python.md): internal request/response, timeout và error.
+   [Java ↔ native semantic planner](semantic-planner.md): private Wren manifest, rewrite, lineage and post-rewrite Java guard.
 4. [Public API](public-api.md): React ↔ Java.
 5. [Errors](errors.md): HTTP, mã lỗi, trạng thái query.
 6. [Examples](examples/): fixture JSON đủ để FE mock API, BE mock AI, AI mock Java input.

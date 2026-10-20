@@ -1,5 +1,7 @@
 # Java → Python internal API
 
+The private native planning/rewrite call is defined separately in [semantic-planner.md](semantic-planner.md); Java invokes it on the AI SQL candidate before the mandatory Java AST guard.
+
 `POST /internal/v1/text-to-sql`, Content-Type application/json. Private network + service token qua `Authorization: Bearer …` từ secret manager/env; không nhận credential warehouse. `X-Correlation-ID` trùng `correlationId` trong body; Java tạo ID khi public request chưa có. Không log service token.
 
 ## Request bắt buộc
