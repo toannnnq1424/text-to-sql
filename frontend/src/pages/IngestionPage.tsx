@@ -185,7 +185,7 @@ function IngestionContent() {
         </div>
         {run.error && <ErrorState error={run.error} />}
       </Card>
-      <IngestionSourceRegistry />
+      <IngestionSourceRegistry onSaved={setSource} />
       <Filters
         key={JSON.stringify(list.params)}
         onApply={(v) => {

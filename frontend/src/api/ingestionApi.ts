@@ -5,6 +5,10 @@ import {
   IngestionSourceSchema,
   SourceSchema,
   SourceTestSchema,
+  SourcePreviewInputSchema,
+  SourcePreviewSchema,
+  SourceValidationSchema,
+  TableSchema,
   FileUploadSchema,
   FilePlanSchema,
   FileRunSchema,
@@ -14,8 +18,25 @@ import {
   pageSchema,
   type FilePlanInput,
   type IngestionSourceInput,
+  type SourcePreviewInput,
 } from "./schema";
 export const ingestionApi = {
+  previewSource: (body: SourcePreviewInput) =>
+    request("/warehouse/ingestion/sources/preview", SourcePreviewSchema, {
+      method: "POST",
+      body: SourcePreviewInputSchema.parse(body),
+    }),
+  sourceTargets: (params: Params, signal?: AbortSignal) =>
+    request("/warehouse/ingestion/sources/targets", pageSchema(TableSchema), {
+      params,
+      signal,
+    }),
+  validateSource: (body: IngestionSourceInput) =>
+    request("/warehouse/ingestion/sources/validate", SourceValidationSchema, {
+      method: "POST",
+      body: IngestionSourceInputSchema.parse(body),
+      timeoutMs: 120000,
+    }),
   sources: (params?: Params, signal?: AbortSignal) =>
     request("/warehouse/ingestion/sources", pageSchema(SourceSchema), {
       params,

@@ -2036,6 +2036,185 @@
         }
       }
     },
+    "/warehouse/ingestion/sources/preview": {
+      "post": {
+        "operationId": "post_warehouse_ingestion_sources_preview",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestionSourcePreviewInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestionSourcePreview"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Controlled error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/warehouse/ingestion/sources/validate": {
+      "post": {
+        "operationId": "post_warehouse_ingestion_sources_validate",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestionSourceInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestionSourceValidation"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Controlled error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/warehouse/ingestion/sources/targets": {
+      "get": {
+        "operationId": "get_warehouse_ingestion_sources_targets",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "warehouseId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "datasetId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "direction",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageTable"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Controlled error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/warehouse/ingestion/run": {
       "post": {
         "operationId": "post_warehouse_ingestion_run",
@@ -6129,6 +6308,279 @@
         },
         "required": [
           "sourceId",
+          "reachable",
+          "checkedAt",
+          "sourceEngine",
+          "targetEngine",
+          "rowCount",
+          "truncated",
+          "columns",
+          "targets"
+        ],
+        "additionalProperties": false
+      },
+      "IngestionSourcePreviewInput": {
+        "type": "object",
+        "properties": {
+          "sourceWarehouseId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sourceDatasetId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "tableId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "columns": {
+            "minItems": 1,
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "readSql": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100000
+          }
+        },
+        "required": [
+          "sourceWarehouseId",
+          "sourceDatasetId"
+        ],
+        "additionalProperties": false
+      },
+      "IngestionSourcePreview": {
+        "type": "object",
+        "properties": {
+          "readSql": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sourceEngine": {
+            "type": "string",
+            "enum": [
+              "POSTGRESQL",
+              "MYSQL",
+              "SQL_SERVER"
+            ]
+          },
+          "columns": {
+            "minItems": 1,
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "label": {
+                  "type": "string"
+                },
+                "dataType": {
+                  "type": "string",
+                  "enum": [
+                    "STRING",
+                    "INTEGER",
+                    "BIGINT",
+                    "DECIMAL",
+                    "FLOAT",
+                    "BOOLEAN",
+                    "DATE",
+                    "TIMESTAMP"
+                  ]
+                },
+                "semanticRole": {
+                  "type": "string",
+                  "enum": [
+                    "DIMENSION",
+                    "METRIC",
+                    "TIME",
+                    "OTHER"
+                  ]
+                },
+                "unit": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "label",
+                "dataType",
+                "semanticRole"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "columnTypes": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "minLength": 1
+            },
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "STRING",
+                "INTEGER",
+                "DECIMAL",
+                "BOOLEAN",
+                "DATE",
+                "TIMESTAMP"
+              ]
+            }
+          },
+          "rows": {
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "minLength": 1
+              },
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean",
+                  "null"
+                ]
+              }
+            }
+          },
+          "truncated": {
+            "type": "boolean"
+          },
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          }
+        },
+        "required": [
+          "readSql",
+          "sourceEngine",
+          "columns",
+          "columnTypes",
+          "rows",
+          "truncated",
+          "checkedAt"
+        ],
+        "additionalProperties": false
+      },
+      "IngestionSourceValidation": {
+        "type": "object",
+        "properties": {
+          "reachable": {
+            "type": "boolean"
+          },
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "sourceEngine": {
+            "type": "string",
+            "enum": [
+              "POSTGRESQL",
+              "MYSQL",
+              "SQL_SERVER"
+            ]
+          },
+          "targetEngine": {
+            "type": "string",
+            "enum": [
+              "POSTGRESQL",
+              "MYSQL",
+              "SQL_SERVER"
+            ]
+          },
+          "rowCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "truncated": {
+            "type": "boolean"
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "label": {
+                  "type": "string"
+                },
+                "dataType": {
+                  "type": "string",
+                  "enum": [
+                    "STRING",
+                    "INTEGER",
+                    "BIGINT",
+                    "DECIMAL",
+                    "FLOAT",
+                    "BOOLEAN",
+                    "DATE",
+                    "TIMESTAMP"
+                  ]
+                },
+                "semanticRole": {
+                  "type": "string",
+                  "enum": [
+                    "DIMENSION",
+                    "METRIC",
+                    "TIME",
+                    "OTHER"
+                  ]
+                },
+                "unit": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "label",
+                "dataType",
+                "semanticRole"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "schema": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "schema",
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
           "reachable",
           "checkedAt",
           "sourceEngine",
