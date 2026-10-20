@@ -349,7 +349,11 @@ def provision_import_namespace(engine, values):
         )
         execute(
             engine,
-            "GRANT USAGE, CREATE ON SCHEMA nla_import TO nla_importer;",
+            "GRANT USAGE, CREATE ON SCHEMA nla_import TO nla_importer; "
+            "GRANT USAGE ON SCHEMA nla_import TO nla_reader; "
+            "GRANT SELECT ON ALL TABLES IN SCHEMA nla_import TO nla_reader; "
+            "ALTER DEFAULT PRIVILEGES FOR ROLE nla_importer IN SCHEMA nla_import "
+            "GRANT SELECT ON TABLES TO nla_reader;",
             "nla_chinook",
         )
         return
@@ -371,7 +375,8 @@ def provision_import_namespace(engine, values):
             )
         execute(
             engine,
-            "GRANT CREATE, INSERT, SELECT, INDEX, REFERENCES ON nla_import.* TO 'nla_importer'@'%';",
+            "GRANT CREATE, INSERT, SELECT, INDEX, REFERENCES ON nla_import.* TO 'nla_importer'@'%'; "
+            "GRANT SELECT, SHOW VIEW ON nla_import.* TO 'nla_reader'@'%';",
         )
         return
     login_exists = execute(
@@ -410,7 +415,8 @@ def provision_import_namespace(engine, values):
     execute(
         engine,
         "GRANT CREATE TABLE TO [nla_importer];\n"
-        "GRANT ALTER, SELECT, INSERT, REFERENCES ON SCHEMA::[nla_import] TO [nla_importer];\nGO\n",
+        "GRANT ALTER, SELECT, INSERT, REFERENCES ON SCHEMA::[nla_import] TO [nla_importer];\n"
+        "GRANT SELECT ON SCHEMA::[nla_import] TO [nla_reader];\nGO\n",
         "nla_chinook",
     )
 
