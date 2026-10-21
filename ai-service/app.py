@@ -18,6 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 
 from candidate_validation import InvalidAggregation, validate_aggregation
 from context_index import get_schema_index, normalize_text, overlap_score
+from inference_admission import InferenceUnavailable, inference_slot
 from model_provider import (
     ModelConfig,
     contains_secret,
@@ -901,15 +902,20 @@ async def provider_json(payload: dict[str, Any]) -> tuple[dict[str, Any], str]:
         raise Controlled("INVALID_MODEL_RESPONSE", 502)
 
 
+def generation_budget() -> float:
+    try:
+        timeout_ms = int(os.getenv("LLM_TIMEOUT_MS", "30000"))
+        if not 100 <= timeout_ms <= 120000:
+            raise ValueError()
+    except ValueError:
+        raise Controlled("PROVIDER_UNAVAILABLE", 503) from None
+    return min(timeout_ms, 30000) / 1000
+
+
 class OpenAICompatibleModelClient:
     async def generate(self, request: Input, context: dict[str, Any]) -> Candidate:
         payload = provider_payload(request, context, provider_model())
-        try:
-            budget = min(int(os.getenv("LLM_TIMEOUT_MS", "30000")), 30000) / 1000
-        except ValueError:
-            raise Controlled("PROVIDER_UNAVAILABLE", 503) from None
-        if budget < 0.1:
-            raise Controlled("PROVIDER_UNAVAILABLE", 503)
+        budget = generation_budget()
 
         async def checked(body):
             obj, model = await provider_json(body)
@@ -970,10 +976,14 @@ class OpenAICompatibleModelClient:
             except Exception:
                 raise Controlled("INVALID_MODEL_RESPONSE", 502) from None
 
+        async def admitted_generation():
+            async with inference_slot():
+                return await generate_checked()
+
         try:
-            # A single monotonic generation budget includes both requests. This
-            # is at most one semantic correction, never a provider retry loop.
-            return await asyncio.wait_for(generate_checked(), timeout=budget)
+            # Admission and both requests share one monotonic generation budget.
+            # The correction retains its original slot; this is never a retry loop.
+            return await asyncio.wait_for(admitted_generation(), timeout=budget)
         except asyncio.TimeoutError:
             raise Controlled("PROVIDER_TIMEOUT", 504) from None
 
@@ -992,6 +1002,22 @@ async def controlled(req: Request, e: Controlled):
                 "message": "Generation could not be completed safely.",
                 "correlationId": correlation,
                 "retryable": e.code == "PROVIDER_UNAVAILABLE",
+                "details": {},
+            }
+        },
+    )
+
+
+@app.exception_handler(InferenceUnavailable)
+async def inference_unavailable(req: Request, _error: InferenceUnavailable):
+    return JSONResponse(
+        status_code=503,
+        content={
+            "error": {
+                "code": "PROVIDER_UNAVAILABLE",
+                "message": "Model inference capacity is unavailable. Try again later.",
+                "correlationId": req.headers.get("x-correlation-id", "")[:100],
+                "retryable": True,
                 "details": {},
             }
         },

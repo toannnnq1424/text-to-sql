@@ -47,3 +47,7 @@ Launcher tự tạo `.local/model-admin.env` mode0600 với `NLA_MODEL_MASTER_KE
 SDK semantic là engine/compiler/planner từ source fork, không phải model AI và không chứa toàn bộ AI Service của sản phẩm upstream. App có model client riêng; native semantic planning và Java validation vẫn chạy sau candidate. Không cần tự training để dùng model đã train sẵn qua Ollama/API. [Bản đồ source/caller](integrations/full-source-adoption.md).
 
 Ollama local đã có inference/embeddings và caller Java/browser/database thật. Online cấu hình gốc vẫn được giữ nguyên, **không kiểm thử online** theo yêu cầu người dùng. Mock transport chỉ chứng minh HTTP/auth/output/error isolation; không chứng minh key online hợp lệ. Bằng chứng từng đợt ở [work log](work-log.md); không suy accuracy câu hỏi mới từ deterministic regression.
+
+## Giới hạn gọi đồng thời
+
+Generation và trợ lý ngữ nghĩa dùng chung giới hạn inference mỗi Python process: `LLM_MAX_CONCURRENT_REQUESTS=2` mặc định, chấp nhận1..32; tối đa cùng số lượng request chờ. `LLM_ADMISSION_TIMEOUT_MS=250`, cho phép0..5000. Slot giữ qua cả một correction được phép; thời gian chờ nằm trong tổng ngân sách30s, cancellation/lỗi giải phóng slot. Khi đầy, private API trả503 PROVIDER_UNAVAILABLE có kiểm soát, không tự đổi model hoặc retry. Offline, planning và metric compiler không chiếm inference slot. Đây là giới hạn mỗi process, không phải quota phân tán của tài khoản/provider. Các biến được launcher forward riêng cho Python; thay deployment env cần khởi động lại, không thay file key online khi kiểm thử local.

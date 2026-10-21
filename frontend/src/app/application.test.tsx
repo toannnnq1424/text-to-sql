@@ -16,6 +16,7 @@ describe("shell and context", () => {
     ["/history/q/technical", "Lịch sử truy vấn"],
     ["/catalog/metrics/total_revenue", "Data Catalog"],
     ["/warehouses", "Warehouses"],
+    ["/quality", "Chất lượng dữ liệu"],
     ["/evaluation", "Đánh giá"],
     ["/ingestion", "Nạp dữ liệu"],
     ["/import/sql", "SQL Import"],

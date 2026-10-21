@@ -57,3 +57,9 @@ Online và Ollama profile tách biệt. Volume knowledge tách metadata/warehous
 ## Provider profiles có quản trị key
 
 Admin Settings tạo profile model qua Java, encrypted-at-rest trong metadata DB bằng AES-GCM, master key do deployment giữ riêng. Query API chỉ nhận providerId cho API mode; Java chốt safe provider snapshot và private modelConfig cho từng request. Python chọn config bằng ContextVar, key chỉ dùng header xác thực provider, không semantic context/prompt/knowledge. Environment fallback được giữ read-only và không sửa file khi admin thay profile. History lưu requested/actual model provenance, không gắn default hiện tại vào snapshot cũ. [Contract](contracts/model-providers.md).
+
+## Chất lượng dữ liệu và inference admission
+
+Quality rules/run snapshots thuộc Java metadata PostgreSQL. React `/quality`→Java xác thực role/resource, resolve exact catalog refs→SqlGuard→native reader executor/source pools của cả3engine. Count/decimal string, full-table bounded aggregates, persisted bounded jobs/restart terminal error và `PER_CHECK` consistency; Python không nhận rows/credentials hoặc tham gia phép kiểm. [Contract](contracts/data-quality.md).
+
+Python generation/semantic-assist có shared process-local active/waiter admission trong tổng deadline, giữ slot qua correction và giải phóng khi cancel/error; không chặn deterministic/native/metric compiler. Bảo vệ tải cục bộ, không giả account-wide rate limiting.

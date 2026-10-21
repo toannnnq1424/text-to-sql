@@ -57,6 +57,9 @@ const Knowledge = lazy(() =>
 const Pipelines = lazy(() =>
   import("./pages/PipelinesPage").then((m) => ({ default: m.PipelinesPage })),
 );
+const Quality = lazy(() =>
+  import("./pages/QualityPage").then((m) => ({ default: m.QualityPage })),
+);
 export const client = new QueryClient({ defaultOptions: queryClientDefaults });
 export function AppRoutes() {
   return (
@@ -79,6 +82,7 @@ export function AppRoutes() {
           <Route path="semantic" element={<Semantic />} />
           <Route path="knowledge" element={<Knowledge />} />
           <Route path="pipelines" element={<Pipelines />} />
+          <Route path="quality" element={<Quality />} />
           <Route path="warehouses" element={<Warehouses />} />
           <Route path="ingestion" element={<Ingestion />} />
           <Route path="ingestion/:runId" element={<Ingestion />} />

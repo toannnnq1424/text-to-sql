@@ -43,6 +43,12 @@ export const handlers = [
   http.get(`${base}/datasets/:id`, ({ params }) =>
     HttpResponse.json(f.datasets.find((d) => d.datasetId === params.id)),
   ),
+  http.get(`${base}/datasets/:id/quality/rules`, ({ params }) =>
+    HttpResponse.json({ datasetId: params.id, revision: "0", rules: [] }),
+  ),
+  http.get(`${base}/datasets/:id/quality/runs`, () =>
+    HttpResponse.json(f.page([])),
+  ),
   http.get(`${base}/settings/model-providers`, () =>
     HttpResponse.json(f.modelProviders),
   ),

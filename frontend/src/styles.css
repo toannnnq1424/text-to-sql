@@ -4334,3 +4334,233 @@ summary {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.quality-workbench {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.quality-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.quality-rule-list {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0;
+}
+.quality-rule-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  background: #fbfdff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  min-width: 0;
+}
+.quality-rule-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 40px;
+  height: 40px;
+  color: var(--blue);
+  background: #eaf3ff;
+  border-radius: 10px;
+}
+.quality-rule-identity {
+  flex: 1;
+  min-width: 0;
+}
+.quality-rule-identity h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+}
+.quality-rule-identity span,
+.quality-rule-identity small {
+  display: block;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.quality-rule-identity span {
+  font-size: 12px;
+}
+.quality-rule-identity small {
+  margin-top: 3px;
+  font-size: 11px;
+}
+.quality-run-controls {
+  border-top: 1px solid var(--border);
+  margin-top: 18px;
+  padding-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+.quality-run-controls > div {
+  display: grid;
+  gap: 5px;
+}
+.quality-run-controls small {
+  color: var(--muted);
+  max-width: 720px;
+}
+.quality-results-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+  gap: 20px;
+  align-items: start;
+}
+.quality-results-layout .card {
+  min-width: 0;
+}
+.quality-run-id {
+  display: block;
+  max-width: 180px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.quality-run-summary {
+  display: grid;
+  gap: 16px;
+}
+.quality-summary-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+}
+.quality-outcomes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.quality-outcomes > div {
+  display: grid;
+  gap: 3px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #f7fbff;
+}
+.quality-outcomes svg {
+  color: var(--blue);
+}
+.quality-outcomes strong {
+  font-size: 25px;
+}
+.quality-outcomes span {
+  font-size: 11px;
+  color: var(--muted);
+}
+.quality-distribution {
+  display: flex;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #edf3ff;
+}
+.quality-distribution .passed {
+  background: #1db778;
+}
+.quality-distribution .failed {
+  background: #f6b338;
+}
+.quality-distribution .error {
+  background: #f15a75;
+}
+.quality-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.quality-rule-form {
+  display: grid;
+  gap: 17px;
+}
+.quality-rule-form .field,
+.quality-rule-form .async-select {
+  min-width: 0;
+}
+.quality-rule-form .field input,
+.quality-rule-form .field select,
+.quality-rule-form .field textarea {
+  width: 100%;
+}
+.quality-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+}
+.quality-checkbox input {
+  width: auto;
+}
+.quality-check-detail {
+  padding: 16px;
+  margin-top: 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #f7fbff;
+  overflow-wrap: anywhere;
+}
+.quality-check-detail header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.quality-check-detail h3 {
+  margin: 0;
+}
+.quality-footnote {
+  margin-top: 16px;
+  font-size: 12px;
+}
+.quality-run-summary .copy-control {
+  display: block;
+  max-width: 100%;
+}
+.quality-run-summary .copy-control .button {
+  max-width: 100%;
+  text-align: left;
+}
+.quality-run-summary .copy-control .button span {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 1350px) {
+  .quality-results-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 650px) {
+  .quality-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .quality-rule-row {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .quality-rule-identity {
+    flex-basis: calc(100% - 54px);
+  }
+  .quality-rule-row > .quality-actions {
+    margin-left: auto;
+  }
+  .quality-run-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .quality-outcomes > div {
+    padding: 9px;
+  }
+  .quality-workbench .card-heading {
+    align-items: flex-start;
+    gap: 12px;
+  }
+}

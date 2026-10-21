@@ -4,6 +4,7 @@ import { z } from "zod";
 import * as s from "../src/api/schema";
 import * as p from "../src/api/modelProviderSchema";
 import * as w from "../src/api/workbenchSchema";
+import * as q from "../src/api/qualitySchema";
 const schemas: Record<string, z.ZodType> = {
   ModelProvider: p.ModelProviderSchema,
   ModelProviders: p.ModelProvidersSchema,
@@ -132,6 +133,15 @@ for (const name of [
   schemas[`Page${name}`] = s.pageSchema(schemas[name]);
 schemas.PageQuerySummary = s.pageSchema(s.QuerySummarySchema);
 schemas.SavedResults = z.array(s.SavedSchema);
+Object.assign(schemas, {
+  QualityRule: q.QualityRuleSchema,
+  QualityRules: q.QualityRulesSchema,
+  QualityRulesInput: q.QualityRulesInputSchema,
+  QualityRun: q.QualityRunSchema,
+  QualityRunInput: q.QualityRunInputSchema,
+  QualityCheck: q.QualityCheckSchema,
+  PageQualityRun: q.QualityRunPageSchema,
+});
 const components = Object.fromEntries(
   Object.entries(schemas).map(([name, schema]) => {
     const { $schema, ...json } = z.toJSONSchema(schema, {
@@ -506,6 +516,14 @@ add("get", "/monitoring/summary", "Monitoring", undefined, "200", [
   "from",
   "to",
 ]);
+add("get", "/datasets/{id}/quality/rules", "QualityRules");
+add("put", "/datasets/{id}/quality/rules", "QualityRules", "QualityRulesInput");
+add("post", "/datasets/{id}/quality/runs", "QualityRunInput", "202");
+add("get", "/datasets/{id}/quality/runs", "PageQualityRun", undefined, "200", [
+  "page",
+  "pageSize",
+]);
+add("get", "/datasets/{id}/quality/runs/{runId}", "QualityRun");
 add("get", "/settings/model-providers", "ModelProviders");
 add(
   "post",
