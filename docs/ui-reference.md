@@ -73,3 +73,23 @@ Theo review ảnh người dùng ngày 21/10, mật độ của result UI phải
 Bằng chứng local, không commit dữ liệu hoặc phiên đăng nhập: `.local/compose-app/analytics-browser/report.json` và các ảnh `POSTGRESQL-{bar,grouped,line,scalar,scalar-table,overview,sql-proposal}-1728.png`, ảnh tương ứng MYSQL/SQL_SERVER, `semantic-assist-review-1728.png`. Đã mở ảnh để rà bố cục; không chỉ suy luận từ unit test. Ba độ rộng 1440/1024/390 × bốn hình dạng kết quả đều không tràn ngang document; menu mobile mở/đóng và trả focus đúng. Bảng/tab vẫn cuộn trong vùng riêng. Browser báo 0 lỗi không được xử lý.
 
 Khác biệt thị giác còn lại với mock: minh họa hero là asset vẽ lại; font/icon và typography không bằng pixel với chữ raster trong ảnh; inspector dùng checkbox/đơn vị và nguồn thực thay các trường minh họa. Tên kỹ thuật dài trong selector được rút gọn ở khung hẹp, vẫn có nhãn/title đầy đủ. Đây là kiểm tra bố cục/chức năng và ảnh thực, không phải tuyên bố pixel-perfect. Các warehouse/table QA là tài nguyên kiểm thử tạm thời, có thể được dọn sau nghiệm thu; Chinook không phụ thuộc chúng.
+
+## Cài đặt model và chế độ truy vấn
+
+Mục **Model và API key** trong `/settings` dùng cùng card/form tokens của shell. Danh sách chỉ nhận metadata an toàn từ Java: tên cấu hình, loại ONLINE/Ollama, model chính xác, địa chỉ, trạng thái, nguồn và revision. Không hiển thị lại key hoặc phần đuôi key. Cấu hình từ deployment có nhãn chỉ đọc; profile tạo trong app quản trị riêng, không sửa file môi trường.
+
+ADMIN có form thêm/chỉnh sửa, lựa chọn mặc định và xóa profile. Ô key là password, không đi vào query cache, mutation variables, localStorage hoặc sessionStorage; reset khi lưu thành công/thất bại và khi đóng form. Để trống khi sửa nghĩa là giữ key; xóa phải chọn tường minh. Đổi địa chỉ hoặc loại provider cần key mới hoặc clear rõ ràng. Revision conflict giữ lỗi từ server và có thao tác đóng/tải lại cấu hình. Non-admin chỉ xem metadata. Lưu profile không tự gọi model hay kiểm thử key; UI giải thích chi phí nhà cung cấp và yêu cầu Ollama phải đang chạy/model đã tải.
+
+Màn Truy vấn phân biệt ba cơ chế:
+
+- **Tự động** hiển thị đúng loại và model mặc định hiện tại, không ngầm fallback Offline.
+- **Chọn model/API** có selector tên profile + loại ONLINE/Ollama + model. Không cho gửi khi chưa chọn cấu hình khả dụng. Dataset/ngữ cảnh không phải lựa chọn model.
+- **Offline · khớp ví dụ (không AI)** giải thích chỉ khớp ví dụ semantic của dataset/dialect, không gọi AI/API/Ollama hay tự suy luận câu hỏi mới.
+
+Phân tích theo metrics/dimensions có nhãn **Công thức ngữ nghĩa · không gọi AI**. Kết quả/lịch sử hiển thị provenance snapshot của chính truy vấn; snapshot cũ không được gán model mặc định mới. Nếu model trả về khác model được cấu hình yêu cầu, hiển thị riêng cả hai. Chạy lại truy vấn API giữ provider identity đã ghi nhận; profile bị xóa được server từ chối có kiểm soát.
+
+Nghiệm thu thật đợt `module/model-provider-settings` qua [model-provider-browser.mjs](../infra/local/model-provider-browser.mjs): OIDC ADMIN → Settings → Java lưu profile online bị tắt với key test riêng, giữ/thay/xóa key bằng form, tạo profile Ollama và chọn mặc định đều PASS. Lưu và chỉnh profile không gửi truy vấn model. Sau đó UI chọn profile local → `qwen3:4b` → PostgreSQL trả SUCCESS; màn kỹ thuật giữ đúng tên/source/revision/model snapshot. VIEWER thấy metadata an toàn, không có thao tác thêm/sửa key; lời giải thích Offline không AI được kiểm riêng. Không gọi inference online hoặc sửa file provider online.
+
+Report local `.local/compose-app/model-provider-browser/report.json` ghi PASS, browser errors0, cleanup PASS. Đã mở/rà ảnh `settings-admin-1728.png`, `query-selected-local-390.png`, `result-provider-snapshot-1728.png`; bộ ảnh còn có Settings1728/1024/390, Query1728/1024/390, Offline và VIEWER. Tám state/viewport được đo document width không vượt viewport; selector tên dài rút gọn trong khung nhưng đoạn mô tả bên dưới vẫn ghi đầy đủ loại/model. Giữ navy fixed sidebar/blue active/card rhythm theo ảnh canonical02/03; Settings không có mock chi tiết nên không claim pixel-perfect. Profile kiểm thử được xóa theo đúng ID và mặc định gốc được phục hồi; query/audit snapshot bình thường được giữ lại.
+
+Runner ban đầu gặp locator quá chính xác cho wrapping-label select và một lỗi đọc response sau thời điểm UI cập nhật; đã sửa test đọc body ngay và match label-prefix. Không nới validation hoặc đổi dữ liệu runtime để cho bài kiểm PASS.

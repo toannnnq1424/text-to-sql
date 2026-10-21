@@ -15,6 +15,7 @@ public class QueryService {
   private final SqlGuard guard;
   private final AiClient ai;
   private final SemanticPlannerClient planner;
+  private final ModelProviderService providers;
 
   public QueryService(
       Store s,
@@ -22,13 +23,15 @@ public class QueryService {
       Adapters a,
       SqlGuard g,
       AiClient ai,
-      SemanticPlannerClient planner) {
+      SemanticPlannerClient planner,
+      ModelProviderService providers) {
     store = s;
     catalog = c;
     adapters = a;
     guard = g;
     this.ai = ai;
     this.planner = planner;
+    this.providers = providers;
   }
 
   public Map<String, Object> run(Map<String, Object> b) {
@@ -71,7 +74,8 @@ public class QueryService {
   }
 
   private Map<String, Object> runPrepared(Map<String, Object> b, Map<String, Object> selection) {
-    RegistryController.fields(b, Set.of("warehouseId", "datasetId", "question", "mode"));
+    RegistryController.fields(
+        b, Set.of("warehouseId", "datasetId", "question", "mode", "providerId"));
     RegistryController.required(b, "warehouseId", "datasetId", "question");
     String question = Json.str(b, "question").strip();
     if (question.codePointCount(0, question.length()) > 1000)
@@ -81,6 +85,12 @@ public class QueryService {
     if (!Set.of("AUTO", "API", "DETERMINISTIC", "SEMANTIC").contains(mode)
         || (mode.equals("SEMANTIC") && selection == null))
       throw ApiException.bad("Mode không hợp lệ.");
+    if (b.containsKey("providerId")
+        && (!"API".equals(mode)
+            || !(b.get("providerId") instanceof String providerId)
+            || providerId.isBlank()
+            || providerId.length() > 100))
+      throw ApiException.bad("Chỉ chế độ API nhận providerId hợp lệ; AUTO dùng provider mặc định.");
     var w = store.warehouse(Json.str(b, "warehouseId"));
     var d = store.dataset(Json.str(b, "datasetId"));
     if (!w.get("warehouseId").equals(d.get("warehouseId")))
@@ -107,6 +117,8 @@ public class QueryService {
             "status",
             "RUNNING",
             "model",
+            null,
+            "provider",
             null,
             "executionMode",
             mode.equals("DETERMINISTIC")
@@ -163,6 +175,14 @@ public class QueryService {
       Map<String, Object> candidate;
       if (selection == null) {
         request.put("question", question);
+        if (!"DETERMINISTIC".equals(mode)) {
+          var provider =
+              b.containsKey("providerId")
+                  ? providers.select(Json.str(b, "providerId"))
+                  : providers.selectDefault();
+          q.put("provider", provider.snapshot());
+          provider.apply(request);
+        }
         candidate = ai.generate(request, mode);
       } else {
         request.put("selection", selection);
@@ -289,6 +309,7 @@ public class QueryService {
     var q = new LinkedHashMap<>(stored);
     q.remove("owner");
     q.putIfAbsent("candidateSql", null);
+    q.putIfAbsent("provider", null);
     if (q.get("result") != null) {
       var full = Json.map(q.get("result"));
       var page = new LinkedHashMap<>(full);

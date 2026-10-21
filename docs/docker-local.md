@@ -79,3 +79,7 @@ Nguồn chính thức base images: [Node](https://github.com/nodejs/docker-node)
 ## Ollama và persistence tri thức
 
 Xem [Ollama local](ollama-local.md) để cài/tải model và chọn profile. `compose.py configure` chỉ nạp profile đang chọn vào private AI env, giữ online provider.env riêng. Embeddings endpoint/model và KNOWLEDGE_ROOT chỉ vào Python; API key online không đưa sang Java/browser. Volume app-knowledge giữ LanceDB qua recreate container, thuộc uid10001. Không xóa volume khi chỉ cập nhật code. Nếu daemon local ngừng, màn Tri thức AI/query API báo lỗi thật. Native vector list/create/search phải qua buildgate của image trước deploy.
+
+## Admin model settings
+
+Cài đặt có profile API online/Ollama và write-only key theo [hướng dẫn](llm-provider.md). `configure` tự provision `.local/model-admin.env`, chỉ backend nhận encryption master key. AI/backend cùng nhận exact-host policy `NLA_MODEL_PROVIDER_HOSTS`; frontend không nhận env secrets. Database backup không đủ để khôi phục encrypted keys nếu mất master key. Thay profile qua UI không đòi rebuild/restart containers, không sửa online provider.env và không tự gọi model. Embeddings/index config vẫn riêng.

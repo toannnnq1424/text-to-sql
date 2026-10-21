@@ -34,7 +34,7 @@ Không dùng tên bảng không qualified làm security allowlist. Với MySQL, 
 
 ## Query request
 
-`{warehouseId:string,datasetId:string,question:string,mode?:AUTO|API|DETERMINISTIC}`. Default AUTO dùng provider server đã cấu hình; không ngầm chuyển deterministic khi provider lỗi. `question` trim, 1..1000 ký tự Unicode. Java suy ra dialect, allowed context, model và versions. Không chấp nhận client-supplied SQL/semanticContext/credential ở endpoint này.
+`{warehouseId:string,datasetId:string,question:string,mode?:AUTO|API|DETERMINISTIC,providerId?:string}`. providerId chỉ hợp lệ cho API, chọn profile đã cấu hình; AUTO dùng mặc định, DETERMINISTIC không dùng provider. Default AUTO dùng provider server đã cấu hình; không ngầm chuyển deterministic khi provider lỗi. `question` trim, 1..1000 ký tự Unicode. Java suy ra dialect, allowed context, model và versions. Không chấp nhận client-supplied SQL/semanticContext/credential ở endpoint này.
 
 ## Query (public detail)
 
@@ -47,7 +47,8 @@ Không dùng tên bảng không qualified làm security allowlist. Với MySQL, 
 | candidateSql | string hoặc null; output ban đầu của model/compiler, snapshot cũ default null |
 | generatedSql | string hoặc null nếu chưa sinh được; SQL logic cuối sau planning/compaction, được Java SqlGuard normalize/validate và chuyển executor; adapter có thể thêm envelope LIMIT cố định hoặc cursor bounds |
 | sqlDialect | engine enum |
-| model | string hoặc null trước khi xác định |
+| model | string hoặc null trước khi xác định; model thực provider báo (fallback requested name nếu provider không trả) |
+| provider | nullable snapshot `{providerId,revision,name,kind,model,source}` theo [model providers](model-providers.md); model trong snapshot là requested model, không chứa key; snapshot cũ/offline/structured default null |
 | executionMode | API / DETERMINISTIC / SEMANTIC (structured metric selection; no LLM call) |
 | semanticVersion, schemaVersion | string, versions snapshot lúc chạy |
 | latencyMs | integer hoặc null khi đang chạy |

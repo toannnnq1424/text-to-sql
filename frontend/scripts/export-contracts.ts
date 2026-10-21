@@ -2,8 +2,15 @@ import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import * as s from "../src/api/schema";
+import * as p from "../src/api/modelProviderSchema";
 import * as w from "../src/api/workbenchSchema";
 const schemas: Record<string, z.ZodType> = {
+  ModelProvider: p.ModelProviderSchema,
+  ModelProviders: p.ModelProvidersSchema,
+  ModelProviderInput: p.ModelProviderInputSchema,
+  ModelProviderUpdate: p.ModelProviderUpdateSchema,
+  ModelProviderDefault: p.ModelProviderDefaultSchema,
+  ProviderSnapshot: p.ProviderSnapshotSchema,
   QuestionSuggestion: w.QuestionSuggestionSchema,
   SemanticAssist: w.SemanticAssistSchema,
   SemanticAssistInput: w.SemanticAssistInputSchema,
@@ -140,7 +147,7 @@ const paths: Record<string, Record<string, unknown>> = {};
 function add(
   method: string,
   path: string,
-  response: string,
+  response: string | undefined,
   input?: string,
   status = "200",
   params: string[] = [],
@@ -181,7 +188,9 @@ function add(
     responses: {
       [status]: {
         description: "Success",
-        content: { "application/json": { schema: ref(response) } },
+        ...(response
+          ? { content: { "application/json": { schema: ref(response) } } }
+          : {}),
       },
       default: {
         description: "Controlled error",
@@ -497,6 +506,27 @@ add("get", "/monitoring/summary", "Monitoring", undefined, "200", [
   "from",
   "to",
 ]);
+add("get", "/settings/model-providers", "ModelProviders");
+add(
+  "post",
+  "/settings/model-providers",
+  "ModelProvider",
+  "ModelProviderInput",
+  "201",
+);
+add(
+  "put",
+  "/settings/model-providers/default",
+  "ModelProviders",
+  "ModelProviderDefault",
+);
+add(
+  "put",
+  "/settings/model-providers/{id}",
+  "ModelProvider",
+  "ModelProviderUpdate",
+);
+add("delete", "/settings/model-providers/{id}", undefined, undefined, "204");
 add("get", "/settings", "Settings");
 add("patch", "/settings", "Settings", "SettingsInput");
 const document = {

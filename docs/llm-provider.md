@@ -1,49 +1,49 @@
-# Model API và Ollama local
+# Chọn model và cấu hình API key
 
-## Bộ kit và model là hai thành phần
+## Ba chế độ trên màn Truy vấn
 
-Wren AI có UI, AI Service (retrieval/prompting/generation) và semantic core; [tài liệu chính thức](https://docs.getwren.ai/oss/overview/introduction) phân biệt các phần này. Snapshot người dùng cung cấp ở `vendor/upstream/semantic-engine` là Engine/Core, không có toàn bộ AI Service đó. App gọi local Engine SDK đã fork: `plan_for_dataset` xử lý SQL vật lý trong manifest được cấp quyền, rồi kiểm tra lineage sau rewrite. LLM client hiện là `ai-service/app.py::OpenAICompatibleModelClient`; không được báo như pipeline Wren AI Service đã tích hợp.
+| Chế độ | Có gọi AI không? | Model được dùng |
+|---|---|---|
+| Tự động / AUTO | Có | Profile mặc định hiện tại, ghi rõ tên và API online hay Ollama local ngay trên form |
+| Chọn model/API | Có | Profile người dùng chọn trong danh sách đã cấu hình; có thể là API online hoặc Ollama local |
+| Offline · khớp ví dụ / DETERMINISTIC | Không | Không có model. Khớp câu hỏi với semantic examples đã khai báo của đúng dataset/dialect; câu không khớp sẽ bị từ chối |
+| Phân tích theo metric trong Ngữ nghĩa | Không | Compiler tạo SQL từ công thức/dimensions đã lưu; vẫn qua native planner/Java guard trước thực thi |
 
-Một model đã train sẵn có thể chạy ở máy local qua Ollama hoặc tại provider từ xa. Không cần tự training chỉ để bắt đầu inference. Theo [Ollama API compatibility](https://docs.ollama.com/api/openai-compatibility), local server hỗ trợ `/v1/chat/completions`; client dùng base URL `/v1`, API key placeholder được Ollama local bỏ qua. Khả năng SQL, JSON và tiếng Việt tùy model; cài Ollama không tự bảo đảm trả lời đúng.
+“API” là cách gọi model, không tự đồng nghĩa dịch vụ online. Ollama cũng cung cấp API nhưng chạy model trên máy/local server. Deterministic không gọi Ollama, không tải model, không training và không hiểu mọi câu hỏi tự do. Ngữ cảnh tùy chỉnh/xem ngữ cảnh không phải một model riêng.
 
-## File cấu hình của app
+Kết quả ghi mode, profile/requested model và tên model provider thực sự trả về nếu có. Snapshot lịch sử giữ model lúc chạy; đổi default sau này không đổi danh tính của truy vấn cũ. Snapshot cũ không có provider thì hiển thị chưa ghi nhận, không tự gán model hiện tại.
 
-Dùng `.local/compose-app/provider.env`, không commit file đã cấu hình. Mẫu [infra/provider.env.example](../infra/provider.env.example) dùng chung cho host launcher và Compose:
+## Admin cấu hình trong application
 
-```dotenv
-LLM_BASE_URL=https://your-provider.example/v1
-LLM_MODEL=your-model-name
-LLM_API_KEY=your-private-key
-LLM_TIMEOUT_MS=30000
-```
+Đăng nhập ADMIN, mở **Cài đặt → Model và API key**:
 
-Endpoint phải hỗ trợ Chat Completions với JSON object output theo contract app. UI không nhận key; Java nhận tên model và gọi Python qua private token. Python chọn context theo dataset/allowlist rồi sinh candidate; native semantic SDK lập kế hoạch; Java kiểm tra SQL/lineage trước native executor.
+1. Tạo profile, đặt tên dễ hiểu và chọn **API online** hoặc **Ollama local**.
+2. Nhập base URL Chat Completions tương thích và model ID chính xác. API online cần key; Ollama local không đòi key. App không tự tải model Ollama khi lưu.
+3. Lưu. Key đã lưu không được trả về UI; trạng thái chỉ cho biết đã có key. Khi sửa, để trống key để giữ nguyên; nhập key mới để thay; dùng thao tác xóa key tường minh nếu cần. Đổi endpoint/kind phải thay hoặc xóa key, không mang key cũ sang đích mới.
+4. Chọn profile mặc định để AUTO và trợ lý ngữ nghĩa dùng nó. Trong Truy vấn chọn **Chọn model/API** nếu muốn chỉ định một profile khác cho lần chạy.
 
-## Dùng Ollama local
+Lưu chỉ kiểm tra cấu trúc/quyền/cấu hình, không tự gọi model hoặc xác nhận key còn hạn. Một profile đã lưu có thể báo lỗi thật khi model không tồn tại, key sai, hết quota hoặc endpoint không tương thích. Không có fallback sang deterministic/model khác khi lỗi.
 
-Để giữ online provider.env nguyên vẹn, dùng profile và các lệnh ở [Ollama local](ollama-local.md). Cài/chạy Ollama theo [hướng dẫn chính thức](https://docs.ollama.com/quickstart), tải model bạn chọn bằng `ollama pull <model-name>`. Dùng đúng tên model đã có trong `ollama list`. Lệnh setup local chỉ tải model khi người dùng chạy theo [Ollama local](ollama-local.md); không dùng model cloud mặc định.
+Chỉ ADMIN tạo/sửa/xóa/default. Người dùng khác xem metadata an toàn và dùng profile có sẵn theo quyền truy vấn. Xóa hoặc tắt profile mặc định cần đổi default trước. Revision conflict báo cấu hình đã được người khác sửa, cần tải lại thay vì ghi đè ngầm.
 
-Khi AI service chạy trực tiếp trên host:
+Key mới chỉ ở password input và request HTTPS/loopback tới Java; không được lưu browser storage hay query cache, không đọc lại key cũ. Java lưu ciphertext AES-GCM trong metadata DB, master key nằm ngoài DB. Python chỉ nhận key trong private config để tạo Authorization header, không đưa vào prompt, memory hoặc warehouse credentials.
 
-```dotenv
-LLM_BASE_URL=http://127.0.0.1:11434/v1
-LLM_MODEL=your-installed-local-model
-LLM_API_KEY=ollama
-LLM_TIMEOUT_MS=30000
-```
+## URL và model tương thích
 
-Khi AI service chạy trong Docker Desktop và Ollama ở máy Mac/Windows host, dùng `http://host.docker.internal:11434/v1` thay URL loopback. Ollama cần chấp nhận kết nối từ mạng container theo cấu hình host/firewall của bạn; `127.0.0.1` bên trong container trỏ vào chính container. Linux Docker cần hostname/gateway được cấu hình riêng. Không bind Ollama công khai chỉ để thử cấu hình.
+Hiện dùng giao thức Chat Completions: profile API online dùng JSON object, profile Ollama dùng JSON Schema grammar; cả hai đều phải qua Candidate validation. Environment vẫn theo LLM_STRUCTURED_OUTPUT đã cấu hình. Đây không phải generic client cho mọi vendor protocol; endpoint có giao thức khác cần adaptation và acceptance riêng. Model ID do admin nhập, không lấy tên minh họa từ mock images.
 
-Giá trị `ollama` là placeholder local, không phải secret provider thật. Không dùng nó thay key cho dịch vụ remote có xác thực. Timeout app cho phép100–120000ms; cold inference có thể vượt budget và sẽ trả lỗi timeout thật, không đổi sang câu trả lời giả. Nếu tăng timeout Python cần đồng bộ budget của Java/proxy; không coi tăng một biến là đủ nghiệm thu.
+Deployment local cho phép exact hosts của các API tương thích phổ biến và localhost/gateway Ollama; danh sách nằm trong `infra/local/model_admin.py`, có thể cấu hình bằng `NLA_MODEL_PROVIDER_HOSTS`. Không có wildcard/redirect hoặc tắt TLS để né validation. API online dùng HTTPS; endpoint private HTTP phải được deployment cho phép tường minh. URL không chứa user/password/query/fragment. Host không được cấp phép sẽ có lỗi rõ; admin máy chủ thêm exact host vào allowlist nếu cần.
 
-Sau khi sửa cấu hình, chạy lại `python3 infra/local/compose.py up` cho Docker, hoặc restart cả AI/backend bằng `infra/local/run.py` nếu chạy host. Chọn `AUTO`/`API` theo chế độ API hiện hành. Khi chưa có provider, chỉ `DETERMINISTIC` là semantic example matching, không phải model local.
+Ollama trong Docker Desktop thường dùng `http://host.docker.internal:11434/v1`; Python chạy trên host dùng `http://127.0.0.1:11434/v1`. Dùng đúng model đã tải từ `ollama list`. Key online không tự chuyển sang Ollama; embeddings Tri thức AI vẫn có cấu hình riêng, không thay theo profile sinh SQL.
 
-## Kiểm chứng và trạng thái
+## Environment fallback và sao lưu
 
-Thử một câu hỏi ngoài semantic example, đọc trường `model` và query metadata để biết provider thực sự được gọi; kết quả phải qua planner/Java guard/DB thật. Test provider smoke cần đủ ba biến môi trường ở trên:
+Profile **Environment** phản ánh cấu hình Python đang chạy, chỉ đọc trong UI. Vẫn có thể dùng `.local/compose-app/provider.env` (online) và profile Ollama riêng theo [Ollama local](ollama-local.md). Tạo/sửa profile application không sửa các file này. Profile application mặc định ưu tiên; xóa lựa chọn override dùng environment nếu đã cấu hình.
 
-```bash
-ai-service/.venv/bin/python -m pytest ai-service/test_app.py -k real_provider
-```
+Launcher tự tạo `.local/model-admin.env` mode0600 với `NLA_MODEL_MASTER_KEY` mã hóa32 random bytes base64, chỉ chuyển cho Java. Clone mới sinh key riêng, không cần secrets của maintainer. **Khi khôi phục metadata DB hoặc chuyển máy, phải khôi phục đúng master key**, giữ bản sao an toàn tách database backup. Không xóa/tạo lại key để chữa lỗi decrypt; app không có plaintext fallback. Deployment ngoài launcher có thể cung cấp cùng biến qua secret manager. `.local/` luôn ignored, không commit API key/master key hoặc đặt vào `VITE_*`.
 
-Bài test phải chạy với biến được nạp an toàn vào tiến trình (launcher không tự nạp chúng cho một shell pytest riêng). Không in key hoặc raw prompt vào log. Model online vẫn **NOT RUN** theo yêu cầu giữ nguyên key/cấu hình. Đợt workbench có kiểm chứng riêng Ollama local và embeddings thực; xem work log cho bằng chứng cuối, không mô tả deterministic corpus PASS như AI thật PASS. Đổi model không đòi hỏi huấn luyện lại schema nhưng metadata/semantic definitions đúng vẫn bắt buộc.
+## Bộ kit, inference và kiểm chứng
+
+SDK semantic là engine/compiler/planner từ source fork, không phải model AI và không chứa toàn bộ AI Service của sản phẩm upstream. App có model client riêng; native semantic planning và Java validation vẫn chạy sau candidate. Không cần tự training để dùng model đã train sẵn qua Ollama/API. [Bản đồ source/caller](integrations/full-source-adoption.md).
+
+Ollama local đã có inference/embeddings và caller Java/browser/database thật. Online cấu hình gốc vẫn được giữ nguyên, **không kiểm thử online** theo yêu cầu người dùng. Mock transport chỉ chứng minh HTTP/auth/output/error isolation; không chứng minh key online hợp lệ. Bằng chứng từng đợt ở [work log](work-log.md); không suy accuracy câu hỏi mới từ deterministic regression.

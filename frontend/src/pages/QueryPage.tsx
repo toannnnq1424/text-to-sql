@@ -20,6 +20,12 @@ import { useAuth } from "../app/auth";
 import { useWarehouse } from "../app/providers";
 import { catalogApi } from "../api/catalogApi";
 import { queryApi } from "../api/queryApi";
+import { modelProviderApi } from "../api/modelProviderApi";
+import {
+  defaultProvider,
+  modeLabel,
+  providerLabel,
+} from "../lib/modelProvider";
 import { settingsApi } from "../api/settingsApi";
 import { QueryRequestSchema, type Mode } from "../api/schema";
 import { engineLabel, formatDate } from "../lib/format";
@@ -48,6 +54,7 @@ export function QueryPage() {
         : "",
     ),
     [mode, setMode] = useState<Mode>("AUTO"),
+    [providerId, setProviderId] = useState(""),
     [search, setSearch] = useState(""),
     [page, setPage] = useState(1),
     [category, setCategory] = useState(""),
@@ -83,6 +90,22 @@ export function QueryPage() {
     queryFn: ({ signal }) => settingsApi.get(signal),
     enabled: c.enabled,
   });
+  const providers = useQuery({
+    queryKey: ["model-providers"],
+    queryFn: ({ signal }) => modelProviderApi.list(signal),
+    enabled: c.enabled,
+  });
+  const availableProviders =
+    providers.data?.items.filter(
+      (provider) => provider.enabled && provider.configured,
+    ) || [];
+  const automaticProvider = defaultProvider(providers.data);
+  const selectedProvider = availableProviders.find(
+    (provider) => provider.providerId === providerId,
+  );
+  const providerReady =
+    mode === "DETERMINISTIC" ||
+    (mode === "AUTO" ? Boolean(automaticProvider) : Boolean(selectedProvider));
   const mutation = useMutation({
     mutationFn: async () => {
       const body = QueryRequestSchema.parse({
@@ -90,6 +113,7 @@ export function QueryPage() {
         datasetId: c.datasetId,
         question,
         mode,
+        ...(mode === "API" && providerId ? { providerId } : {}),
       });
       controller.current = new AbortController();
       return queryApi.run(body, controller.current.signal);
@@ -118,6 +142,7 @@ export function QueryPage() {
       datasetId: c.datasetId,
       question,
       mode,
+      ...(mode === "API" && providerId ? { providerId } : {}),
     });
     if (!valid.success) {
       setValidation(
@@ -132,7 +157,8 @@ export function QueryPage() {
     c.enabled &&
     c.warehouse?.status === "ACTIVE" &&
     c.dataset?.status === "ACTIVE" &&
-    auth.can("ANALYST");
+    auth.can("ANALYST") &&
+    providerReady;
   return (
     <>
       <PageHeading
@@ -232,20 +258,41 @@ export function QueryPage() {
                   <select
                     aria-label="Chế độ xử lý"
                     value={mode}
-                    onChange={(e) => setMode(e.target.value as Mode)}
+                    onChange={(e) => {
+                      setMode(e.target.value as Mode);
+                      setProviderId("");
+                      setValidation("");
+                    }}
                     disabled={mutation.isPending}
                   >
                     {(settings.data?.availableModes || ["AUTO"]).map((m) => (
                       <option key={m} value={m}>
-                        {m === "AUTO"
-                          ? "Tự động (Khuyến nghị)"
-                          : m === "API"
-                            ? "Provider API"
-                            : "Deterministic (Offline)"}
+                        {m === "AUTO" && automaticProvider
+                          ? `Tự động · ${providerLabel(automaticProvider)}`
+                          : modeLabel[m]}
                       </option>
                     ))}
                   </select>
                 </div>
+                {mode === "API" && (
+                  <Field label="Model sẽ gọi">
+                    <select
+                      value={providerId}
+                      disabled={mutation.isPending || providers.isPending}
+                      onChange={(event) => setProviderId(event.target.value)}
+                    >
+                      <option value="">Chọn cấu hình model</option>
+                      {availableProviders.map((provider) => (
+                        <option
+                          key={provider.providerId}
+                          value={provider.providerId}
+                        >
+                          {provider.name} · {providerLabel(provider)}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                )}
                 <Button
                   type="submit"
                   variant="primary"
@@ -259,6 +306,23 @@ export function QueryPage() {
                   {mutation.isPending ? "Đang xử lý…" : "Gửi"}
                 </Button>
               </div>
+              <p className="mode-explanation">
+                {mode === "DETERMINISTIC"
+                  ? "Offline không gọi AI, Ollama hoặc API. Chỉ khớp câu hỏi với ví dụ SQL đã được khai báo cho dataset và dialect; không tự suy luận câu hỏi mới."
+                  : mode === "AUTO"
+                    ? automaticProvider
+                      ? `Gọi model mặc định: ${automaticProvider.name} · ${providerLabel(automaticProvider)}. Lỗi provider được hiển thị, không tự chuyển sang Offline.`
+                      : "Chưa có model mặc định khả dụng. ADMIN có thể cấu hình tại Cài đặt."
+                    : selectedProvider
+                      ? `Sẽ gọi ${selectedProvider.name} · ${providerLabel(selectedProvider)}. Việc chọn dataset/ngữ cảnh không thay đổi model này.`
+                      : "Chọn một cấu hình API online hoặc Ollama local trước khi gửi câu hỏi."}
+              </p>
+              {providers.error && (
+                <ErrorState
+                  error={providers.error}
+                  retry={() => void providers.refetch()}
+                />
+              )}
               {validation && <Notice tone="error">{validation}</Notice>}
               {mutation.error && <ErrorState error={mutation.error} />}
             </form>
@@ -270,7 +334,9 @@ export function QueryPage() {
                     ? `Warehouse ${c.warehouse?.status || "chưa khả dụng"}.`
                     : c.dataset.status !== "ACTIVE"
                       ? `Dataset ${c.dataset.status}. Kiểm tra metadata trước khi truy vấn.`
-                      : "Bạn cần đăng nhập với quyền ANALYST hoặc ADMIN để chạy truy vấn."}
+                      : !auth.can("ANALYST")
+                        ? "Bạn cần đăng nhập với quyền ANALYST hoặc ADMIN để chạy truy vấn."
+                        : "Chọn cấu hình model khả dụng hoặc chế độ Offline phù hợp."}
               </Notice>
             )}
             {settings.error && (

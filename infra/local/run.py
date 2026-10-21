@@ -7,6 +7,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from llm_profile import knowledge_environment, profile_environment
+from model_admin import encryption_environment, provider_host_environment
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -26,7 +27,9 @@ def service_environment(service: str, authentication: str) -> dict[str, str]:
 
     def allowed(key: str) -> bool:
         if service == "ai":
-            return key == "PYTHON_AI_TOKEN" or key.startswith(("LLM_", "KNOWLEDGE_"))
+            return key in {"PYTHON_AI_TOKEN", "NLA_MODEL_PROVIDER_HOSTS"} or key.startswith(
+                ("LLM_", "KNOWLEDGE_")
+            )
         if service == "frontend":
             return key.startswith("VITE_") or key == "API_PROXY_TARGET"
         return key.startswith(
@@ -47,6 +50,8 @@ def service_environment(service: str, authentication: str) -> dict[str, str]:
             "WAREHOUSE_ALLOWED_HOSTS",
             "NLA_MYSQL_RSA_PUBLIC_KEY",
             "LLM_MODEL",
+            "NLA_MODEL_MASTER_KEY",
+            "NLA_MODEL_PROVIDER_HOSTS",
             "FILE_UPLOAD_DIRECTORY",
         }
 
@@ -84,6 +89,10 @@ def service_environment(service: str, authentication: str) -> dict[str, str]:
         env.update({key: value for key, value in profile_environment(ROOT).items() if allowed(key)})
     if service == "ai":
         env.update(knowledge_environment(ROOT))
+        env.update(provider_host_environment())
+    elif service == "backend":
+        env.update(encryption_environment(ROOT))
+        env.update(provider_host_environment())
     if authentication == "oidc":
         load_environment(
             ROOT / ".local" / "oidc" / "runtime.env",

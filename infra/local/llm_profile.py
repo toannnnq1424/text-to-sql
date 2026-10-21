@@ -20,6 +20,7 @@ def profile_environment(root: Path, *, container: bool = False) -> dict[str, str
                 if key.startswith("LLM_"):
                     values[key] = value
     if profile == "ollama":
+        values["LLM_PROVIDER_KIND"] = "OLLAMA"
         parsed = urlsplit(values.get("LLM_BASE_URL", ""))
         if (
             parsed.scheme != "http"

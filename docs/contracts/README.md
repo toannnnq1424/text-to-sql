@@ -12,7 +12,8 @@
 7. [Private data executor](data-tool-runtime.md): approved query transport, native pools and typed results.
 8. [Semantic workbench / knowledge / pipelines](semantic-workbench.md): source-fork business compiler, dataset memory and independent layer transformations.
 9. [Analytics experience](analytics-experience.md): dataset-derived suggestions, reviewed semantic assistance, compact executed SQL and result-driven charts.
-10. [Examples](examples/): fixture JSON đủ để FE mock API, BE mock AI, AI mock Java input.
+10. [Model providers](model-providers.md): admin encrypted keys, selectable model profiles and explicit execution provenance.
+11. [Examples](examples/): fixture JSON đủ để FE mock API, BE mock AI, AI mock Java input.
 
 `contractVersion=1.0.0` là version tài liệu/fixture, không bắt thêm field vào response Python. `semanticVersion` và `schemaVersion` độc lập, lưu snapshot vào Query. `/api/v1` và `/internal/v1` là namespace API.
 

@@ -203,3 +203,24 @@ export const suite = {
   caseCount: 40,
   engines: ["POSTGRESQL", "MYSQL", "SQL_SERVER"],
 };
+
+export const modelProviders = {
+  items: [
+    {
+      providerId: "environment",
+      revision: "test-env-revision",
+      name: "Local test model",
+      kind: "OLLAMA" as const,
+      baseUrl: "http://127.0.0.1:11434/v1",
+      model: "test-local:small",
+      hasApiKey: false,
+      enabled: true,
+      configured: true,
+      source: "ENVIRONMENT" as const,
+      readOnly: true,
+      updatedAt: null,
+    },
+  ],
+  defaultProviderId: "environment",
+  configurationAvailable: true,
+};

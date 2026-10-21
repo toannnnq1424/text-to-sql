@@ -12,6 +12,12 @@ import {
 } from "lucide-react";
 import { useAuth } from "../app/auth";
 import { useWarehouse } from "../app/providers";
+import { modelProviderApi } from "../api/modelProviderApi";
+import {
+  defaultProvider,
+  providerLabel,
+  modeLabel,
+} from "../lib/modelProvider";
 import { semanticApi } from "../api/workbenchApi";
 import type {
   SemanticDocument,
@@ -77,6 +83,11 @@ export function SemanticPage() {
 function SemanticWorkbench({ initial }: { initial: SemanticDocument }) {
   const context = useWarehouse();
   const auth = useAuth();
+  const providers = useQuery({
+    queryKey: ["model-providers"],
+    queryFn: ({ signal }) => modelProviderApi.list(signal),
+  });
+  const activeProvider = defaultProvider(providers.data);
   const client = useQueryClient();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -190,6 +201,12 @@ function SemanticWorkbench({ initial }: { initial: SemanticDocument }) {
             Mô tả mục tiêu phân tích. AI đề xuất chỉ số, chiều và quy tắc trên
             schema thật; bạn duyệt bản nháp, kiểm tra rồi mới kích hoạt.
           </p>
+          <p className="mode-explanation">
+            {activeProvider
+              ? `Model mặc định: ${activeProvider.name} · ${providerLabel(activeProvider)}. Cấu hình embedding cho Tri thức AI được quản lý riêng.`
+              : "Chưa có model mặc định khả dụng; ADMIN cần cấu hình trong Cài đặt."}
+          </p>
+          {providers.error && <ErrorState error={providers.error} />}
           <Field label="Yêu cầu nghiệp vụ cho AI">
             <textarea
               value={instruction}
@@ -201,7 +218,12 @@ function SemanticWorkbench({ initial }: { initial: SemanticDocument }) {
           </Field>
           <div className="workbench-footer">
             <Button
-              disabled={assist.isPending || !instruction.trim() || busy}
+              disabled={
+                assist.isPending ||
+                !instruction.trim() ||
+                busy ||
+                !activeProvider
+              }
               onClick={() => assist.mutate()}
             >
               <Sparkles size={17} />
@@ -957,8 +979,8 @@ function StructuredQuery({
   return (
     <Card title="Phân tích từ định nghĩa đang lưu" icon={<Play size={20} />}>
       <p className="muted">
-        Chọn chỉ số và chiều; compiler tạo SQL từ cấu hình đã kiểm tra. Kết quả
-        được đọc từ warehouse, không cần gọi model.
+        {modeLabel.SEMANTIC}. Chọn chỉ số và chiều; compiler tạo SQL từ cấu hình
+        đã kiểm tra và đọc kết quả thật từ warehouse.
       </p>
       {!document.metrics.length ? (
         <Empty

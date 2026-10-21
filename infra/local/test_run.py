@@ -47,16 +47,19 @@ def test_private_credentials_are_limited_to_their_consumer(configured, service):
         assert "NLA_CHINOOK_PG_PASSWORD" not in env
         assert "METADATA_PASSWORD" not in env
         assert "LOCAL_API_TOKEN" not in env
+        assert "NLA_MODEL_MASTER_KEY" not in env
     elif service == "backend":
         assert env["METADATA_PASSWORD"] == "metadata-test-value"
         assert env["NLA_CHINOOK_PG_PASSWORD"] == "reader-test-value"
         assert env["LLM_MODEL"] == "configured-model"
         assert "LLM_API_KEY" not in env
+        assert len(env["NLA_MODEL_MASTER_KEY"]) == 44
     else:
         assert env["VITE_API_BASE_URL"] == "/api/v1"
         assert not any(key.startswith("LLM_") for key in env)
         assert "PYTHON_AI_TOKEN" not in env
         assert "LOCAL_API_TOKEN" not in env
+        assert "NLA_MODEL_MASTER_KEY" not in env
 
 
 def test_oidc_host_configuration_keeps_the_same_issuer(configured):

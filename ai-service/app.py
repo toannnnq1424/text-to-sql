@@ -10,7 +10,6 @@ from collections import deque
 from copy import deepcopy
 from enum import Enum
 from typing import Any, Literal, Protocol
-from urllib.parse import urlsplit
 
 import httpx
 from fastapi import FastAPI, Header, Request
@@ -19,6 +18,16 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 
 from candidate_validation import InvalidAggregation, validate_aggregation
 from context_index import get_schema_index, normalize_text, overlap_score
+from model_provider import (
+    ModelConfig,
+    contains_secret,
+    effective_provider,
+    environment_summary,
+    provider_model,
+    provider_scope,
+    structured_output,
+    valid_model_name,
+)
 from semantic_planner import PlanningFailure, PlanRequest, PlanResponse, plan_sql
 
 
@@ -201,6 +210,7 @@ class Input(Strict):
     sqlDialect: Dialect = Field(strict=False)
     question: str = Field(min_length=1, max_length=1000)
     semanticContext: Context
+    modelConfig: ModelConfig | None = Field(default=None, exclude=True, repr=False)
 
 
 class Controlled(Exception):
@@ -329,7 +339,7 @@ def provider_payload(request: Input, context: dict[str, Any], model: str) -> dic
         if effort not in {"none", "minimal", "low", "medium", "high"}:
             raise Controlled("PROVIDER_UNAVAILABLE", 503)
         body["reasoning_effort"] = effort
-    if os.getenv("LLM_STRUCTURED_OUTPUT", "false").lower() == "true":
+    if structured_output():
         schema = Candidate.model_json_schema()
         definitions = schema.pop("$defs", {})
         definitions["Chart"]["properties"]["type"]["enum"] = [
@@ -535,7 +545,13 @@ class DeterministicModelClient:
 
 
 class SemanticContextSelector:
-    def select(self, request: Input, hints: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    def select(
+        self,
+        request: Input,
+        hints: list[dict[str, Any]] | None = None,
+        *,
+        offline: bool = False,
+    ) -> dict[str, Any]:
         try:
             budget = int(os.getenv("LLM_REQUEST_MAX_BYTES", "48000"))
         except ValueError:
@@ -550,9 +566,11 @@ class SemanticContextSelector:
             for example in source["examples"]
             if example.get("sqlDialect") == request.sqlDialect
         ]
-        model = os.getenv("LLM_MODEL", "")
+        model = "" if offline else provider_model()
 
         def fits(context: dict[str, Any]) -> bool:
+            if offline:
+                return len(json.dumps(context, ensure_ascii=False).encode()) <= budget
             return len(serialize_provider_payload(request, context, model)) <= budget
 
         generic_question_terms = {
@@ -809,22 +827,17 @@ class SemanticContextSelector:
 
 
 async def provider_json(payload: dict[str, Any]) -> tuple[dict[str, Any], str]:
-    base = os.getenv("LLM_BASE_URL", "").rstrip("/")
-    key = os.getenv("LLM_API_KEY", "")
-    model = os.getenv("LLM_MODEL", "")
-    if not base or not key or not model:
-        raise Controlled("PROVIDER_UNAVAILABLE", 503)
-    parsed_base = urlsplit(base)
-    if (
-        parsed_base.scheme not in {"http", "https"}
-        or not parsed_base.netloc
-        or parsed_base.username is not None
-        or parsed_base.password is not None
-        or parsed_base.query
-        or parsed_base.fragment
-    ):
-        raise Controlled("PROVIDER_UNAVAILABLE", 503)
-    provider_body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    try:
+        config = effective_provider()
+    except (ValueError, ValidationError):
+        raise Controlled("PROVIDER_UNAVAILABLE", 503) from None
+    # Pin both the destination and payload model to this request's snapshot.
+    # A local no-key profile must never inherit an online environment key.
+    body = {**payload, "model": config.model}
+    provider_body = json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    headers = {"Content-Type": "application/json"}
+    if config.apiKey is not None:
+        headers["Authorization"] = "Bearer " + config.apiKey.get_secret_value()
     try:
         try:
             timeout_ms = int(os.getenv("LLM_TIMEOUT_MS", "30000"))
@@ -839,12 +852,9 @@ async def provider_json(payload: dict[str, Any]) -> tuple[dict[str, Any], str]:
         ) as client:
             async with client.stream(
                 "POST",
-                base + "/chat/completions",
+                config.baseUrl + "/chat/completions",
                 content=provider_body,
-                headers={
-                    "Authorization": "Bearer " + key,
-                    "Content-Type": "application/json",
-                },
+                headers=headers,
             ) as response:
                 if response.status_code != 200:
                     raise Controlled("PROVIDER_UNAVAILABLE", 503)
@@ -854,11 +864,17 @@ async def provider_json(payload: dict[str, Any]) -> tuple[dict[str, Any], str]:
                     if len(data) > 1048576:
                         raise Controlled("INVALID_MODEL_RESPONSE", 502)
         envelope = json.loads(data)
+        secret = config.apiKey.get_secret_value() if config.apiKey is not None else None
+        if contains_secret(envelope, secret):
+            raise Controlled("INVALID_MODEL_RESPONSE", 502)
+        actual_model = valid_model_name(envelope.get("model", config.model))
         output = envelope["choices"][0]["message"]["content"]
         if not isinstance(output, str):
             raise Controlled("INVALID_MODEL_RESPONSE", 502)
         obj = json.loads(output)
         if not isinstance(obj, dict):
+            raise Controlled("INVALID_MODEL_RESPONSE", 502)
+        if contains_secret(obj, secret):
             raise Controlled("INVALID_MODEL_RESPONSE", 502)
         if obj.get("error") in {
             "INSUFFICIENT_CONTEXT",
@@ -866,20 +882,28 @@ async def provider_json(payload: dict[str, Any]) -> tuple[dict[str, Any], str]:
             "LOW_CONFIDENCE",
         }:
             raise Controlled(obj["error"])
-        return obj, model
+        return obj, actual_model
     except Controlled:
         raise
     except httpx.TimeoutException:
         raise Controlled("PROVIDER_TIMEOUT", 504)
     except httpx.HTTPError:
         raise Controlled("PROVIDER_UNAVAILABLE", 503)
-    except (AttributeError, KeyError, IndexError, TypeError, ValueError, ValidationError):
+    except (
+        AttributeError,
+        KeyError,
+        IndexError,
+        TypeError,
+        ValueError,
+        ValidationError,
+        RecursionError,
+    ):
         raise Controlled("INVALID_MODEL_RESPONSE", 502)
 
 
 class OpenAICompatibleModelClient:
     async def generate(self, request: Input, context: dict[str, Any]) -> Candidate:
-        payload = provider_payload(request, context, os.getenv("LLM_MODEL", ""))
+        payload = provider_payload(request, context, provider_model())
         try:
             budget = min(int(os.getenv("LLM_TIMEOUT_MS", "30000")), 30000) / 1000
         except ValueError:
@@ -1033,11 +1057,18 @@ async def generate(
         raise Controlled("INVALID_REQUEST", 422)
     if req.headers.get("x-correlation-id") != data.correlationId:
         raise Controlled("INVALID_REQUEST", 400)
+    if x_execution_mode == "DETERMINISTIC" and data.modelConfig is not None:
+        raise Controlled("INVALID_REQUEST", 422)
+    with provider_scope(data.modelConfig):
+        return await generate_with_context(data, x_execution_mode)
+
+
+async def generate_with_context(data: Input, execution_mode: str):
     if not data.semanticContext.tables:
         raise Controlled("INSUFFICIENT_CONTEXT")
     hints = None
     if (
-        x_execution_mode != "DETERMINISTIC"
+        execution_mode != "DETERMINISTIC"
         and os.getenv("KNOWLEDGE_ENABLED", "false").lower() == "true"
     ):
         from starlette.concurrency import run_in_threadpool
@@ -1077,10 +1108,13 @@ async def generate(
                 if recalled_example_is_valid(candidate, data):
                     data.semanticContext.examples.append(candidate)
     selector = SemanticContextSelector()
-    context = selector.select(data, hints) if hints is not None else selector.select(data)
+    if execution_mode == "DETERMINISTIC":
+        context = selector.select(data, offline=True)
+    else:
+        context = selector.select(data, hints) if hints is not None else selector.select(data)
     client: TextToSqlModelClient = (
         DeterministicModelClient()
-        if x_execution_mode == "DETERMINISTIC"
+        if execution_mode == "DETERMINISTIC"
         else OpenAICompatibleModelClient()
     )
     return validate(await client.generate(data, context), context, data.sqlDialect)
@@ -1173,6 +1207,20 @@ async def private_json(req: Request, authorization: str) -> dict:
     ):
         raise Controlled("INVALID_REQUEST", 400)
     return value
+
+
+class ProviderStatusInput(Strict):
+    correlationId: str = Field(min_length=1, max_length=100)
+
+
+@app.post("/internal/v1/model-provider/status")
+async def model_provider_status(req: Request, authorization: str = Header(default="")):
+    raw = await private_json(req, authorization)
+    try:
+        ProviderStatusInput.model_validate(raw)
+    except ValidationError:
+        raise Controlled("INVALID_REQUEST", 422) from None
+    return {"provider": environment_summary()}
 
 
 @app.post("/internal/v1/knowledge/{action}")
@@ -1309,4 +1357,5 @@ async def semantic_assist(req: Request, authorization: str = Header(default=""))
         data = AssistInput.model_validate(raw)
     except ValidationError:
         raise Controlled("INVALID_REQUEST", 422) from None
-    return await propose(data)
+    with provider_scope(data.modelConfig):
+        return await propose(data)

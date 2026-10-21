@@ -159,7 +159,7 @@ describe("business semantic workbench", () => {
     const metrics = await screen.findByLabelText("Chỉ số (tối đa 10)");
     await user.selectOptions(metrics, document.metrics[0].name);
     await user.click(screen.getByRole("button", { name: "Chạy phân tích" }));
-    await screen.findByText("Compiler ngữ nghĩa");
+    await screen.findByText("Công thức ngữ nghĩa · không gọi AI");
     expect(execute).toHaveBeenCalledWith({
       metrics: [document.metrics[0].name],
       dimensions: [],

@@ -13,6 +13,7 @@ import {
 import { useWarehouse } from "../app/providers";
 import { useAuth } from "../app/auth";
 import { evaluationApi } from "../api/evaluationApi";
+import { modeLabel } from "../lib/modelProvider";
 import { settingsApi } from "../api/settingsApi";
 import type { Mode } from "../api/schema";
 import {
@@ -133,7 +134,9 @@ function EvaluationContent() {
               onChange={(e) => setMode(e.target.value as Mode)}
             >
               {(settings.data?.availableModes || ["AUTO"]).map((m) => (
-                <option key={m}>{m}</option>
+                <option key={m} value={m}>
+                  {modeLabel[m]}
+                </option>
               ))}
             </select>
           </Field>

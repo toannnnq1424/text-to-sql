@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ProviderSnapshotSchema } from "./modelProviderSchema";
 export const EngineSchema = z.enum(["POSTGRESQL", "MYSQL", "SQL_SERVER"]);
 export type Engine = z.infer<typeof EngineSchema>;
 const id = z.string().min(1);
@@ -48,18 +49,24 @@ export const DatasetSchema = z.object({
 export type Dataset = z.infer<typeof DatasetSchema>;
 export const ModeSchema = z.enum(["AUTO", "API", "DETERMINISTIC"]);
 export type Mode = z.infer<typeof ModeSchema>;
-export const QueryRequestSchema = z.strictObject({
-  warehouseId: id,
-  datasetId: id,
-  question: z
-    .string()
-    .trim()
-    .refine(
-      (s) => Array.from(s).length > 0 && Array.from(s).length <= 1000,
-      "Nhập câu hỏi từ 1 đến 1000 ký tự.",
-    ),
-  mode: ModeSchema.optional(),
-});
+export const QueryRequestSchema = z
+  .strictObject({
+    warehouseId: id,
+    datasetId: id,
+    question: z
+      .string()
+      .trim()
+      .refine(
+        (s) => Array.from(s).length > 0 && Array.from(s).length <= 1000,
+        "Nhập câu hỏi từ 1 đến 1000 ký tự.",
+      ),
+    mode: ModeSchema.optional(),
+    providerId: id.optional(),
+  })
+  .refine(
+    (value) => !value.providerId || value.mode === "API",
+    "Chỉ chế độ Chọn model/API nhận providerId.",
+  );
 export const ColumnSchema = z.object({
   name: id,
   label: z.string(),
@@ -152,6 +159,7 @@ export const QueryStatusSchema = z.enum([
 ]);
 export const QuerySummarySchema = z.object({
   queryId: id,
+  provider: ProviderSnapshotSchema.nullable().default(null),
   correlationId: id,
   warehouseId: id,
   datasetId: id,
