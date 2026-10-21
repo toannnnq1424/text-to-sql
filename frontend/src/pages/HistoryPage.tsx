@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Activity, Clock3, FileText, ShieldAlert } from "lucide-react";
+import { executionLabel } from "../lib/modelProvider";
 import { historyApi } from "../api/historyApi";
 import { monitoringApi } from "../api/monitoringApi";
 import { useWarehouse } from "../app/providers";
@@ -197,8 +198,8 @@ export function HistoryPage() {
                     },
                     {
                       key: "model",
-                      label: "Model",
-                      render: (q) => q.model || "—",
+                      label: "Model / cơ chế xử lý",
+                      render: (q) => executionLabel(q),
                     },
                     {
                       key: "latencyMs",

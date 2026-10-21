@@ -15,6 +15,7 @@ import urllib.request
 from pathlib import Path
 
 from llm_profile import knowledge_environment, profile_environment
+from model_admin import encryption_environment, provider_host_environment
 
 ROOT = Path(__file__).resolve().parents[2]
 LOCAL = ROOT / ".local" / "compose-app"
@@ -123,6 +124,7 @@ def configure() -> None:
         "LLM_REASONING_EFFORT",
         "LLM_MAX_OUTPUT_TOKENS",
         "LLM_STRUCTURED_OUTPUT",
+        "LLM_PROVIDER_KIND",
     ):
         value = provider.get(key, os.getenv(key, ""))
         if value:
@@ -135,6 +137,7 @@ def configure() -> None:
             "Configure provider URL, model and key together in the private provider.env."
         )
     ai.update(knowledge_environment(ROOT, container=True))
+    ai.update(provider_host_environment())
     write_environment(LOCAL / "ai.env", ai)
     for filename, token_name in (
         ("data-runtime.env", "DATA_TOOL_RUNTIME_TOKEN"),
@@ -187,6 +190,8 @@ def configure() -> None:
     )
     if ai.get("LLM_MODEL"):
         backend["LLM_MODEL"] = ai["LLM_MODEL"]
+    backend.update(encryption_environment(ROOT))
+    backend.update(provider_host_environment())
     write_environment(LOCAL / "backend.env", backend)
     key = runtime.get("NLA_MYSQL_RSA_PUBLIC_KEY")
     if not key or not Path(key).is_file():

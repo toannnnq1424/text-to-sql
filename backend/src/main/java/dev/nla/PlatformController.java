@@ -12,11 +12,14 @@ public class PlatformController {
   private final Store store;
   private final QueryService queries;
   private final Environment env;
+  private final ModelProviderService providers;
 
-  public PlatformController(Store store, QueryService queries, Environment env) {
+  public PlatformController(
+      Store store, QueryService queries, Environment env, ModelProviderService providers) {
     this.store = store;
     this.queries = queries;
     this.env = env;
+    this.providers = providers;
   }
 
   @GetMapping("/health")
@@ -206,8 +209,19 @@ public class PlatformController {
   @GetMapping("/settings")
   Object settings() {
     var s = store.settings();
-    s.put("providerConfigured", !env.getProperty("LLM_MODEL", "").isBlank());
-    s.put("modelDisplayName", env.getProperty("LLM_MODEL"));
+    var profiles = providers.list();
+    var selected =
+        Json.objects(profiles.get("items")).stream()
+            .filter(
+                item -> Objects.equals(item.get("providerId"), profiles.get("defaultProviderId")))
+            .findFirst()
+            .orElse(null);
+    s.put(
+        "providerConfigured",
+        selected != null
+            && Boolean.TRUE.equals(selected.get("configured"))
+            && Boolean.TRUE.equals(selected.get("enabled")));
+    s.put("modelDisplayName", selected == null ? null : selected.get("model"));
     s.put("availableModes", List.of("AUTO", "API", "DETERMINISTIC"));
     return s;
   }

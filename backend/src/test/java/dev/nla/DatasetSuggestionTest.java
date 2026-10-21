@@ -10,6 +10,13 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class DatasetSuggestionTest {
+  static ModelProviderService providers() {
+    var providers = mock(ModelProviderService.class);
+    when(providers.selectDefault())
+        .thenReturn(new ModelProviderService.Selection(Json.obj(), null));
+    return providers;
+  }
+
   static Map<String, Object> context(String schema, String table) {
     return Json.obj(
         "tables",
@@ -150,7 +157,7 @@ class DatasetSuggestionTest {
     when(store.dataset("denied"))
         .thenThrow(
             new ApiException(org.springframework.http.HttpStatus.FORBIDDEN, "FORBIDDEN", "Denied"));
-    var service = new DatasetSuggestionService(store, catalog, new SqlGuard(), ai);
+    var service = new DatasetSuggestionService(store, catalog, new SqlGuard(), ai, providers());
     assertThrows(ApiException.class, () -> service.suggestions("denied", Map.of()));
     assertThrows(
         ApiException.class,
@@ -216,7 +223,7 @@ class DatasetSuggestionTest {
     when(ai.invoke(eq("business-validate"), anyMap(), anyInt()))
         .thenReturn(Json.obj("valid", true, "semanticVersion", "active-s"));
     var result =
-        new DatasetSuggestionService(store, catalog, new SqlGuard(), ai)
+        new DatasetSuggestionService(store, catalog, new SqlGuard(), ai, providers())
             .assist("dataset", Json.obj("instruction", "Propose a sum metric"));
     var draft = Json.map(result.get("semanticModel"));
     assertEquals(List.of(old, proposed), draft.get("metrics"));

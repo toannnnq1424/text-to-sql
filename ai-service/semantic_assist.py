@@ -20,6 +20,7 @@ from app import (
     provider_json,
     provider_payload,
 )
+from model_provider import ModelConfig, provider_model, structured_output
 
 
 class AssistInput(Strict):
@@ -29,6 +30,7 @@ class AssistInput(Strict):
     sqlDialect: Dialect = Field(strict=False)
     semanticContext: Context
     instruction: str = Field(min_length=1, max_length=2000)
+    modelConfig: ModelConfig | None = Field(default=None, exclude=True, repr=False)
 
     @model_validator(mode="after")
     def nonblank(self):
@@ -129,7 +131,7 @@ async def propose(data: AssistInput):
     )
     selected = SemanticContextSelector().select(selection)
     selected["examples"] = []
-    model = os.getenv("LLM_MODEL", "")
+    model = provider_model()
     payload = provider_payload(selection, selected, model)
     schema = response_schema(selected)
     instructions = " ".join(
@@ -168,7 +170,7 @@ async def propose(data: AssistInput):
             ),
         },
     ]
-    if os.getenv("LLM_STRUCTURED_OUTPUT", "false").lower() == "true":
+    if structured_output():
         payload["response_format"] = {
             "type": "json_schema",
             "json_schema": {"name": "semantic_proposal", "strict": True, "schema": schema},

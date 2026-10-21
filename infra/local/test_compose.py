@@ -51,6 +51,7 @@ def test_generated_configuration_separates_ai_readers_and_administrators(tmp_pat
         "KNOWLEDGE_ROOT",
         "KNOWLEDGE_EMBEDDING_URL",
         "KNOWLEDGE_EMBEDDING_MODEL",
+        "NLA_MODEL_PROVIDER_HOSTS",
     }
     assert ai["KNOWLEDGE_ENABLED"] == "false"
     assert ai["KNOWLEDGE_ROOT"] == "/var/lib/nla/knowledge"
@@ -58,6 +59,9 @@ def test_generated_configuration_separates_ai_readers_and_administrators(tmp_pat
     assert "NLA_PG_ADMIN_PASSWORD" not in backend
     assert backend["METADATA_JDBC_URL"].endswith("postgres:5432/nla_metadata_compose")
     assert backend["NLA_LOCAL"] == "false"
+    assert "NLA_MODEL_MASTER_KEY" in backend
+    assert "NLA_MODEL_MASTER_KEY" not in ai
+    assert backend["NLA_MODEL_PROVIDER_HOSTS"] == ai["NLA_MODEL_PROVIDER_HOSTS"]
     assert backend["WAREHOUSE_ALLOWED_HOSTS"] == "postgres,mysql,sqlserver"
     assert backend["OIDC_JWK_SET_URI"].startswith("http://keycloak:8080/")
     for filename in ("backend.env", "ai.env", "public.env"):
@@ -65,6 +69,10 @@ def test_generated_configuration_separates_ai_readers_and_administrators(tmp_pat
     token = ai["PYTHON_AI_TOKEN"]
     COMPOSE.configure()
     assert COMPOSE.environment(local / "ai.env")["PYTHON_AI_TOKEN"] == token
+    assert (
+        COMPOSE.environment(local / "backend.env")["NLA_MODEL_MASTER_KEY"]
+        == backend["NLA_MODEL_MASTER_KEY"]
+    )
 
 
 def test_partial_provider_configuration_is_rejected(tmp_path, monkeypatch):

@@ -30,3 +30,7 @@ Nền tảng đa warehouse/domain, tiếng Việt/Anh, React → Java → Python
 Tài liệu contract hiện tại là baseline `1.0.0` do phiên chuẩn bị tổng hợp; không có nghĩa ba service đã ký duyệt hoặc chạy tương thích. Trước khi tách code, mỗi vai trò review model/fixtures thuộc phạm vi mình và ghi nhận tại gate C0. Khi C0 đạt, dùng cùng commit contract cho cả ba luồng. Không cần hỏi lại các quyết định đã rõ; chỉ nêu điểm chưa giải được ảnh hưởng contract.
 
 Không đưa người dùng vào một approval flow bổ sung để làm các bước chuẩn bị thông thường. Việc chốt C0 là kiểm tra tương thích kỹ thuật, không phải yêu cầu xin phép thực hiện task đã được giao.
+
+## Điều chỉnh model settings ngày2026-10-21
+
+Theo yêu cầu trực tiếp mới, ADMIN được cấu hình LLM API key trong application, thay giới hạn cũ chỉ deployment env. Key write-only, encrypted server-side và có quyền/audit/URL policy, không trở thành public settings field. Query UI phải ghi rõ AUTO dùng profile mặc định nào, API chọn profile nào (online hay Ollama local), DETERMINISTIC không gọi AI, structured metric query không LLM. Contract [model providers](contracts/model-providers.md) có hiệu lực cho FE/BE/Python/infra.

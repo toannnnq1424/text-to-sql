@@ -14,6 +14,7 @@ import {
   Save,
   Table2,
 } from "lucide-react";
+import { executionLabel, providerSourceLabel } from "../lib/modelProvider";
 import { queryApi } from "../api/queryApi";
 import { useWarehouse } from "../app/providers";
 import { useAuth } from "../app/auth";
@@ -69,6 +70,9 @@ export function ResultPage({ history = false }: { history?: boolean }) {
         datasetId: q.datasetId,
         question: q.question,
         mode: q.executionMode,
+        ...(q.executionMode === "API" && q.provider
+          ? { providerId: q.provider.providerId }
+          : {}),
       });
     },
     onSuccess: (q) =>
@@ -144,14 +148,8 @@ export function ResultPage({ history = false }: { history?: boolean }) {
             </div>
             <div className="metadata-strip">
               <div>
-                <span>Mô hình xử lý</span>
-                <strong>
-                  {q.executionMode === "DETERMINISTIC"
-                    ? "Deterministic (Offline)"
-                    : q.executionMode === "SEMANTIC"
-                      ? "Compiler ngữ nghĩa"
-                      : q.model || "—"}
-                </strong>
+                <span>Cơ chế xử lý / model</span>
+                <strong>{executionLabel(q)}</strong>
               </div>
               <div>
                 <span>Phiên bản ngữ nghĩa</span>
@@ -454,8 +452,23 @@ export function ResultPage({ history = false }: { history?: boolean }) {
                     ["Warehouse ID", q.warehouseId],
                     ["Dataset ID", q.datasetId],
                     ["Engine", engineLabel[q.engine]],
-                    ["Model", q.model],
-                    ["Execution mode", q.executionMode],
+                    [
+                      "Model đã gọi",
+                      q.executionMode === "API" ? q.model : "Không gọi AI",
+                    ],
+                    ["Cơ chế xử lý", executionLabel(q)],
+                    [
+                      "Provider snapshot",
+                      q.provider?.name ||
+                        "Snapshot không có thông tin provider",
+                    ],
+                    ["Loại provider", q.provider?.kind || "—"],
+                    [
+                      "Nguồn cấu hình",
+                      q.provider ? providerSourceLabel(q.provider.source) : "—",
+                    ],
+                    ["Provider revision", q.provider?.revision || "—"],
+                    ["Model cấu hình yêu cầu", q.provider?.model || "—"],
                     ["Semantic version", q.semanticVersion],
                     ["Schema version", q.schemaVersion],
                     ["Latency", formatDuration(q.latencyMs)],

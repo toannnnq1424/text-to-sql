@@ -114,7 +114,8 @@ class SemanticWorkbenchTest {
             mock(Adapters.class),
             new SqlGuard(),
             ai,
-            mock(SemanticPlannerClient.class));
+            mock(SemanticPlannerClient.class),
+            mock(ModelProviderService.class));
     for (Object metrics : List.of("wrong type", List.of(), List.of("sales", "sales"), List.of(7))) {
       assertThrows(
           ApiException.class,

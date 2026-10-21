@@ -2,7 +2,7 @@
 
 Nền tảng Text-to-SQL đa warehouse, đa domain: đặt câu hỏi bằng tiếng Việt/Anh, nhận dữ liệu, biểu đồ, SQL, giải thích và thông tin thực thi.
 
-Repository có frontend React, backend Spring Boot, Python AI service, SQL Import có validate/preview, registry ingestion bốn lớp và thực thi PostgreSQL, MySQL, SQL Server. Đăng nhập OIDC local dùng IdP thật; Docker Compose đóng gói frontend, Java, AI planner, native data executor và file parser. Các luồng đã kiểm chứng và phần còn thiếu nằm trong [đánh giá hiện tại](docs/project-status.md), [current review](docs/current-review.md) và [work log](docs/work-log.md). Chưa nghiệm thu toàn bộ target hoặc AI provider thật. Import chỉ xử lý subset SQL đã kiểm soát; app không chạy tùy ý file SQL.
+Repository có frontend React, backend Spring Boot, Python AI service, SQL Import có validate/preview, registry ingestion bốn lớp và thực thi PostgreSQL, MySQL, SQL Server. Đăng nhập OIDC local dùng IdP thật; Docker Compose đóng gói frontend, Java, AI planner, native data executor và file parser. Các luồng đã kiểm chứng và phần còn thiếu nằm trong [đánh giá hiện tại](docs/project-status.md), [current review](docs/current-review.md) và [work log](docs/work-log.md). Chưa nghiệm thu toàn bộ target hoặc provider online; Ollama local đã có kiểm chứng inference thật. Import chỉ xử lý subset SQL đã kiểm soát; app không chạy tùy ý file SQL.
 
 ```text
 React → Java Spring Boot → Python AI Service / provider API
@@ -81,11 +81,13 @@ python3 infra/upstream/install_ai.py
 python3 infra/local/run.py ai
 ```
 
-AI service chạy tại `http://127.0.0.1:8000`. Deterministic mode dùng được ngay cho ví dụ semantic đã đăng ký; muốn dùng model API cần cấu hình provider URL/model/key trong môi trường local. Key không đưa vào Git hoặc log.
+AI service chạy tại `http://127.0.0.1:8000`. Deterministic mode dùng được ngay cho ví dụ semantic đã đăng ký; muốn dùng model API cần profile URL/model/key do ADMIN cấu hình hoặc environment fallback. Key không đưa vào Git hoặc log.
 
-File cấu hình provider riêng là `.local/compose-app/provider.env`, dùng chung cho Docker và lệnh `infra/local/run.py`. Khi đã có key, sao chép mẫu [infra/provider.env.example](infra/provider.env.example) vào đường dẫn đó nếu chưa có file, rồi điền `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`. Có thể để cả ba trống trong lúc chưa dùng provider. Để chạy model local qua Ollama, xem [cấu hình model local/API](docs/llm-provider.md); source Engine không chứa toàn bộ Wren AI Service. Không đặt key vào `VITE_*`, source code hoặc chat.
+Admin có thể mở **Cài đặt → Model và API key**, tạo profile **API online** hoặc **Ollama local**, nhập URL/model và key (online), lưu rồi chọn mặc định. Key đã lưu không đọc lại được từ UI/API; để trống khi sửa sẽ giữ key, chỉ xóa bằng thao tác tường minh. Lưu cấu hình không tự gọi model hoặc kiểm thử key. **AUTO** gọi model mặc định, **Chọn model/API** gọi profile được chọn, **Offline · khớp ví dụ** không gọi AI. Xem [hướng dẫn provider](docs/llm-provider.md).
 
-Với Docker, chạy lại `python3 infra/local/compose.py up` sau khi đổi file; xem [hướng dẫn Compose](docs/docker-local.md). Với cách chạy trực tiếp, khởi động lại AI và backend bằng các lệnh Quick Start. Launcher chỉ chuyển provider key cho Python; backend nhận tên model để hiển thị, frontend không nhận key. Chưa cấu hình provider thì chọn `DETERMINISTIC` tường minh; chế độ này chỉ khớp semantic examples đã đăng ký, không phải model đã train local.
+File cấu hình provider fallback riêng là `.local/compose-app/provider.env`, dùng chung cho Docker và lệnh `infra/local/run.py`. Khi đã có key, sao chép mẫu [infra/provider.env.example](infra/provider.env.example) vào đường dẫn đó nếu chưa có file, rồi điền `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`. Có thể để cả ba trống trong lúc chưa dùng provider. Để chạy model local qua Ollama, xem [cấu hình model local/API](docs/llm-provider.md); source Engine không chứa toàn bộ Wren AI Service. Không đặt key vào `VITE_*`, source code hoặc chat.
+
+Với Docker, chạy lại `python3 infra/local/compose.py up` sau khi đổi file; xem [hướng dẫn Compose](docs/docker-local.md). Với cách chạy trực tiếp, khởi động lại AI và backend bằng các lệnh Quick Start. Environment fallback vẫn chỉ chuyển key tới Python. Profile do admin cấu hình được Java mã hóa trong metadata store; chỉ giải mã cho private request tới Python, không trả key về browser hoặc prompt. Launcher tạo master key riêng trong `.local/model-admin.env`; sao lưu cùng metadata DB khi di chuyển máy, giữ tách biệt database backup và không commit. Chưa cấu hình provider có thể chọn `DETERMINISTIC` tường minh; chế độ này chỉ khớp semantic examples đã đăng ký, không phải model đã train local.
 
 ### 3. Khởi chạy Backend (Spring Boot)
 
@@ -148,7 +150,7 @@ python3 infra/local/compose.py status
 
 Mở `http://127.0.0.1:4173`, đăng nhập `nla-admin` với mật khẩu riêng trong `.local/oidc/accounts.json`. API Java được bind loopback `http://127.0.0.1:8085/api/v1`; Python chỉ có trong mạng container. Compose dùng metadata database riêng `nla_metadata_compose`, giữ nguyên registry của app host. Các endpoint warehouse được đăng ký bằng hostname/service port Compose, không sửa `localhost` trong code truy vấn.
 
-Build đầu cần tải base images và dependencies. Cần Docker Compose có hỗ trợ `env_file.format: raw` (v2.30+), Python 3.11+ cho script provisioning, cùng tài nguyên cho ba database và bốn app/IdP services. Hướng dẫn provider API, mạng, credential isolation, kiểm thử và dừng service ở [Docker deployment local](docs/docker-local.md). Nếu chưa cấu hình provider, app dùng `DETERMINISTIC` với semantic examples đã đăng ký; đây không phải bằng chứng model AI API thật.
+Build đầu cần tải base images và dependencies. Cần Docker Compose có hỗ trợ `env_file.format: raw` (v2.30+), Python 3.11+ cho script provisioning, cùng tài nguyên cho ba database và bốn app/IdP services. Hướng dẫn provider API, mạng, credential isolation, kiểm thử và dừng service ở [Docker deployment local](docs/docker-local.md). Nếu chưa cấu hình provider, người dùng có thể chọn `DETERMINISTIC` tường minh với semantic examples đã đăng ký; AUTO/API không tự fallback offline; đây không phải bằng chứng model AI API thật.
 
 ## Dữ liệu và nguồn
 
@@ -199,4 +201,4 @@ Các test tích hợp cần Docker và database provisioned; test browser live c
 | [Future extensions](docs/future-extensions.md) | Local AI/training và nâng quy mô ngoài scope hiện tại |
 | [Work log](docs/work-log.md) | Nhật ký commit/push và handoff |
 
-Ảnh gốc được phép đưa lên GitHub lưu tại [images](images/README.md). Mã nguồn tự viết của repository chưa chọn giấy phép phát hành; license của dataset và thành phần bên thứ ba được quản lý riêng. Hai bộ nguồn mới đã khảo sát chưa được tích hợp vào runtime; không lấy danh sách connector của chúng làm claim hỗ trợ hiện tại.
+Ảnh gốc được phép đưa lên GitHub lưu tại [images](images/README.md). Mã nguồn tự viết của repository chưa chọn giấy phép phát hành; license của dataset và thành phần bên thứ ba được quản lý riêng. Hai source kits có caller runtime được ghi trong full source adoption; các connector chỉ mới có source chưa được tính là hỗ trợ hiện tại.

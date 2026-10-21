@@ -123,7 +123,7 @@ Suite `dataset-schema` được tạo từ tối đa8 bảng thật của datase
 
 GET `/monitoring/summary`: filters warehouseId,engine,datasetId,from,to → queryVolume,successRate,llmErrorCount,sqlValidationRejectionCount,timeoutCount,avgLatencyMs,p95LatencyMs,queriesByEngine,queriesByDataset,warehouseHealth,ingestionHealth. Trả time window và denominator, rate null khi không có mẫu.
 
-GET `/settings`: safe platform settings (locale,timezone,defaultQueryMode,limits,availableModes,providerConfigured,modelDisplayName). PATCH `/settings`: admin cập nhật allowlisted nonsecret defaults/limits trong server bounds; không nhập key qua public settings. Model/provider secrets quản lý deployment env; thay đổi phải audit. UI user preference locale/timezone có thể giữ local, không ảnh hưởng canonical timestamps hay query timezone của dataset.
+GET `/settings`: safe platform settings (locale,timezone,defaultQueryMode,limits,availableModes,providerConfigured,modelDisplayName). PATCH `/settings`: admin cập nhật allowlisted nonsecret defaults/limits trong server bounds; endpoint PATCH này không nhận key; endpoint ADMIN profiles riêng nhận write-only key. Model/provider secrets quản lý qua ADMIN Settings profiles mã hóa hoặc deployment fallback; [model providers](model-providers.md) supersede giới hạn cũ chỉ env. Thay đổi phải audit, không trả secret. UI user preference locale/timezone có thể giữ local, không ảnh hưởng canonical timestamps hay query timezone của dataset.
 
 SQL Import và in-app ingestion là scope bắt buộc theo [scope](../scope.md), không phải future extension. Không có quyền thực thi arbitrary SQL file.
 

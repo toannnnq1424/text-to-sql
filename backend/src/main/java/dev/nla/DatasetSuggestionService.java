@@ -18,13 +18,20 @@ public final class DatasetSuggestionService {
   private final CatalogService catalog;
   private final SqlGuard guard;
   private final AiClient ai;
+  private final ModelProviderService providers;
   private static final Set<String> NUMBERS = Set.of("INTEGER", "BIGINT", "DECIMAL", "FLOAT");
 
-  DatasetSuggestionService(Store store, CatalogService catalog, SqlGuard guard, AiClient ai) {
+  DatasetSuggestionService(
+      Store store,
+      CatalogService catalog,
+      SqlGuard guard,
+      AiClient ai,
+      ModelProviderService providers) {
     this.store = store;
     this.catalog = catalog;
     this.guard = guard;
     this.ai = ai;
+    this.providers = providers;
   }
 
   public Object suggestions(String id, Map<String, String> parameters) {
@@ -300,6 +307,7 @@ public final class DatasetSuggestionService {
     }
     var envelope = SemanticController.envelope(id, store, catalog);
     envelope.put("instruction", text);
+    providers.selectDefault().apply(envelope);
     var proposal = ai.invoke("semantic-assist", envelope, 120);
     if (!proposal
             .keySet()

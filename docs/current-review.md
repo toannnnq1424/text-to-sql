@@ -26,3 +26,11 @@ Login/OIDC local đã có browser/API evidence từ các đợt trước; deploy
 SDK semantic cài từ source fork trong repo, có các specialization planning/compaction/business/transform; LanceDB MemoryStore/schema indexer có caller knowledge và retrieval thật. Go executor dùng native source factories/pools của source kit thứ hai cho PostgreSQL/MySQL/SQL Server. [Bản đồ caller](integrations/full-source-adoption.md) phân biệt source đã nhập với capability đang chạy.
 
 Không chạy nguyên mọi server/CLI/tool của hai repo và không coi toàn bộ417k dòng như tính năng đã tích hợp. Cloud connectors, native cube/calculated aggregate chưa đáp ứng probe, Rust build từ source, production load/recovery và chất lượng model trên corpus mở vẫn có giới hạn được ghi ở project status. Các điểm còn thiếu của target hiện tại vẫn là INCOMPLETE, không chuyển thành “future work” để gọi hoàn thành.
+
+## Quản trị model và API key — 2026-10-21
+
+Yêu cầu ADMIN cấu hình key trong application supersede quy tắc cũ chỉ cấu hình qua deployment. Cài đặt → Model và API key cho phép tạo/sửa/xóa profile API online hoặc Ollama, thay/giữ/xóa key tường minh, chọn mặc định và xử lý revision conflict. Java mã hóa AES-GCM; master key nằm ngoài metadata DB và cần sao lưu cùng quy trình phục hồi. Người dùng khác chỉ đọc metadata an toàn; API không trả key cũ, suffix hoặc ciphertext.
+
+Màn Truy vấn ghi rõ model/profile đang dùng. AUTO gọi profile mặc định; chọn model/API gọi profile đã chọn, có thể là local hoặc online. DETERMINISTIC không có model, chỉ khớp ví dụ đúng dataset/dialect. Ngữ cảnh tùy chỉnh không phải model; structured metric query là compiler, không phải LLM. Snapshot giữ danh tính provider/model lúc chạy; lịch sử cũ thiếu provenance không bị gán model hiện tại. API rerun giữ provider đã chọn trước đó.
+
+Kiểm thử qua OIDC/Java/Python/Ollama và ba database thật đã xác minh lựa chọn explicit/default/offline, vòng đời key mã hóa, quyền ADMIN và persistence sau restart backend. Profile online chỉ dùng key sinh riêng cho test lưu cấu hình và chưa từng gọi inference; file cấu hình online gốc giữ nguyên. Saving không tự kiểm key/quota/model availability và không claim online đã PASS. [Contract chi tiết](contracts/model-providers.md), [hướng dẫn sử dụng/vận hành](llm-provider.md), số ca và browser evidence tại work log.

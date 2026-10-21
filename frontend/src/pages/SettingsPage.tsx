@@ -5,6 +5,8 @@ import { useAuth } from "../app/auth";
 import { useWarehouse, useLocale } from "../app/providers";
 import { settingsApi } from "../api/settingsApi";
 import { SettingsInputSchema, type Settings } from "../api/schema";
+import { ModelProviders } from "../components/ModelProviders";
+import { modeLabel } from "../lib/modelProvider";
 import { PageHeading } from "../components/Shell";
 import {
   ApiAccess,
@@ -99,6 +101,7 @@ export function SettingsPage() {
         </div>
       </Card>
       <ApiAccess>
+        <ModelProviders />
         <Resource resource={settings}>
           {(data) => (
             <SettingsForm key={JSON.stringify(data)} settings={data} />
@@ -120,14 +123,15 @@ function SettingsForm({ settings: s }: { settings: Settings }) {
     <Card title="Cấu hình nền tảng" icon={<Settings2 size={22} />}>
       <Notice>
         <ShieldCheck size={17} />
-        API keys và credential secrets được cấu hình tại deployment, không nhập
-        hoặc hiển thị trên frontend.
+        Cấu hình model và API key được quản lý ở mục trên. Giới hạn truy vấn và
+        quyền truy cập vẫn được Java kiểm tra độc lập.
       </Notice>
       <DetailList
         items={[
-          ["Provider đã cấu hình", s.providerConfigured ? "Có" : "Chưa"],
-          ["Model", s.modelDisplayName],
-          ["Các chế độ có sẵn", s.availableModes.join(", ")],
+          [
+            "Các chế độ có sẵn",
+            s.availableModes.map((mode) => modeLabel[mode]).join(", "),
+          ],
         ]}
       />
       {!auth.can("ADMIN") && (
@@ -202,7 +206,9 @@ function SettingsForm({ settings: s }: { settings: Settings }) {
             <Field label="Chế độ xử lý mặc định">
               <select name="defaultQueryMode" defaultValue={s.defaultQueryMode}>
                 {s.availableModes.map((m) => (
-                  <option key={m}>{m}</option>
+                  <option key={m} value={m}>
+                    {modeLabel[m]}
+                  </option>
                 ))}
               </select>
             </Field>

@@ -4802,6 +4802,210 @@
         }
       }
     },
+    "/settings/model-providers": {
+      "get": {
+        "operationId": "get_settings_model_providers",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelProviders"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Controlled error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "post_settings_model_providers",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelProviderInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelProvider"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Controlled error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/model-providers/default": {
+      "put": {
+        "operationId": "put_settings_model_providers_default",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelProviderDefault"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelProviders"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Controlled error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/model-providers/{id}": {
+      "put": {
+        "operationId": "put_settings_model_providers__id_",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelProviderUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelProvider"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Controlled error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete_settings_model_providers__id_",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Controlled error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/settings": {
       "get": {
         "operationId": "get_settings",
@@ -4879,6 +5083,389 @@
   },
   "components": {
     "schemas": {
+      "ModelProvider": {
+        "type": "object",
+        "properties": {
+          "providerId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+          },
+          "revision": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ONLINE",
+              "OLLAMA"
+            ]
+          },
+          "model": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "APPLICATION",
+              "ENVIRONMENT"
+            ]
+          },
+          "baseUrl": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "hasApiKey": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "configured": {
+            "type": "boolean"
+          },
+          "readOnly": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "providerId",
+          "revision",
+          "name",
+          "kind",
+          "model",
+          "source",
+          "baseUrl",
+          "hasApiKey",
+          "enabled",
+          "configured",
+          "readOnly",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "ModelProviders": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "providerId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+                },
+                "revision": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120,
+                  "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "ONLINE",
+                    "OLLAMA"
+                  ]
+                },
+                "model": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200,
+                  "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+                },
+                "source": {
+                  "type": "string",
+                  "enum": [
+                    "APPLICATION",
+                    "ENVIRONMENT"
+                  ]
+                },
+                "baseUrl": {
+                  "type": "string",
+                  "maxLength": 2048
+                },
+                "hasApiKey": {
+                  "type": "boolean"
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "configured": {
+                  "type": "boolean"
+                },
+                "readOnly": {
+                  "type": "boolean"
+                },
+                "updatedAt": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "providerId",
+                "revision",
+                "name",
+                "kind",
+                "model",
+                "source",
+                "baseUrl",
+                "hasApiKey",
+                "enabled",
+                "configured",
+                "readOnly",
+                "updatedAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "defaultProviderId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "configurationAvailable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "items",
+          "defaultProviderId",
+          "configurationAvailable"
+        ],
+        "additionalProperties": false
+      },
+      "ModelProviderInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ONLINE",
+              "OLLAMA"
+            ]
+          },
+          "baseUrl": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048,
+            "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+          },
+          "model": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "allOf": [
+              {
+                "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+              },
+              {
+                "pattern": "^[A-Za-z0-9_.:/@+\\-]+$"
+              }
+            ]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "apiKey": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8192,
+            "pattern": "^[^\\s\\u0000-\\u001f\\u007f]+$"
+          }
+        },
+        "required": [
+          "name",
+          "kind",
+          "baseUrl",
+          "model",
+          "enabled"
+        ],
+        "additionalProperties": false
+      },
+      "ModelProviderUpdate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ONLINE",
+              "OLLAMA"
+            ]
+          },
+          "baseUrl": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048,
+            "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+          },
+          "model": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "allOf": [
+              {
+                "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+              },
+              {
+                "pattern": "^[A-Za-z0-9_.:/@+\\-]+$"
+              }
+            ]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "apiKey": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8192,
+            "pattern": "^[^\\s\\u0000-\\u001f\\u007f]+$"
+          },
+          "revision": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+          },
+          "clearApiKey": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "kind",
+          "baseUrl",
+          "model",
+          "enabled",
+          "revision"
+        ],
+        "additionalProperties": false
+      },
+      "ModelProviderDefault": {
+        "type": "object",
+        "properties": {
+          "providerId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "providerId"
+        ],
+        "additionalProperties": false
+      },
+      "ProviderSnapshot": {
+        "type": "object",
+        "properties": {
+          "providerId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+          },
+          "revision": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ONLINE",
+              "OLLAMA"
+            ]
+          },
+          "model": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "APPLICATION",
+              "ENVIRONMENT"
+            ]
+          }
+        },
+        "required": [
+          "providerId",
+          "revision",
+          "name",
+          "kind",
+          "model",
+          "source"
+        ],
+        "additionalProperties": false
+      },
       "QuestionSuggestion": {
         "type": "object",
         "properties": {
@@ -7522,6 +8109,64 @@
             "type": "string",
             "minLength": 1
           },
+          "provider": {
+            "default": null,
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "providerId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+                  },
+                  "revision": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120,
+                    "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "ONLINE",
+                      "OLLAMA"
+                    ]
+                  },
+                  "model": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+                  },
+                  "source": {
+                    "type": "string",
+                    "enum": [
+                      "APPLICATION",
+                      "ENVIRONMENT"
+                    ]
+                  }
+                },
+                "required": [
+                  "providerId",
+                  "revision",
+                  "name",
+                  "kind",
+                  "model",
+                  "source"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "correlationId": {
             "type": "string",
             "minLength": 1
@@ -7880,6 +8525,7 @@
         },
         "required": [
           "queryId",
+          "provider",
           "correlationId",
           "warehouseId",
           "datasetId",
@@ -7928,6 +8574,10 @@
               "API",
               "DETERMINISTIC"
             ]
+          },
+          "providerId": {
+            "type": "string",
+            "minLength": 1
           }
         },
         "required": [
@@ -12213,6 +12863,64 @@
                   "type": "string",
                   "minLength": 1
                 },
+                "provider": {
+                  "default": null,
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "providerId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+                        },
+                        "revision": {
+                          "type": "string",
+                          "minLength": 1,
+                          "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120,
+                          "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "ONLINE",
+                            "OLLAMA"
+                          ]
+                        },
+                        "model": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200,
+                          "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "APPLICATION",
+                            "ENVIRONMENT"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "providerId",
+                        "revision",
+                        "name",
+                        "kind",
+                        "model",
+                        "source"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "correlationId": {
                   "type": "string",
                   "minLength": 1
@@ -12301,6 +13009,7 @@
               },
               "required": [
                 "queryId",
+                "provider",
                 "correlationId",
                 "warehouseId",
                 "datasetId",
@@ -16534,6 +17243,64 @@
                   "type": "string",
                   "minLength": 1
                 },
+                "provider": {
+                  "default": null,
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "providerId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+                        },
+                        "revision": {
+                          "type": "string",
+                          "minLength": 1,
+                          "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120,
+                          "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "ONLINE",
+                            "OLLAMA"
+                          ]
+                        },
+                        "model": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200,
+                          "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "APPLICATION",
+                            "ENVIRONMENT"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "providerId",
+                        "revision",
+                        "name",
+                        "kind",
+                        "model",
+                        "source"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "correlationId": {
                   "type": "string",
                   "minLength": 1
@@ -16622,6 +17389,7 @@
               },
               "required": [
                 "queryId",
+                "provider",
                 "correlationId",
                 "warehouseId",
                 "datasetId",

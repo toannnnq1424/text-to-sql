@@ -53,7 +53,11 @@ class QueryRuntimeSecurityTest {
                 sql,
                 List.of("nla_model_0"),
                 List.of(Json.obj("schema", "public", "name", "invoice"))));
-    var service = new QueryService(store, catalog, adapters, new SqlGuard(), ai, planner);
+    var providers = mock(ModelProviderService.class);
+    when(providers.selectDefault())
+        .thenReturn(new ModelProviderService.Selection(Json.obj(), null));
+    var service =
+        new QueryService(store, catalog, adapters, new SqlGuard(), ai, planner, providers);
     var result =
         service.run(
             Json.obj(

@@ -24,6 +24,7 @@ public class AiClient {
   public Map<String, Object> invoke(String path, Map<String, Object> request, int timeoutSeconds) {
     if (!Set.of(
             "business-plan",
+            "model-provider/status",
             "business-validate",
             "semantic-assist",
             "knowledge/status",
@@ -66,6 +67,12 @@ public class AiClient {
               "Ngữ nghĩa không hợp lệ: kiểm tra tên cột, biểu thức tổng hợp, dimensions và đường"
                   + " join giữ đúng mức hạt.");
         if (code.equals("INVALID_REQUEST")) throw ApiException.bad("Cấu hình xử lý không hợp lệ.");
+        if (path.equals("model-provider/status"))
+          throw new ApiException(
+              HttpStatus.SERVICE_UNAVAILABLE,
+              "LLM_ERROR",
+              "Không đọc được cấu hình model từ dịch vụ xử lý.");
+
         if (path.equals("semantic-assist")) {
           if (Set.of("INSUFFICIENT_CONTEXT", "UNSUPPORTED_QUESTION", "LOW_CONFIDENCE")
               .contains(code))
