@@ -125,6 +125,8 @@ def configure() -> None:
         "LLM_MAX_OUTPUT_TOKENS",
         "LLM_STRUCTURED_OUTPUT",
         "LLM_PROVIDER_KIND",
+        "LLM_MAX_CONCURRENT_REQUESTS",
+        "LLM_ADMISSION_TIMEOUT_MS",
     ):
         value = provider.get(key, os.getenv(key, ""))
         if value:

@@ -25,6 +25,7 @@ const en: Record<string, string> = {
   "Ngữ nghĩa nghiệp vụ": "Business semantics",
   "Tri thức AI": "AI knowledge",
   "Pipelines dữ liệu": "Data pipelines",
+  "Chất lượng dữ liệu": "Data quality",
   "Giám sát": "Monitoring",
   "Cài đặt": "Settings",
   "Ngôn ngữ": "Language",

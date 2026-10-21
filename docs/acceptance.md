@@ -66,3 +66,9 @@ Tính năng mandatory không được đánh dấu done bằng placeholder, TODO
 - Knowledge: real source-kit LanceDB index/search, local embeddings, persisted status/counts, stale fingerprint, approval/delete/reset; không data rows/secrets, SQL examples phải còn hợp lệ. Real API mode qua local Ollama phải chứng minh model + SQL + giá trị DB3; deterministic/mock không thay thế.
 - Pipeline: actual source → independently projected/filtered/aggregated RAW/STAGING/WAREHOUSE/MART, preview không DDL và nói rõ sample, canonical precision/time, full-source quota fail closed, persisted async/idempotency/collision, reader-verifiable mart Dataset. PG/MSSQL rollback khác MySQL partial/outcome-unknown; không tự drop dữ liệu ngoài identity test.
 - UI: ba sidebar routes mới, active warehouse/dataset, loading/empty/error/permission, controls lấy metadata thật và ngăn submit draft chưa validate; screenshot cùng style mock, actual OIDC caller3engines. Source-kit CPU compatibility phải chạy vector operations trong image build.
+
+## Chất lượng dữ liệu và inference admission
+
+- Sáu loại quality rules phải chạy full-table read-only trên cả3engine: null, duplicate-extra, numeric inclusive range, text accepted-set, count assertion và reference NOT EXISTS; null/rỗng/duplicate reference không nhân counts, count/decimal strings chính xác. Independent reader oracle và dữ liệu được app upload không dùng sample fallback.
+- Rule revisions và run snapshot/history persist sau restart, role/resource scoped reads/writes; schema/disabled/unknownref bị chặn, queue/deadline/interruption/late-result bảo toàn terminal state và partial checks. UI editor/run/history/context switch/readonly role/responsive cùng Java thật.
+- Inference active+waiter bounded, admission nằm trong deadline và shared generation/semantic-assist; correction giữslot, timeout/cancel/error release; offline/native/business bypass. Test concurrency/error isolation và local Ollama smoke riêng, online không tự thử.

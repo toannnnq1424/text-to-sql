@@ -32,7 +32,14 @@ def configured_files(tmp_path, monkeypatch):
     monkeypatch.setattr(COMPOSE, "ROOT", root)
     monkeypatch.setattr(COMPOSE, "LOCAL", local / "compose-app")
     monkeypatch.setattr(COMPOSE, "PUBLIC", Path(__file__).parents[1] / "application.env.example")
-    for name in ("LLM_BASE_URL", "LLM_MODEL", "LLM_API_KEY", "LLM_TIMEOUT_MS"):
+    for name in (
+        "LLM_BASE_URL",
+        "LLM_MODEL",
+        "LLM_API_KEY",
+        "LLM_TIMEOUT_MS",
+        "LLM_MAX_CONCURRENT_REQUESTS",
+        "LLM_ADMISSION_TIMEOUT_MS",
+    ):
         monkeypatch.delenv(name, raising=False)
     return local / "compose-app"
 
@@ -117,3 +124,16 @@ def test_native_worker_service_tokens_are_isolated_and_stable(tmp_path, monkeypa
     COMPOSE.configure()
     assert COMPOSE.environment(local / "data-runtime.env") == native
     assert COMPOSE.environment(local / "file-service.env") == files
+
+
+def test_inference_capacity_configuration_only_reaches_python(tmp_path, monkeypatch):
+    local = configured_files(tmp_path, monkeypatch)
+    monkeypatch.setenv("LLM_MAX_CONCURRENT_REQUESTS", "3")
+    monkeypatch.setenv("LLM_ADMISSION_TIMEOUT_MS", "500")
+    COMPOSE.configure()
+    ai = COMPOSE.environment(local / "ai.env")
+    assert ai["LLM_MAX_CONCURRENT_REQUESTS"] == "3"
+    assert ai["LLM_ADMISSION_TIMEOUT_MS"] == "500"
+    for filename in ("backend.env", "public.env", "data-runtime.env", "file-service.env"):
+        assert "LLM_MAX_CONCURRENT_REQUESTS" not in COMPOSE.environment(local / filename)
+        assert "LLM_ADMISSION_TIMEOUT_MS" not in COMPOSE.environment(local / filename)

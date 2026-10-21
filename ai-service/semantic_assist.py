@@ -1,5 +1,6 @@
 """Reviewed semantic drafts from the configured model; no data execution or activation."""
 
+import asyncio
 import json
 import os
 from copy import deepcopy
@@ -17,9 +18,11 @@ from app import (
     Metric,
     SemanticContextSelector,
     Strict,
+    generation_budget,
     provider_json,
     provider_payload,
 )
+from inference_admission import inference_slot
 from model_provider import ModelConfig, provider_model, structured_output
 
 
@@ -114,6 +117,17 @@ def response_schema(context):
 
 
 async def propose(data: AssistInput):
+    async def admitted_proposal():
+        async with inference_slot():
+            return await _propose(data)
+
+    try:
+        return await asyncio.wait_for(admitted_proposal(), timeout=generation_budget())
+    except asyncio.TimeoutError:
+        raise Controlled("PROVIDER_TIMEOUT", 504) from None
+
+
+async def _propose(data: AssistInput):
     if not data.semanticContext.tables:
         raise Controlled("INSUFFICIENT_CONTEXT")
     # Reuse the source-aware selector and its existing required-reference/join/byte bounds.

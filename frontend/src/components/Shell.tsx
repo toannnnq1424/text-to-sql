@@ -21,6 +21,7 @@ import {
   LogIn,
   LogOut,
   ShieldCheck,
+  ClipboardCheck,
   X,
   ArrowRight,
 } from "lucide-react";
@@ -41,6 +42,7 @@ export const navigation = [
   { to: "/semantic", label: "Ngữ nghĩa nghiệp vụ", icon: BookOpen },
   { to: "/knowledge", label: "Tri thức AI", icon: BrainCircuit },
   { to: "/pipelines", label: "Pipelines dữ liệu", icon: GitBranch },
+  { to: "/quality", label: "Chất lượng dữ liệu", icon: ClipboardCheck },
   { to: "/evaluation", label: "Đánh giá", icon: BarChart3 },
   { to: "/ingestion", label: "Nạp dữ liệu", icon: CloudUpload },
   { to: "/import/sql", label: "SQL Import", icon: FileCode2 },

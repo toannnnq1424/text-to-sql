@@ -30,6 +30,8 @@ Gợi ý câu hỏi được lấy theo schema thật và phiên bản ngữ ngh
 
 SQL hiển thị trong kết quả là câu đã qua planner/Java validation và thực thi; SQL candidate ban đầu có nhãn riêng nếu khác. Native planner được giữ trong luồng, với compaction AST để bỏ các lớp CTE/projection thừa; CTE có ý nghĩa trong truy vấn được giữ. “SQL mong đợi” trong **Đánh giá** là oracle kiểm thử độc lập, không phải đáp án runtime cho mọi câu hỏi. Bộ kiểm tra schema hiện tại lấy bảng từ dataset thật và cần model API; corpus đóng gói chỉ được chọn khi tương thích dataset.
 
+Màn **Chất lượng dữ liệu** cho phép cấu hình kiểm tra null, trùng khóa, miền số, tập giá trị, số dòng và tham chiếu trên dataset đã chọn. Server chạy nền bằng reader chỉ đọc, lưu quy tắc/revision và snapshot lịch sử; không tự sửa dữ liệu. [Hướng dẫn chất lượng dữ liệu](docs/data-quality.md).
+
 Hướng dẫn chọn file/nguồn database và đăng ký nguồn trong ba bước: [Nạp dữ liệu](docs/ingestion-guide.md).
 
 ## Hướng dẫn khởi chạy (Quick Start)
