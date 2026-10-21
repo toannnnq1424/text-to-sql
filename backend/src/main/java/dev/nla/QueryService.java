@@ -169,6 +169,7 @@ public class QueryService {
         candidate = ai.invoke("business-plan", request, 20);
       }
       q.put("model", candidate.get("model"));
+      q.put("candidateSql", candidate.get("sql"));
       for (String field : List.of("selectedMetrics", "selectedDimensions")) {
         String category = field.equals("selectedMetrics") ? "metrics" : "dimensions";
         Set<String> names =
@@ -191,6 +192,7 @@ public class QueryService {
       var validated =
           guard.validate(
               planned.sql(), Json.str(w, "engine"), catalog.tables(Json.str(d, "datasetId")));
+      q.put("generatedSql", validated.sql());
       Set<String> plannedSources =
           planned.sourceTables().stream()
               .map(SemanticPlannerClient::sourceKey)
@@ -217,6 +219,7 @@ public class QueryService {
                   ((Number) limits.get("maxBytes")).intValue(),
                   QueryDeadline.seconds(
                       Math.max(1, ((Number) limits.get("statementTimeoutMs")).intValue() / 1000)));
+      ResultPresentation.annotate(result, context, candidate);
       q.put("result", result);
       q.put("chart", chart(candidate.get("chartRecommendation"), result));
       q.put("explanation", candidate.get("explanation"));
@@ -285,6 +288,7 @@ public class QueryService {
   public Map<String, Object> publicQuery(Map<String, Object> stored) {
     var q = new LinkedHashMap<>(stored);
     q.remove("owner");
+    q.putIfAbsent("candidateSql", null);
     if (q.get("result") != null) {
       var full = Json.map(q.get("result"));
       var page = new LinkedHashMap<>(full);
@@ -357,6 +361,7 @@ public class QueryService {
               for (String key :
                   List.of(
                       "generatedSql",
+                      "candidateSql",
                       "result",
                       "chart",
                       "error",
@@ -379,27 +384,6 @@ public class QueryService {
   }
 
   static Map<String, Object> chart(Object raw, Map<String, Object> result) {
-    var chart = Json.map(raw);
-    Set<String> types = Set.of("table", "number", "bar", "grouped-bar", "line", "area", "pie");
-    var cols = Json.objects(result.get("columns"));
-    Set<String> names =
-        cols.stream().map(c -> Json.str(c, "name")).collect(java.util.stream.Collectors.toSet());
-    var series = Json.objects(chart.get("series"));
-    boolean valid =
-        types.contains(Json.str(chart, "type"))
-            && series.stream().allMatch(s -> names.contains(s.get("column")));
-    if (!Json.str(chart, "type").equals("table") && !Json.str(chart, "type").equals("number"))
-      valid &= names.contains(chart.get("x"));
-    if (!valid)
-      return Json.obj(
-          "type",
-          "table",
-          "title",
-          "Kết quả truy vấn",
-          "series",
-          List.of(),
-          "reason",
-          "Chart recommendation không hợp lệ.");
-    return chart;
+    return ResultPresentation.choose(raw, result);
   }
 }

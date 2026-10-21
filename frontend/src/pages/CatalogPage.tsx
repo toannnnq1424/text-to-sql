@@ -12,6 +12,7 @@ import {
   Table2,
   TrendingUp,
 } from "lucide-react";
+import { useAuth } from "../app/auth";
 import { useWarehouse } from "../app/providers";
 import { catalogApi } from "../api/catalogApi";
 import type { Metric, Dimension, TableMetadata } from "../api/schema";
@@ -397,6 +398,7 @@ function TableList({ onSelect }: { onSelect: (id: string) => void }) {
   );
 }
 function MetricList({ onSelect }: { onSelect: (id: string) => void }) {
+  const auth = useAuth();
   const c = useWarehouse(),
     list = useListState("name"),
     query = useQuery({
@@ -408,6 +410,17 @@ function MetricList({ onSelect }: { onSelect: (id: string) => void }) {
     <Resource resource={query}>
       {(data) => (
         <>
+          <div className="catalog-metric-actions">
+            <p className="muted">
+              Các chỉ số là định nghĩa nghiệp vụ đang lưu, có thể chỉnh sửa và
+              kiểm chứng trên warehouse.
+            </p>
+            {auth.can("ADMIN") && (
+              <Link className="button primary" to="/semantic?action=create">
+                Tạo chỉ số
+              </Link>
+            )}
+          </div>
           <DataGrid
             rows={data.items}
             rowKey={(m) => m.name}
@@ -433,6 +446,28 @@ function MetricList({ onSelect }: { onSelect: (id: string) => void }) {
                 render: (m) => <code>{m.expression}</code>,
               },
               { key: "unit", label: "Đơn vị", render: (m) => m.unit },
+              {
+                key: "actions",
+                label: "Thao tác",
+                render: (metric) => (
+                  <div className="inline-actions">
+                    <Link
+                      className="button secondary"
+                      to={`/semantic?action=explore&metric=${encodeURIComponent(metric.name)}`}
+                    >
+                      Phân tích
+                    </Link>
+                    {auth.can("ADMIN") && (
+                      <Link
+                        className="button secondary"
+                        to={`/semantic?action=edit&metric=${encodeURIComponent(metric.name)}`}
+                      >
+                        Chỉnh sửa
+                      </Link>
+                    )}
+                  </div>
+                ),
+              },
               {
                 key: "synonyms",
                 label: "Synonyms",
@@ -714,10 +749,30 @@ function TableDetail({ table: t }: { table: TableMetadata }) {
   );
 }
 function MetricDetail({ metric: m }: { metric: Metric }) {
+  const auth = useAuth();
   return (
     <>
       <h3>{m.name}</h3>
       <p>{m.description}</p>
+      <div className="catalog-metric-actions">
+        <Link
+          className="button primary"
+          to={`/semantic?action=explore&metric=${encodeURIComponent(m.name)}`}
+        >
+          Phân tích chỉ số
+        </Link>
+        {auth.can("ADMIN") && (
+          <Link
+            className="button secondary"
+            to={`/semantic?action=edit&metric=${encodeURIComponent(m.name)}`}
+          >
+            Chỉnh sửa định nghĩa
+          </Link>
+        )}
+      </div>
+      <small className="muted">
+        Nguồn: cấu hình ngữ nghĩa đang hoạt động của dataset.
+      </small>
       <DetailList
         items={[
           ["Đơn vị", m.unit],

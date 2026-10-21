@@ -88,6 +88,20 @@ class SqlGuardTest {
   }
 
   @Test
+  void sqlServerBigCountRetainsBigintSemanticsWithoutBroadeningOtherDialects() {
+    assertTrue(
+        guard
+            .validate("SELECT COUNT_BIG(*) AS n FROM public.invoice", "SQL_SERVER", tables)
+            .sql()
+            .contains("COUNT_BIG"));
+    for (String engine : List.of("POSTGRESQL", "MYSQL")) {
+      assertThrows(
+          ApiException.class,
+          () -> guard.validate("SELECT COUNT_BIG(*) FROM public.invoice", engine, tables));
+    }
+  }
+
+  @Test
   void csvSanitization() {
     assertEquals("\"'=HYPERLINK(1)\"", QueryController.cell("=HYPERLINK(1)", true));
     assertEquals("\"-100.25\"", QueryController.cell("-100.25", false));

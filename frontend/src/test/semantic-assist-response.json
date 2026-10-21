@@ -1,0 +1,99 @@
+{
+  "model": "local-model-consumer-test",
+  "semanticModel": {
+    "tables": [
+      {
+        "tableId": "bmxhX2ltcG9ydABhbmFseXRpY3NfcWFfZTAyNmRkMmJmZV9tYXJ0",
+        "schema": "analytics_test",
+        "name": "observations",
+        "logicalName": "analytics_qa_e026dd2bfe_mart",
+        "description": "",
+        "grain": "Physical table/view",
+        "columns": [
+          {
+            "name": "observed_on",
+            "dataType": "DATE",
+            "nullable": false,
+            "description": "",
+            "synonyms": []
+          },
+          {
+            "name": "station",
+            "dataType": "STRING",
+            "nullable": false,
+            "description": "",
+            "synonyms": []
+          },
+          {
+            "name": "temperature",
+            "dataType": "DECIMAL",
+            "nullable": false,
+            "description": "",
+            "synonyms": []
+          },
+          {
+            "name": "rainfall",
+            "dataType": "DECIMAL",
+            "nullable": false,
+            "description": "",
+            "synonyms": []
+          }
+        ],
+        "queryable": true,
+        "category": "nla_import",
+        "status": "PUBLISHED",
+        "primaryKey": [],
+        "foreignKeys": []
+      }
+    ],
+    "metrics": [
+      {
+        "name": "avg_rainfall",
+        "description": "Trung bình lượng mưa theo mức hạt dòng quan sát",
+        "expression": "AVG(\"analytics_test\".\"observations\".\"rainfall\")",
+        "unit": "",
+        "tableRefs": [
+          {
+            "schema": "analytics_test",
+            "name": "observations"
+          }
+        ],
+        "compatibleDimensions": ["station"],
+        "synonyms": []
+      }
+    ],
+    "examples": [],
+    "timezone": "UTC",
+    "dimensions": [
+      {
+        "name": "station",
+        "description": "Station label configured in this test dataset",
+        "table": {
+          "schema": "analytics_test",
+          "name": "observations"
+        },
+        "column": "station",
+        "dataType": "STRING",
+        "synonyms": [],
+        "category": null
+      },
+      {
+        "name": "observed_day",
+        "table": {
+          "name": "observations",
+          "schema": "analytics_test"
+        },
+        "column": "observed_on",
+        "dataType": "DATE",
+        "synonyms": [],
+        "description": "Observation day configured in this test dataset"
+      }
+    ],
+    "businessRules": ["Không đề xuất lại dimension station nếu đã tồn tại"],
+    "referenceTime": "2026-10-21T00:00:00Z",
+    "relationships": [],
+    "schemaVersion": "1.0.0",
+    "semanticVersion": "reviewed-fixture"
+  },
+  "warnings": ["Review the proposed business definitions before activation."]
+}

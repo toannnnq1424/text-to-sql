@@ -26,6 +26,10 @@ Cách chạy đầy đủ các dịch vụ riêng tư cùng database/đăng nh�
 
 Hai bộ source trong Downloads đã được đưa vào [vendor/upstream](vendor/upstream/README.md), tổng 417.117 dòng code theo inventory. SDK semantic được fork với planner theo dataset, kiểm tra lineage sau rewrite và chế độ chỉ lập kế hoạch; app cài trực tiếp source fork này; native executor gọi trực tiếp source factories của ba engine. Bảng caller, phần chưa kích hoạt và kiểm chứng ở [full source adoption](docs/integrations/full-source-adoption.md). Số dòng đã nhập không phải số tính năng đã nghiệm thu.
 
+Gợi ý câu hỏi được lấy theo schema thật và phiên bản ngữ nghĩa của dataset đang chọn; UI phân biệt câu hỏi từ schema, metric đã cấu hình và ví dụ được quản trị duyệt. Chúng không phải kết quả trả lời được tạo sẵn. Trong **Ngữ nghĩa nghiệp vụ**, admin có thể tạo/sửa metric, validate/activate phiên bản hoặc nhờ model local/API đề xuất bản nháp để duyệt. Trong **Data Catalog**, chọn metric để truy vấn hoặc mở editor tương ứng. Bảng và biểu đồ dùng kết quả thực: một giá trị số có thẻ chỉ số, kết quả phân nhóm/thời gian có lựa chọn trục/chuỗi tương thích. [Contract và nguồn dữ liệu](docs/contracts/analytics-experience.md).
+
+SQL hiển thị trong kết quả là câu đã qua planner/Java validation và thực thi; SQL candidate ban đầu có nhãn riêng nếu khác. Native planner được giữ trong luồng, với compaction AST để bỏ các lớp CTE/projection thừa; CTE có ý nghĩa trong truy vấn được giữ. “SQL mong đợi” trong **Đánh giá** là oracle kiểm thử độc lập, không phải đáp án runtime cho mọi câu hỏi. Bộ kiểm tra schema hiện tại lấy bảng từ dataset thật và cần model API; corpus đóng gói chỉ được chọn khi tương thích dataset.
+
 Hướng dẫn chọn file/nguồn database và đăng ký nguồn trong ba bước: [Nạp dữ liệu](docs/ingestion-guide.md).
 
 ## Hướng dẫn khởi chạy (Quick Start)

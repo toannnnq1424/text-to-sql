@@ -67,7 +67,14 @@ function EvaluationContent() {
     list = useListState(),
     { resultId } = useParams(),
     [suite, setSuite] = useState<
-      | { suiteId: string; name: string; caseCount: number; engines: string[] }
+      | {
+          suiteId: string;
+          name: string;
+          caseCount: number;
+          engines: string[];
+          origin?: string;
+          description?: string;
+        }
       | undefined
     >(),
     [mode, setMode] = useState<Mode>("AUTO");
@@ -134,15 +141,25 @@ function EvaluationContent() {
             label="Bộ test case"
             value={suite}
             onSelect={setSuite}
-            load={evaluationApi.suites}
+            cacheKey={`${c.warehouseId}/${c.datasetId}`}
+            disabled={!c.datasetId}
+            load={(params, signal) =>
+              evaluationApi.suites(
+                { ...params, datasetId: c.datasetId },
+                signal,
+              )
+            }
             getId={(s) => s.suiteId}
-            getLabel={(s) => `${s.name} · ${s.caseCount} cases`}
+            getLabel={(s) =>
+              `${s.name} · ${s.caseCount} cases · ${s.origin === "CURRENT_SCHEMA" ? "Schema hiện tại" : "Bộ kiểm thử được đóng gói"}`
+            }
           />
           <Button
             variant="primary"
             disabled={
               !auth.can("OPERATOR") ||
               !suite ||
+              (suite.origin === "CURRENT_SCHEMA" && mode === "DETERMINISTIC") ||
               !c.warehouse ||
               !suite.engines.includes(c.warehouse.engine) ||
               c.dataset?.status !== "ACTIVE" ||
@@ -155,6 +172,24 @@ function EvaluationContent() {
             {run.isPending ? "Đang gửi…" : "Chạy đánh giá mới"}
           </Button>
         </div>
+        {suite && (
+          <Notice>
+            {suite.description ||
+              "SQL mong đợi là oracle kiểm thử được khai báo, không phải câu trả lời AI vừa sinh."}{" "}
+            Kết quả đánh giá chỉ áp dụng bộ test và dataset được chọn.
+            {suite.origin === "CURRENT_SCHEMA" &&
+              " Các câu đếm từ schema kiểm tra tích hợp cơ bản, không đại diện độ chính xác phân tích nghiệp vụ tổng quát."}
+          </Notice>
+        )}
+        {selectedRun.data?.error && (
+          <Notice tone="error">
+            {selectedRun.data.error.message}
+            <small>
+              {selectedRun.data.error.code} ·{" "}
+              {selectedRun.data.error.correlationId}
+            </small>
+          </Notice>
+        )}
         {run.error && <ErrorState error={run.error} />}
         {settings.error && (
           <ErrorState

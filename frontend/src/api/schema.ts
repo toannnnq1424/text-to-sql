@@ -169,6 +169,7 @@ export const QuerySummarySchema = z.object({
 export type QuerySummary = z.infer<typeof QuerySummarySchema>;
 export const QuerySchema = QuerySummarySchema.omit({ rowCount: true }).extend({
   generatedSql: z.string().nullable(),
+  candidateSql: z.string().nullable().default(null),
   sqlDialect: EngineSchema,
   completedAt: time.nullable(),
   explanation: z.string().nullable(),
@@ -610,6 +611,7 @@ export const EvaluationMetricsSchema = z.object({
   denominators: z.record(z.string(), count),
 });
 export const EvaluationRunSchema = z.object({
+  error: ErrorBodySchema.nullable().default(null),
   runId: id,
   warehouseId: id,
   datasetId: id,
@@ -641,6 +643,8 @@ export const EvaluationCaseSchema = z.object({
 });
 export type EvaluationCase = z.infer<typeof EvaluationCaseSchema>;
 export const TestSuiteSchema = z.object({
+  origin: z.enum(["CURRENT_SCHEMA", "PACKAGED_REGRESSION"]).optional(),
+  description: z.string().optional(),
   suiteId: id,
   name: id,
   version: id,

@@ -351,9 +351,9 @@ describe("query workflow", () => {
       "ACTIVE",
     );
   });
-  it("shows empty sample questions from an empty semantic model", async () => {
+  it("shows empty suggestions from the current dataset", async () => {
     server.use(
-      http.get(`${api}/datasets/:id/examples`, () =>
+      http.get(`${api}/datasets/:id/question-suggestions`, () =>
         HttpResponse.json(f.page([])),
       ),
     );
@@ -393,7 +393,9 @@ describe("results, history, metadata", () => {
     expect(
       await screen.findByRole("heading", { name: "Truy vấn SQL" }),
     ).toBeVisible();
-    expect(screen.getByLabelText("SQL")).toHaveTextContent("SELECT");
+    expect(screen.getByLabelText("SQL đã thực thi")).toHaveTextContent(
+      "SELECT",
+    );
     expect(screen.getAllByText("PostgreSQL").length).toBeGreaterThan(0);
     expect(screen.getByText("analytics.fact_sales")).toBeVisible();
   });

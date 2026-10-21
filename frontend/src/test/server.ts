@@ -93,6 +93,21 @@ export const handlers = [
     ),
   ),
   http.get(`${base}/datasets/:id/catalog`, () => HttpResponse.json(f.catalog)),
+  http.get(`${base}/datasets/:id/question-suggestions`, () =>
+    HttpResponse.json(
+      f.page([
+        {
+          ...f.metric.examples![0],
+          suggestionId: "suggestion-fixture",
+          description: "Fixture approved example",
+          category: "Sales",
+          origin: "CURATED",
+          chartType: "bar",
+          tableRefs: f.metric.tableRefs,
+        },
+      ]),
+    ),
+  ),
   http.get(`${base}/datasets/:id/examples`, () =>
     HttpResponse.json(
       f.page([

@@ -19,8 +19,8 @@
       "path": "vendor/upstream/semantic-engine/wren/src/wren/nla_planning.py",
       "kind": "added",
       "upstreamSha256": null,
-      "runtimeSha256": "fa7c4f76811f510b734b5e8e16dce4bc718e07ad67652c90e1c9f269afc2114a",
-      "reason": "Project-owned planner specialization inside the source fork: physical-to-logical binding, immutable typed lineage, select-only nested AST policy, native model resolution, post-rewrite source-set check, SDK type normalization and safe reason codes. Replaces app-owned duplicate planning logic."
+      "runtimeSha256": "b8fc7968179277d6cff4dea61924f6e2f5afcea88971fee411f153d69e1cdcac",
+      "reason": "Project-owned planner specialization inside the source fork: physical-to-logical binding, immutable typed lineage, select-only nested AST policy, native model resolution, post-rewrite source-set check, SDK type normalization and safe reason codes. Replaces app-owned duplicate planning logic. Also qualifies physical columns before native projection pruning and verifies final lineage after AST identity compaction."
     },
     {
       "path": "vendor/upstream/semantic-engine/wren/src/wren/nla_business.py",
@@ -56,6 +56,13 @@
       "upstreamSha256": "95c14466966fc38b58fa0185f233ff87c7900afa2c02765591f383cf91d5ca72",
       "runtimeSha256": "09620a6a5747c75119ec05826f858a78d5548d9619df6dd2d34d5f4d68994d9d",
       "reason": "Index configured business metrics, dimensions and rules as source-kit schema records under the same manifest fingerprint; preserve physical metadata indexing."
+    },
+    {
+      "path": "vendor/upstream/semantic-engine/wren/src/wren/nla_compaction.py",
+      "kind": "added",
+      "upstreamSha256": null,
+      "runtimeSha256": "8714ceed1cf7d97e5095ccd3fb06f9a82d904585e604ed1364772eed49fb0bf6",
+      "reason": "Project-owned safe post-native compaction: invokes the kit SQLGlot optimizer only inside verified generated identity projections, substitutes exact physical sources, preserves caller CTEs and row-shaping operations, output names/order and lineage."
     }
   ]
 }

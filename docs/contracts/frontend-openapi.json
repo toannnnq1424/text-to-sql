@@ -1325,6 +1325,153 @@
         }
       }
     },
+    "/datasets/{id}/question-suggestions": {
+      "get": {
+        "operationId": "get_datasets__id__question_suggestions",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "direction",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageQuestionSuggestion"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Controlled error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/datasets/{id}/semantic-assist": {
+      "post": {
+        "operationId": "post_datasets__id__semantic_assist",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SemanticAssistInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SemanticAssist"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Controlled error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/datasets/{id}/semantic-model": {
       "get": {
         "operationId": "get_datasets__id__semantic_model",
@@ -4152,6 +4299,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "datasetId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -4724,6 +4879,576 @@
   },
   "components": {
     "schemas": {
+      "QuestionSuggestion": {
+        "type": "object",
+        "properties": {
+          "suggestionId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "question": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "PHYSICAL_SCHEMA",
+              "SEMANTIC_MODEL",
+              "CURATED"
+            ]
+          },
+          "chartType": {
+            "type": "string",
+            "enum": [
+              "table",
+              "number",
+              "bar",
+              "grouped-bar",
+              "line",
+              "area",
+              "pie"
+            ]
+          },
+          "tableRefs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "schema": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "schema",
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "selectedMetrics": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "selectedDimensions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sqlDialect": {
+            "type": "string",
+            "enum": [
+              "POSTGRESQL",
+              "MYSQL",
+              "SQL_SERVER"
+            ]
+          }
+        },
+        "required": [
+          "suggestionId",
+          "question",
+          "description",
+          "category",
+          "origin",
+          "chartType",
+          "tableRefs",
+          "selectedMetrics",
+          "selectedDimensions",
+          "sqlDialect"
+        ],
+        "additionalProperties": false
+      },
+      "SemanticAssist": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string",
+            "minLength": 1
+          },
+          "semanticModel": {
+            "type": "object",
+            "properties": {
+              "tables": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "schema": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "logicalName": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "grain": {
+                      "type": "string"
+                    },
+                    "columns": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "dataType": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "nullable": {
+                            "type": "boolean"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "synonyms": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "primaryKey": {
+                            "type": "boolean"
+                          },
+                          "foreignKey": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "dataType",
+                          "nullable",
+                          "description",
+                          "synonyms"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "schema",
+                    "name",
+                    "logicalName",
+                    "description",
+                    "grain",
+                    "columns"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "metrics": {
+                "maxItems": 200,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "expression": {
+                      "type": "string"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "tableRefs": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "schema": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "schema",
+                          "name"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "compatibleDimensions": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "synonyms": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "examples": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "question": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "sqlDialect": {
+                            "type": "string",
+                            "enum": [
+                              "POSTGRESQL",
+                              "MYSQL",
+                              "SQL_SERVER"
+                            ]
+                          },
+                          "sql": {
+                            "type": "string"
+                          },
+                          "selectedMetrics": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "selectedDimensions": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "category": {
+                            "type": "string"
+                          },
+                          "language": {
+                            "type": "string",
+                            "enum": [
+                              "vi",
+                              "en"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "question",
+                          "sqlDialect",
+                          "sql",
+                          "selectedMetrics",
+                          "selectedDimensions"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "category": {
+                      "type": "string"
+                    },
+                    "dataType": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "description",
+                    "expression",
+                    "unit",
+                    "tableRefs",
+                    "compatibleDimensions",
+                    "synonyms"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "dimensions": {
+                "maxItems": 200,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "table": {
+                      "type": "object",
+                      "properties": {
+                        "schema": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "schema",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "column": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "dataType": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "synonyms": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "description",
+                    "table",
+                    "column",
+                    "dataType",
+                    "synonyms"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "relationships": {
+                "maxItems": 500,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "from": {
+                      "type": "object",
+                      "properties": {
+                        "table": {
+                          "type": "object",
+                          "properties": {
+                            "schema": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "name": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": [
+                            "schema",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "column": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "table",
+                        "column"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "to": {
+                      "type": "object",
+                      "properties": {
+                        "table": {
+                          "type": "object",
+                          "properties": {
+                            "schema": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "name": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": [
+                            "schema",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "column": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "table",
+                        "column"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "cardinality": {
+                      "type": "string",
+                      "enum": [
+                        "ONE_TO_ONE",
+                        "MANY_TO_ONE",
+                        "ONE_TO_MANY",
+                        "MANY_TO_MANY"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "from",
+                    "to",
+                    "cardinality"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "examples": {
+                "maxItems": 1000,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "question": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sqlDialect": {
+                      "type": "string",
+                      "enum": [
+                        "POSTGRESQL",
+                        "MYSQL",
+                        "SQL_SERVER"
+                      ]
+                    },
+                    "sql": {
+                      "type": "string"
+                    },
+                    "selectedMetrics": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "selectedDimensions": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "category": {
+                      "type": "string"
+                    },
+                    "language": {
+                      "type": "string",
+                      "enum": [
+                        "vi",
+                        "en"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "question",
+                    "sqlDialect",
+                    "sql",
+                    "selectedMetrics",
+                    "selectedDimensions"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "businessRules": {
+                "maxItems": 200,
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "semanticVersion": {
+                "type": "string",
+                "minLength": 1
+              },
+              "schemaVersion": {
+                "type": "string",
+                "minLength": 1
+              },
+              "timezone": {
+                "type": "string",
+                "minLength": 1
+              },
+              "referenceTime": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              }
+            },
+            "required": [
+              "tables",
+              "metrics",
+              "dimensions",
+              "relationships",
+              "examples",
+              "businessRules",
+              "semanticVersion",
+              "schemaVersion",
+              "timezone",
+              "referenceTime"
+            ],
+            "additionalProperties": false
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "model",
+          "semanticModel",
+          "warnings"
+        ],
+        "additionalProperties": false
+      },
+      "SemanticAssistInput": {
+        "type": "object",
+        "properties": {
+          "instruction": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "instruction"
+        ],
+        "additionalProperties": false
+      },
       "SemanticDocument": {
         "type": "object",
         "properties": {
@@ -6876,6 +7601,13 @@
               "null"
             ]
           },
+          "candidateSql": {
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "sqlDialect": {
             "type": "string",
             "enum": [
@@ -7161,6 +7893,7 @@
           "latencyMs",
           "createdAt",
           "generatedSql",
+          "candidateSql",
           "sqlDialect",
           "completedAt",
           "explanation",
@@ -10654,6 +11387,48 @@
       "EvaluationRun": {
         "type": "object",
         "properties": {
+          "error": {
+            "default": null,
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "correlationId": {
+                    "type": "string"
+                  },
+                  "retryable": {
+                    "type": "boolean"
+                  },
+                  "details": {
+                    "default": {},
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {}
+                  }
+                },
+                "required": [
+                  "code",
+                  "message",
+                  "correlationId",
+                  "retryable",
+                  "details"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "runId": {
             "type": "string",
             "minLength": 1
@@ -10819,6 +11594,7 @@
           }
         },
         "required": [
+          "error",
           "runId",
           "warehouseId",
           "datasetId",
@@ -11152,6 +11928,16 @@
       "TestSuite": {
         "type": "object",
         "properties": {
+          "origin": {
+            "type": "string",
+            "enum": [
+              "CURRENT_SCHEMA",
+              "PACKAGED_REGRESSION"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
           "suiteId": {
             "type": "string",
             "minLength": 1
@@ -11537,6 +12323,48 @@
             "items": {
               "type": "object",
               "properties": {
+                "error": {
+                  "default": null,
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "correlationId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        },
+                        "details": {
+                          "default": {},
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "correlationId",
+                        "retryable",
+                        "details"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "runId": {
                   "type": "string",
                   "minLength": 1
@@ -11702,6 +12530,7 @@
                 }
               },
               "required": [
+                "error",
                 "runId",
                 "warehouseId",
                 "datasetId",
@@ -12614,6 +13443,137 @@
         },
         "required": [
           "status"
+        ],
+        "additionalProperties": false
+      },
+      "PageQuestionSuggestion": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "suggestionId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "question": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": {
+                  "type": "string"
+                },
+                "category": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "origin": {
+                  "type": "string",
+                  "enum": [
+                    "PHYSICAL_SCHEMA",
+                    "SEMANTIC_MODEL",
+                    "CURATED"
+                  ]
+                },
+                "chartType": {
+                  "type": "string",
+                  "enum": [
+                    "table",
+                    "number",
+                    "bar",
+                    "grouped-bar",
+                    "line",
+                    "area",
+                    "pie"
+                  ]
+                },
+                "tableRefs": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "schema": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "name": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "schema",
+                      "name"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "selectedMetrics": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "selectedDimensions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "sqlDialect": {
+                  "type": "string",
+                  "enum": [
+                    "POSTGRESQL",
+                    "MYSQL",
+                    "SQL_SERVER"
+                  ]
+                }
+              },
+              "required": [
+                "suggestionId",
+                "question",
+                "description",
+                "category",
+                "origin",
+                "chartType",
+                "tableRefs",
+                "selectedMetrics",
+                "selectedDimensions",
+                "sqlDialect"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "totalItems": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "totalPages": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "totalItems",
+          "totalPages"
         ],
         "additionalProperties": false
       },
@@ -14867,6 +15827,48 @@
             "items": {
               "type": "object",
               "properties": {
+                "error": {
+                  "default": null,
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "correlationId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        },
+                        "details": {
+                          "default": {},
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "correlationId",
+                        "retryable",
+                        "details"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "runId": {
                   "type": "string",
                   "minLength": 1
@@ -15032,6 +16034,7 @@
                 }
               },
               "required": [
+                "error",
                 "runId",
                 "warehouseId",
                 "datasetId",
@@ -15439,6 +16442,16 @@
             "items": {
               "type": "object",
               "properties": {
+                "origin": {
+                  "type": "string",
+                  "enum": [
+                    "CURRENT_SCHEMA",
+                    "PACKAGED_REGRESSION"
+                  ]
+                },
+                "description": {
+                  "type": "string"
+                },
                 "suiteId": {
                   "type": "string",
                   "minLength": 1

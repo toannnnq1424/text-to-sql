@@ -108,7 +108,7 @@ Mỗi warehouse cấu hình writer riêng cho ingestion (`ingestionUsername`, wr
 
 | Method/path | Input / output |
 |---|---|
-| GET /evaluation/test-suites | Page<TestSuite> gồm suiteId,name,version,caseCount,engines |
+| GET /evaluation/test-suites | Page<TestSuite> gồm suiteId,name,version,caseCount,engines; truyền datasetId để lấy suite tương thích dataset hiện tại, kèm origin/description |
 | POST /evaluation/run | `{warehouseId,datasetId,suiteId,mode}` → 202 EvaluationRun |
 | GET /evaluation/runs | Page<EvaluationRun>; warehouseId,engine,datasetId,model,status,from,to |
 | GET /evaluation/runs/{runId} | EvaluationRun + aggregate metrics |
@@ -116,6 +116,8 @@ Mỗi warehouse cấu hình writer riêng cho ingestion (`ingestionUsername`, wr
 | GET /evaluation/results/{resultId} | Expected/generated SQL, validation, actual bounded result, failure reason, timings |
 
 EvaluationRun: runId,warehouseId,datasetId,engine,model,status,createdAt,completedAt,metrics. Status PENDING,RUNNING,SUCCESS,PARTIAL,FAILED. Metrics: totalCases,completedCases,executionSuccessRate,resultEquivalenceRate,invalidSqlRejectionRate,dialectAccuracy,avgLatencyMs,p95LatencyMs (chưa có mẫu → null). Mẫu số của từng rate phải trả trong metrics.denominators; không trộn injection cases với valid query execution denominator. EvaluationCaseResult có resultId,caseId,runId,question,difficulty,sqlDialect,status,expectedSql,generatedSql,validationResult,resultEquivalent,chartMatch,latencyMs,failureReason. Difficulty EASY,MEDIUM,HARD; status PASSED,FAILED,REJECTED,ERROR; nullable comparison nếu case chưa đủ điều kiện đo.
+
+Suite `dataset-schema` được tạo từ tối đa8 bảng thật của dataset đang chọn, origin `CURRENT_SCHEMA`; các oracle COUNT được thực thi độc lập để so kết quả. Suite này yêu cầu mode API/AUTO, từ chối DETERMINISTIC400. Packaged suites có origin `PACKAGED_REGRESSION`, chỉ được liệt kê theo dataset khi mọi SQL tham chiếu hợp lệ với allowlist hiện tại. Không truyền datasetId vẫn trả danh mục packaged để tương thích automation. Run thêm suiteId/referenceOrigin; không diễn giải tỷ lệ pass của kiểm tra COUNT cơ bản như độ chính xác AI tổng quát.
 
 ## Monitoring và settings
 

@@ -108,7 +108,8 @@ public class SqlGuard {
       }
       if (node instanceof Function function) {
         String name = function.getName().toUpperCase(Locale.ROOT);
-        if (!FUNCTIONS.contains(name)) throw reject("Function không nằm trong allowlist.");
+        if (!FUNCTIONS.contains(name) && !(engine.equals("SQL_SERVER") && name.equals("COUNT_BIG")))
+          throw reject("Function không nằm trong allowlist.");
       }
       String type = node.getClass().getSimpleName();
       if (Set.of(

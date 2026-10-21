@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   CellSchema,
+  ChartTypeSchema,
   DimensionSchema,
   EngineSchema,
   ErrorBodySchema,
@@ -191,3 +192,25 @@ export const PipelineRunSchema = z.object({
   partialFailure: z.boolean(),
 });
 export type PipelineRun = z.infer<typeof PipelineRunSchema>;
+
+export const QuestionSuggestionSchema = z.object({
+  suggestionId: id,
+  question: id,
+  description: z.string(),
+  category: id,
+  origin: z.enum(["PHYSICAL_SCHEMA", "SEMANTIC_MODEL", "CURATED"]),
+  chartType: ChartTypeSchema,
+  tableRefs: z.array(TableRefSchema),
+  selectedMetrics: z.array(z.string()),
+  selectedDimensions: z.array(z.string()),
+  sqlDialect: EngineSchema,
+});
+export type QuestionSuggestion = z.infer<typeof QuestionSuggestionSchema>;
+export const SemanticAssistInputSchema = z.strictObject({
+  instruction: z.string().trim().min(1).max(2000),
+});
+export const SemanticAssistSchema = z.object({
+  model: id,
+  semanticModel: SemanticDocumentSchema,
+  warnings: z.array(z.string()),
+});

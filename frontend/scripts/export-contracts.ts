@@ -4,6 +4,9 @@ import { z } from "zod";
 import * as s from "../src/api/schema";
 import * as w from "../src/api/workbenchSchema";
 const schemas: Record<string, z.ZodType> = {
+  QuestionSuggestion: w.QuestionSuggestionSchema,
+  SemanticAssist: w.SemanticAssistSchema,
+  SemanticAssistInput: w.SemanticAssistInputSchema,
   SemanticDocument: w.SemanticDocumentSchema,
   SemanticValidation: w.SemanticValidationSchema,
   SemanticSelection: w.SemanticSelectionSchema,
@@ -101,6 +104,7 @@ const schemas: Record<string, z.ZodType> = {
   Health: z.object({ status: z.literal("UP") }),
 };
 for (const name of [
+  "QuestionSuggestion",
   "Pipeline",
   "PipelineRun",
   "Warehouse",
@@ -223,6 +227,20 @@ for (const [resource, type, param] of [
   if (["tables", "metrics", "dimensions"].includes(resource))
     add("get", `/datasets/{id}/${resource}/{itemId}`, type);
 }
+add(
+  "get",
+  "/datasets/{id}/question-suggestions",
+  "PageQuestionSuggestion",
+  undefined,
+  "200",
+  [...list, "category"],
+);
+add(
+  "post",
+  "/datasets/{id}/semantic-assist",
+  "SemanticAssist",
+  "SemanticAssistInput",
+);
 add("get", "/datasets/{id}/semantic-model", "SemanticDocument");
 add("put", "/datasets/{id}/semantic-model", "Dataset", "SemanticDocument");
 add(
@@ -451,7 +469,10 @@ add("get", "/import/sql/runs", "PageImportRun", undefined, "200", [
   "to",
 ]);
 add("get", "/import/sql/runs/{id}", "ImportRun");
-add("get", "/evaluation/test-suites", "PageTestSuite", undefined, "200", list);
+add("get", "/evaluation/test-suites", "PageTestSuite", undefined, "200", [
+  ...list,
+  "datasetId",
+]);
 add("post", "/evaluation/run", "EvaluationRun", "EvaluationInput", "202");
 add("get", "/evaluation/runs", "PageEvaluationRun", undefined, "200", [
   ...list,

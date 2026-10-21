@@ -36,7 +36,7 @@ import {
 } from "../components/ui";
 import { SqlBlock } from "../components/ui";
 import { ResultTable } from "../components/ResultTable";
-import { Visualization } from "../components/Visualization";
+import { Visualization, scalarColumn } from "../components/Visualization";
 export function ResultPage({ history = false }: { history?: boolean }) {
   const { id = "", tab = "overview" } = useParams(),
     c = useWarehouse(),
@@ -87,7 +87,7 @@ export function ResultPage({ history = false }: { history?: boolean }) {
     <ApiAccess>
       <Resource resource={query}>
         {(q) => (
-          <>
+          <div className="result-page">
             <div className="result-topline">
               <Link className="text-link" to={history ? "/history" : "/query"}>
                 <ArrowLeft size={17} />
@@ -209,6 +209,7 @@ export function ResultPage({ history = false }: { history?: boolean }) {
                           key={id}
                           spec={q.chart}
                           result={q.result}
+                          compact
                         />
                       </Card>
                       <Card
@@ -241,8 +242,12 @@ export function ResultPage({ history = false }: { history?: boolean }) {
                         </div>
                         <DetailList
                           items={[
-                            ["Warehouse ID", q.warehouseId],
-                            ["Dataset ID", q.datasetId],
+                            [
+                              "Bảng nguồn",
+                              q.sourceTables
+                                .map((table) => `${table.schema}.${table.name}`)
+                                .join(", ") || "—",
+                            ],
                             [
                               "Kết quả bị giới hạn",
                               q.result.truncated ? "Có" : "Không",
@@ -251,12 +256,29 @@ export function ResultPage({ history = false }: { history?: boolean }) {
                         />
                       </Card>
                     </div>
-                    <Card
-                      title="Xem trước dữ liệu kết quả"
-                      icon={<Database size={23} />}
-                    >
-                      <ResultTable key={id} queryId={id} initial={q.result} />
-                    </Card>
+                    {!scalarColumn(q.result) && (
+                      <Card
+                        title="Xem trước dữ liệu kết quả"
+                        icon={<Database size={21} />}
+                        actions={
+                          <Link
+                            className="text-link"
+                            to={`${history ? "/history" : "/query"}/${encodeURIComponent(id)}/data`}
+                          >
+                            Xem toàn bộ snapshot
+                          </Link>
+                        }
+                      >
+                        <ResultTable
+                          key={id}
+                          initial={{
+                            ...q.result,
+                            rows: q.result.rows.slice(0, 10),
+                          }}
+                          readonly
+                        />
+                      </Card>
+                    )}
                     <Card title="Tóm tắt truy vấn">
                       <div className="three-columns">
                         <div>
@@ -304,7 +326,13 @@ export function ResultPage({ history = false }: { history?: boolean }) {
               </>
             )}
             {active === "data" && (
-              <Card title="Dữ liệu kết quả" icon={<Table2 size={23} />}>
+              <Card
+                title="Dữ liệu kết quả"
+                icon={<Table2 size={23} />}
+                className={
+                  q.result && scalarColumn(q.result) ? "scalar-result-card" : ""
+                }
+              >
                 {q.result ? (
                   <ResultTable key={id} queryId={id} initial={q.result} />
                 ) : (
@@ -316,7 +344,11 @@ export function ResultPage({ history = false }: { history?: boolean }) {
               </Card>
             )}
             {active === "visualization" && (
-              <Card title="Biểu đồ kết quả" icon={<BarChart3 size={23} />}>
+              <Card
+                className={
+                  q.result && scalarColumn(q.result) ? "scalar-result-card" : ""
+                }
+              >
                 {q.result ? (
                   <Visualization key={id} spec={q.chart} result={q.result} />
                 ) : (
@@ -327,7 +359,22 @@ export function ResultPage({ history = false }: { history?: boolean }) {
             {active === "sql" && (
               <div className="content-grid">
                 <Card title="Truy vấn SQL" icon={<Code2 size={23} />}>
-                  <SqlBlock sql={q.generatedSql} />
+                  <p className="muted">
+                    Đây là SQL logic cuối cùng đã được Java chuẩn hóa, kiểm tra
+                    và chuyển tới bộ thực thi. Sao chép giữ nguyên chuỗi này.
+                  </p>
+                  <SqlBlock sql={q.generatedSql} label="SQL đã thực thi" />
+                  {q.candidateSql && q.candidateSql !== q.generatedSql && (
+                    <details className="candidate-sql">
+                      <summary>
+                        SQL do model / compiler đề xuất trước khi lập kế hoạch
+                      </summary>
+                      <SqlBlock
+                        sql={q.candidateSql}
+                        label="SQL đề xuất (chưa phải câu lệnh thực thi)"
+                      />
+                    </details>
+                  )}
                   <DetailList
                     items={[
                       ["SQL dialect", engineLabel[q.sqlDialect]],
@@ -386,6 +433,11 @@ export function ResultPage({ history = false }: { history?: boolean }) {
             )}
             {active === "technical" && (
               <Card title="Thông tin kỹ thuật" icon={<Braces size={22} />}>
+                <p className="muted">
+                  SQL hiển thị là câu truy vấn logic đã kiểm tra. Adapter có thể
+                  bọc SELECT / LIMIT cố định cho PostgreSQL, MySQL hoặc giới hạn
+                  cursor cho SQL Server để đọc kết quả trong hạn mức.
+                </p>
                 <DetailList
                   items={[
                     [
@@ -456,7 +508,7 @@ export function ResultPage({ history = false }: { history?: boolean }) {
                 </form>
               </Modal>
             )}
-          </>
+          </div>
         )}
       </Resource>
     </ApiAccess>

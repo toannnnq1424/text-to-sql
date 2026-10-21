@@ -55,7 +55,9 @@ export function ResultTable({
     }
   }
   return (
-    <div className="result-table">
+    <div
+      className={`result-table ${data && data.columns.length <= 2 ? "compact-result-table" : ""}`}
+    >
       {data?.truncated && (
         <Notice tone="warning">
           <strong>Kết quả đã được giới hạn.</strong> Hiển thị snapshot tối đa{" "}
@@ -63,31 +65,33 @@ export function ResultTable({
           snapshot này, không phải toàn bộ warehouse.
         </Notice>
       )}
-      {!readonly && queryId && (
-        <form
-          className="table-toolbar"
-          onSubmit={(e) => {
-            e.preventDefault();
-            setSearch(draftSearch);
-            setPage(1);
-          }}
-        >
-          <div className="search-box">
-            <Search size={17} />
-            <input
-              aria-label="Tìm trong kết quả"
-              value={draftSearch}
-              onChange={(e) => setDraftSearch(e.target.value)}
-              placeholder="Tìm kiếm trong kết quả…"
-            />
-            <Button type="submit">Tìm</Button>
-          </div>
-          <Button disabled={busy || !data} onClick={() => void download()}>
-            <Download size={17} />
-            {busy ? "Đang tải…" : "Xuất CSV"}
-          </Button>
-        </form>
-      )}
+      {!readonly &&
+        queryId &&
+        (initial.returnedRowCount > 1 || initial.truncated) && (
+          <form
+            className="table-toolbar"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setSearch(draftSearch);
+              setPage(1);
+            }}
+          >
+            <div className="search-box">
+              <Search size={17} />
+              <input
+                aria-label="Tìm trong kết quả"
+                value={draftSearch}
+                onChange={(e) => setDraftSearch(e.target.value)}
+                placeholder="Tìm kiếm trong kết quả…"
+              />
+              <Button type="submit">Tìm</Button>
+            </div>
+            <Button disabled={busy || !data} onClick={() => void download()}>
+              <Download size={17} />
+              {busy ? "Đang tải…" : "Xuất CSV"}
+            </Button>
+          </form>
+        )}
       {actionError != null && <ErrorState error={actionError} />}
       {notice && (
         <span className="sr-only" role="status">
@@ -105,7 +109,17 @@ export function ResultTable({
             tabIndex={0}
             aria-label="Dữ liệu kết quả"
           >
-            <table>
+            <table
+              style={
+                data.columns.length <= 2
+                  ? {
+                      width: "auto",
+                      minWidth: Math.min(720, 180 + data.columns.length * 220),
+                      maxWidth: "100%",
+                    }
+                  : undefined
+              }
+            >
               <thead>
                 <tr>
                   <th>#</th>
@@ -180,7 +194,7 @@ export function ResultTable({
               </tbody>
             </table>
           </div>
-          {!readonly && queryId && (
+          {!readonly && queryId && data.returnedRowCount > 1 && (
             <Pagination
               page={data.page}
               pageSize={data.pageSize}
@@ -193,8 +207,10 @@ export function ResultTable({
             />
           )}
           <small className="muted">
-            Nhấn vào ô để sao chép giá trị gốc. Kéo ngang để xem thêm cột dữ
-            liệu.
+            Nhấn vào ô để sao chép giá trị gốc.
+            {data.columns.length > 4
+              ? " Kéo ngang để xem thêm cột dữ liệu."
+              : ""}
           </small>
         </>
       ) : (

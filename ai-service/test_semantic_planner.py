@@ -49,7 +49,8 @@ def test_native_planner_rewrites_physical_sql_for_each_supported_dialect(engine)
     assert planned.plannerVersion == "wren-core-py/0.4.0"
     assert planned.sourceModels == ["nla_model_0"]
     assert planned.sourceTables[0].name == "Album"
-    assert "nla_model_0" in planned.sql
+    assert "nla_model_0" not in planned.sql
+    assert "WITH" not in planned.sql.upper()
     assert '"public"."Album"' in planned.sql if engine == "POSTGRESQL" else True
     assert "dbo.[Album]" in planned.sql if engine == "SQL_SERVER" else True
 
@@ -81,7 +82,8 @@ def test_planner_resolves_join_and_emits_both_physical_sources():
 
     assert set(planned.sourceModels) == {"nla_model_0", "nla_model_1"}
     assert {table.name for table in planned.sourceTables} == {"Album", "Artist"}
-    assert "WITH" in planned.sql.upper()
+    assert "WITH" not in planned.sql.upper()
+    assert "JOIN" in planned.sql.upper()
 
 
 def test_unknown_physical_table_fails_closed():

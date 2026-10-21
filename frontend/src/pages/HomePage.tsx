@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -50,11 +50,14 @@ export function HomePage() {
     enabled: c.enabled,
   });
   const examples = useQuery({
-    queryKey: ["examples", c.datasetId, "home"],
+    queryKey: ["question-suggestions", c.datasetId, "home"],
     queryFn: ({ signal }) =>
-      catalogApi.examples(c.datasetId, { page: 1, pageSize: 10 }, signal),
+      catalogApi.suggestions(c.datasetId, { page: 1, pageSize: 10 }, signal),
     enabled: c.enabled && c.dataset?.status === "ACTIVE",
   });
+  useEffect(() => {
+    setQuestion("");
+  }, [c.warehouseId, c.datasetId]);
   return (
     <>
       <PageHeading
@@ -99,6 +102,15 @@ export function HomePage() {
               className="chip"
             >
               {x.question}
+              <small className="suggestion-origin">
+                {
+                  {
+                    PHYSICAL_SCHEMA: "Schema thực",
+                    SEMANTIC_MODEL: "Ngữ nghĩa",
+                    CURATED: "Đã duyệt",
+                  }[x.origin]
+                }
+              </small>
               <ArrowRight size={15} />
             </Link>
           ))}

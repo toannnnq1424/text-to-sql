@@ -44,7 +44,8 @@ Không dùng tên bảng không qualified làm security allowlist. Với MySQL, 
 | engine | engine enum |
 | question | string |
 | status | RUNNING / SUCCESS / REJECTED / VALIDATION_ERROR / QUERY_ERROR / TIMEOUT |
-| generatedSql | string hoặc null nếu chưa sinh được |
+| candidateSql | string hoặc null; output ban đầu của model/compiler, snapshot cũ default null |
+| generatedSql | string hoặc null nếu chưa sinh được; SQL logic cuối sau planning/compaction, được Java SqlGuard normalize/validate và chuyển executor; adapter có thể thêm envelope LIMIT cố định hoặc cursor bounds |
 | sqlDialect | engine enum |
 | model | string hoặc null trước khi xác định |
 | executionMode | API / DETERMINISTIC / SEMANTIC (structured metric selection; no LLM call) |
