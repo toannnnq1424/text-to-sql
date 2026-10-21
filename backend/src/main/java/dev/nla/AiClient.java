@@ -25,6 +25,7 @@ public class AiClient {
     if (!Set.of(
             "business-plan",
             "business-validate",
+            "semantic-assist",
             "knowledge/status",
             "knowledge/index",
             "knowledge/search",
@@ -65,6 +66,31 @@ public class AiClient {
               "Ngữ nghĩa không hợp lệ: kiểm tra tên cột, biểu thức tổng hợp, dimensions và đường"
                   + " join giữ đúng mức hạt.");
         if (code.equals("INVALID_REQUEST")) throw ApiException.bad("Cấu hình xử lý không hợp lệ.");
+        if (path.equals("semantic-assist")) {
+          if (Set.of("INSUFFICIENT_CONTEXT", "UNSUPPORTED_QUESTION", "LOW_CONFIDENCE")
+              .contains(code))
+            throw new ApiException(
+                HttpStatus.UNPROCESSABLE_ENTITY,
+                code,
+                "Metadata chưa đủ hoặc yêu cầu chưa được hỗ trợ; hãy mô tả rõ công thức, cột và mức"
+                    + " hạt.");
+          if (code.equals("PROVIDER_TIMEOUT"))
+            throw new ApiException(
+                HttpStatus.GATEWAY_TIMEOUT,
+                "QUERY_TIMEOUT",
+                "Model phản hồi quá thời gian cho phép.");
+          if (code.equals("INVALID_MODEL_RESPONSE"))
+            throw new ApiException(
+                HttpStatus.BAD_GATEWAY,
+                "SEMANTIC_MODEL_INVALID",
+                "Đề xuất của model không khớp schema hoặc ngữ nghĩa hợp lệ; chưa có cấu hình nào"
+                    + " được kích hoạt.");
+          throw new ApiException(
+              HttpStatus.SERVICE_UNAVAILABLE,
+              "LLM_ERROR",
+              "Model chưa sẵn sàng. Kiểm tra cấu hình provider hoặc model local; không có bản nháp"
+                  + " thay thế giả.");
+        }
         throw new ApiException(
             HttpStatus.SERVICE_UNAVAILABLE,
             "KNOWLEDGE_UNAVAILABLE",

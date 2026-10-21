@@ -10,6 +10,12 @@ Compiler từ source fork parse biểu thức bằng AST, resolve tên cột và
 
 Bộ chọn metrics/dimensions/bộ lọc gọi structured semantic query, không gọi LLM. Candidate vẫn qua native planner, kiểm tra AST/lineage Java và credential chỉ đọc. Kết quả được lưu cùng history, SQL, phiên bản ngữ nghĩa, bảng nguồn và export như truy vấn tự nhiên.
 
+Trong **Data Catalog → Metrics**, thao tác **Khám phá** mở bộ chọn với metric đang xem; **Sửa** và **Tạo metric** mở đúng mục trong editor. Mô tả, đơn vị và synonyms là cấu hình nghiệp vụ có thể chỉnh sửa, không phải dữ liệu được suy ra chắc chắn từ tên cột. Những nội dung này chỉ áp dụng khi định nghĩa được validate và activate thành version mới.
+
+Admin có thể dùng **Đề xuất bằng AI**: mô tả yêu cầu nghiệp vụ, model đã cấu hình đọc metadata được cấp quyền rồi đề xuất metrics/dimensions/rules có mô tả. Python kiểm tra proposal bằng compiler từ source fork; Java kiểm lại bản nháp hợp nhất với định nghĩa hiện hành. Hệ thống giữ các định nghĩa không được đề xuất thay thế và không activate tự động. Xem bản nháp/cảnh báo, sửa nội dung và semanticVersion, validate rồi lưu. Provider lỗi hoặc đề xuất không hợp lệ được báo lỗi, không trả bản nháp giả. Mô tả AI vẫn cần data owner duyệt ý nghĩa, grain và units.
+
+Trang chủ/Truy vấn có gợi ý theo dataset đang chọn, với nguồn **Schema**, **Ngữ nghĩa** hoặc **Ví dụ đã duyệt**. Schema tạo câu hỏi từ bảng/cột thật ngay cả khi chưa cấu hình metric; Ngữ nghĩa dùng định nghĩa active; Ví dụ là cấu hình được duyệt. Chọn một gợi ý mới thực sự gọi query/model, không đọc kết quả trả lời có sẵn. Đổi warehouse/dataset sẽ lấy tập gợi ý mới và xóa bản nháp cũ.
+
 ## Tri thức AI
 
 Trong **Tri thức AI**, tạo chỉ mục từ schema thật, định nghĩa nghiệp vụ và cặp câu hỏi/SQL đã cấu hình. LanceDB và schema indexer được gọi trực tiếp từ bộ source đã nhập. Embeddings chạy bằng `embeddinggemma:300m` qua Ollama local. Chỉ mục được phân vùng theo warehouse, dataset, dialect, metadata và embedding model; không chứa credentials hoặc các hàng kết quả query.

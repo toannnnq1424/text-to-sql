@@ -228,7 +228,7 @@ export function Shell() {
         </div>
         <div className="sidebar-foot">
           <ShieldCheck size={14} />
-          Read-only analytics
+          SQL chỉ đọc · quản trị theo quyền
         </div>
       </aside>
       <div className="app-frame" inert={mobile && open}>

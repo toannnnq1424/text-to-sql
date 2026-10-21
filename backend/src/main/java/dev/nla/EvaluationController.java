@@ -18,7 +18,8 @@ public class EvaluationController {
 
   @GetMapping("/test-suites")
   Object suites(@RequestParam Map<String, String> p) {
-    return Page.of(service.suites(), p, "name", Set.of("name", "suiteId", "createdAt"));
+    return Page.of(
+        service.suites(p.get("datasetId")), p, "name", Set.of("name", "suiteId", "createdAt"));
   }
 
   @PostMapping("/run")

@@ -34,14 +34,14 @@ This private contract complements [Java ↔ Python AI](java-python.md). It is se
 
 ```json
 {
-  "sql": "WITH \"nla_model_0\" AS (...) SELECT COUNT(*) FROM \"nla_model_0\"",
+  "sql": "SELECT COUNT(*) FROM \"public\".\"album\"",
   "sourceModels": ["nla_model_0"],
   "sourceTables": [{"schema": "public", "name": "album"}],
   "plannerVersion": "wren-core-py/0.4.0"
 }
 ```
 
-Python invokes the repository-owned SDK fork via `WrenEngine.plan_for_dataset`: physical binding, native manifest/session resolution, CTE rewrite, read-only nested-AST policy and a physical lineage check after rewrite. Planning-only mode disables connector creation. No deterministic or pass-through fallback is allowed for planner errors. Java treats the returned SQL as untrusted: `SqlGuard` validates the rewritten SQL against the same authorized physical catalog, then Java compares the guard's resolved physical source set to `sourceTables` before the read-only executor (private native runtime in Compose). A mismatch fails closed. The planner never executes SQL.
+Python invokes the repository-owned SDK fork via `WrenEngine.plan_for_dataset`: physical source/column binding, native manifest/session resolution, native dry-plan and CTE rewrite, read-only nested-AST policy and physical lineage checks before and after safe compaction. Planning-only mode disables connector creation. No deterministic or pass-through fallback is allowed for planner errors. Java treats the returned SQL as untrusted: `SqlGuard` validates the rewritten SQL against the same authorized physical catalog, then Java compares the guard's resolved physical source set to `sourceTables` before the read-only executor (private native runtime in Compose). A mismatch fails closed. The planner never executes SQL.
 
 Errors use the shared [error envelope](errors.md). `INSUFFICIENT_CONTEXT`, `SEMANTIC_MODEL_INVALID`, `SQL_DIALECT_ERROR`, and `SQL_VALIDATION_ERROR` fail the query before execution. Authentication, malformed payloads, body limits, timeouts and unavailable service fail closed; responses do not include native exceptions, source SQL, credentials or warehouse metadata beyond safe error codes.
 
@@ -50,3 +50,10 @@ Errors use the shared [error envelope](errors.md). `INSUFFICIENT_CONTEXT`, `SEMA
 The native package is `wren-core-py==0.4.0`, with `sqlglot==29.0.1` and the upstream CTE rewrite source recorded in [platform reuse provenance](../platform-reuse.md). The native package currently supplies Linux x86_64 and macOS arm64 wheels, not Linux arm64; the production AI container therefore targets `linux/amd64`. The request uses only the three application dialects. This private contract does not expand the public engine enum.
 
 Tests exercise request validation, auth/correlation, native rewrite and source lineage on all three dialects, joins, unknown physical tables, and Java guard acceptance. Container builds, actual query browser DB3,144 Chinook evaluation cases and108 independent cross-domain cases are recorded in [work log](../work-log.md). These deterministic database checks do not claim real LLM-provider inference or quality.
+
+
+## Compact executed SQL
+
+The native planner always runs. Its actual output is parsed and compacted inside the source fork; the original candidate is never returned as a substitute for native planning. Generated identity-model wrappers are reduced with the pinned SQLGlot `merge_subqueries` implementation only after verifying that their bodies contain physical-column/literal projections and no row-shaping operations. A direct physical source can replace that identity using the same caller alias and output columns. Star expansion preserves the generated projection order. Caller CTEs are protected; filters, joins, null semantics, distinct, grouping, aggregate, cast, window, sort and limit boundaries remain where defined. Unsupported shapes retain their wrappers rather than receive a speculative rewrite.
+
+Physical column qualification runs against the exact authorized manifest before the native stage, preventing native pruning from dropping columns named without a table qualifier. Explicit aliases and physical result labels are preserved. Unknown/ambiguous columns fail validation. The compacted statement must resolve to exactly the same physical source set, and Java still performs its independent AST/lineage checks before execution. Public `generatedSql` is the compacted logical statement after Java SqlGuard normalization; adapters may add fixed row-limit transport envelopes/cursor bounds; `candidateSql` is a separate optional provenance field.

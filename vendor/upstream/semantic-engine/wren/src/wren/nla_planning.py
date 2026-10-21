@@ -19,9 +19,11 @@ from typing import TYPE_CHECKING, Callable
 import sqlglot
 import wren_core
 from sqlglot import exp
+from sqlglot.optimizer.qualify import qualify
 from sqlglot.optimizer.scope import traverse_scope
-
+from sqlglot.schema import MappingSchema
 from wren.config import WrenConfig
+from wren.nla_compaction import compact_generated_models
 from wren.type_mapping import parse_type
 
 if TYPE_CHECKING:
@@ -185,6 +187,111 @@ def _bind_physical(ast: exp.Expression, dialect: str, models: dict) -> list[dict
     return list(found.values())
 
 
+def _canonicalize_sql_server_columns(ast, models):
+    """Return planner-normalized references to exact authorized physical spelling.
+
+    Keep the Java guard case-sensitive: a TSQL normalization choice must not
+    require broadening its allowlist matching for every SQL Server resource.
+    Derived/CTE references similarly bind to their actual projection labels.
+    """
+    for scope in traverse_scope(ast):
+        outputs = {
+            projection.alias_or_name.casefold(): projection.alias_or_name
+            for projection in scope.expression.selects
+            if projection.alias_or_name
+        }
+        for column in scope.columns:
+            if column.is_star:
+                continue
+            if not column.table:
+                target = outputs.get(column.name.casefold())
+                if target:
+                    column.set("this", exp.to_identifier(target, quoted=True))
+                continue
+            source = scope.sources.get(column.table)
+            names = []
+            if isinstance(source, exp.Table):
+                candidates = [
+                    model
+                    for (namespace, table), model in models.items()
+                    if table.casefold() == source.name.casefold()
+                    and (not source.db or namespace.casefold() == source.db.casefold())
+                ]
+                if len(candidates) == 1:
+                    names = [field["name"] for field in candidates[0]["columns"]]
+            elif source is not None:
+                names = source.expression.named_selects
+            matches = [name for name in names if name.casefold() == column.name.casefold()]
+            if len(matches) == 1:
+                column.set("this", exp.to_identifier(matches[0], quoted=True))
+    return ast
+
+
+def _qualify_physical(ast, dialect, models):
+    schema = {}
+    for (namespace, table), model in models.items():
+        schema.setdefault(namespace, {})[table] = {
+            column["name"]: "UNKNOWN" for column in model["columns"]
+        }
+    for scope in traverse_scope(ast):
+        for reference, source in scope.selected_sources.values():
+            if isinstance(source, exp.Table) and not reference.alias:
+                reference.set("alias", exp.TableAlias(this=reference.this.copy()))
+    original = [
+        (
+            scope.expression,
+            [projection.copy() for projection in scope.expression.expressions],
+            list(scope.outer_columns),
+        )
+        for scope in traverse_scope(ast)
+        if isinstance(scope.expression, exp.Select)
+    ]
+    try:
+        result = qualify(
+            ast,
+            dialect=dialect,
+            schema=MappingSchema(schema, dialect=dialect, normalize=dialect != "postgres"),
+            infer_schema=False,
+            expand_stars=False,
+            allow_partial_qualification=False,
+            validate_qualify_columns=True,
+        )
+    except sqlglot.errors.OptimizeError as error:
+        raise DatasetPlanningError("SQL_VALIDATION_ERROR") from error
+    # Qualification needs output aliases internally, but inventing _col_0 for a
+    # caller's unaliased aggregate would change its result-column contract.
+    for select, projections, outer_columns in original:
+        if len(select.expressions) != len(projections):
+            continue
+        for position, (before, after) in enumerate(zip(projections, list(select.expressions))):
+            if not isinstance(after, exp.Alias):
+                continue
+            if position < len(outer_columns):
+                # SQLGlot pushes explicit WITH q(x)/derived AS q(x) names into
+                # projections and removes the outer list. These names override
+                # the inner aliases and must not be restored to physical names.
+                after.set("alias", exp.to_identifier(outer_columns[position], quoted=True))
+            elif isinstance(before, exp.Alias):
+                after.set("alias", before.args["alias"].copy())
+            elif isinstance(before, exp.Column):
+                label = before.name
+                if dialect == "tsql":
+                    actual_names = {
+                        column["name"]
+                        for model in models.values()
+                        for column in model["columns"]
+                        if column["name"].casefold() == label.casefold()
+                    }
+                    if len(actual_names) == 1:
+                        label = actual_names.pop()
+                after.set("alias", exp.to_identifier(label, quoted=True))
+            else:
+                after.replace(after.this)
+    if dialect == "tsql":
+        _canonicalize_sql_server_columns(result, models)
+    return result
+
+
 def _sources(models: list[dict]) -> tuple[tuple[str, str], ...]:
     return tuple(
         (model["tableReference"]["schema"], model["tableReference"]["table"]) for model in models
@@ -207,6 +314,11 @@ def plan_for_dataset(
         normalized = deepcopy(manifest)
         models = _model_map(normalized)
         ast = _parse_read(sql, dialect)
+        protected_ctes = {cte.alias_or_name for cte in ast.find_all(exp.CTE)}
+        # Resolve physical sources before column qualification so unknown/ambiguous
+        # tables preserve the established fail-closed reason code.
+        _bind_physical(ast.copy(), dialect, models)
+        ast = _qualify_physical(ast, dialect, models)
         used_models = _bind_physical(ast, dialect, models)
         expected_names = {model["name"].casefold() for model in used_models}
         for model in normalized["models"]:
@@ -242,8 +354,19 @@ def plan_for_dataset(
         expected_sources = _sources(used_models)
         if set(actual_sources) != set(expected_sources):
             raise DatasetPlanningError("SQL_VALIDATION_ERROR")
+        compacted = compact_generated_models(
+            _parse_read(rewritten, dialect),
+            [model["name"] for model in normalized["models"]],
+            protected_ctes,
+            case_sensitive=dialect != "tsql",
+        ).sql(dialect=dialect)
+        compacted_sources = _sources(
+            _bind_physical(_parse_read(compacted, dialect), dialect, models)
+        )
+        if set(compacted_sources) != set(expected_sources):
+            raise DatasetPlanningError("SQL_VALIDATION_ERROR")
         return DatasetPlan(
-            sql=rewritten,
+            sql=compacted,
             source_models=tuple(model["name"] for model in used_models),
             source_tables=expected_sources,
         )

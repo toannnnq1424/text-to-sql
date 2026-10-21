@@ -1,7 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
-import { BookOpen, Check, Play, Plus, Save, Trash2 } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import {
+  BookOpen,
+  Check,
+  Play,
+  Plus,
+  Save,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { useAuth } from "../app/auth";
 import { useWarehouse } from "../app/providers";
 import { semanticApi } from "../api/workbenchApi";
@@ -71,12 +79,61 @@ function SemanticWorkbench({ initial }: { initial: SemanticDocument }) {
   const auth = useAuth();
   const client = useQueryClient();
   const navigate = useNavigate();
-  const [draft, setDraft] = useState(initial);
+  const [searchParams] = useSearchParams();
+  const action = searchParams.get("action");
+  const targetMetric = searchParams.get("metric") || "";
+  const [instruction, setInstruction] = useState("");
+  const [draft, setDraft] = useState(() =>
+    action === "create" && auth.can("ADMIN")
+      ? {
+          ...initial,
+          metrics: [
+            ...initial.metrics,
+            {
+              name: "",
+              description: "",
+              expression: "",
+              unit: "",
+              tableRefs: [],
+              compatibleDimensions: [],
+              synonyms: [],
+            },
+          ],
+        }
+      : initial,
+  );
+  const assist = useMutation({
+    mutationFn: () => semanticApi.assist(context.datasetId, instruction),
+  });
   const [section, setSection] =
     useState<(typeof sections)[number][0]>("metrics");
   const [validated, setValidated] = useState("");
   const [saved, setSaved] = useState(false);
   const editable = auth.can("ADMIN");
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const target =
+        action === "explore"
+          ? document.getElementById("semantic-query-builder")
+          : Array.from(
+              document.querySelectorAll<HTMLElement>("[data-metric-name]"),
+            ).find((element) =>
+              action === "create"
+                ? element.dataset.metricName === ""
+                : element.dataset.metricName === targetMetric,
+            );
+      if (
+        target &&
+        (targetMetric || action === "create" || action === "explore")
+      ) {
+        target.scrollIntoView({ block: "center" });
+        target
+          .querySelector<HTMLInputElement>("input,select")
+          ?.focus({ preventScroll: true });
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [action, targetMetric]);
   const signature = JSON.stringify(draft);
   const update = (value: Partial<SemanticDocument>) => {
     setDraft((current) => ({ ...current, ...value }));
@@ -126,6 +183,87 @@ function SemanticWorkbench({ initial }: { initial: SemanticDocument }) {
           Bạn có thể xem định nghĩa đang hoạt động. Vai trò ADMIN cần thiết để
           chỉnh sửa và kích hoạt.
         </Notice>
+      )}
+      {editable && (
+        <Card title="Trợ lý xây dựng ngữ nghĩa" icon={<Sparkles size={20} />}>
+          <p className="muted">
+            Mô tả mục tiêu phân tích. AI đề xuất chỉ số, chiều và quy tắc trên
+            schema thật; bạn duyệt bản nháp, kiểm tra rồi mới kích hoạt.
+          </p>
+          <Field label="Yêu cầu nghiệp vụ cho AI">
+            <textarea
+              value={instruction}
+              maxLength={2000}
+              rows={3}
+              placeholder="Bạn cần phân tích những chỉ số, nhóm dữ liệu và quy tắc nghiệp vụ nào?"
+              onChange={(event) => setInstruction(event.target.value)}
+            />
+          </Field>
+          <div className="workbench-footer">
+            <Button
+              disabled={assist.isPending || !instruction.trim() || busy}
+              onClick={() => assist.mutate()}
+            >
+              <Sparkles size={17} />
+              {assist.isPending
+                ? "AI đang phân tích schema…"
+                : "Đề xuất ngữ nghĩa bằng AI"}
+            </Button>
+          </div>
+          {assist.error && <ErrorState error={assist.error} />}
+          {assist.data && (
+            <div className="semantic-proposal">
+              <Notice>
+                Đề xuất từ {assist.data.model}. Đây là bản nháp nghiệp vụ, chưa
+                được kích hoạt. Áp dụng sẽ thay bản nháp đang chỉnh sửa.
+              </Notice>
+              {assist.data.warnings.map((warning, index) => (
+                <Notice key={index} tone="warning">
+                  {warning}
+                </Notice>
+              ))}
+              <div className="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Chỉ số được đề xuất / giữ lại</th>
+                      <th>Biểu thức</th>
+                      <th>Đơn vị</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {assist.data.semanticModel.metrics.map((metric) => (
+                      <tr key={metric.name}>
+                        <td>{metric.name}</td>
+                        <td>
+                          <code>{metric.expression}</code>
+                        </td>
+                        <td>{metric.unit || "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="muted">
+                {assist.data.semanticModel.dimensions.length} chiều phân tích ·{" "}
+                {assist.data.semanticModel.businessRules.length} quy tắc nghiệp
+                vụ. Đổi semanticVersion trước khi lưu thay đổi.
+              </p>
+              <Button
+                variant="primary"
+                disabled={busy}
+                onClick={() => {
+                  setDraft(assist.data!.semanticModel);
+                  setValidated("");
+                  setSaved(false);
+                  setSection("metrics");
+                }}
+              >
+                Áp dụng vào bản nháp
+              </Button>
+            </div>
+          )}
+        </Card>
       )}
       <Card
         title="Cấu hình đang hoạt động"
@@ -258,14 +396,16 @@ function SemanticWorkbench({ initial }: { initial: SemanticDocument }) {
         )}
         {saved && <Notice tone="success">Đã lưu cấu hình ngữ nghĩa.</Notice>}
       </Card>
-      <StructuredQuery
-        document={initial}
-        onRun={async (selection) => {
-          const query = await semanticApi.run(context.datasetId, selection);
-          client.setQueryData(["query", query.queryId], query);
-          navigate(`/query/${encodeURIComponent(query.queryId)}/overview`);
-        }}
-      />
+      <div id="semantic-query-builder">
+        <StructuredQuery
+          document={initial}
+          onRun={async (selection) => {
+            const query = await semanticApi.run(context.datasetId, selection);
+            client.setQueryData(["query", query.queryId], query);
+            navigate(`/query/${encodeURIComponent(query.queryId)}/overview`);
+          }}
+        />
+      </div>
     </div>
   );
 }
@@ -324,7 +464,11 @@ function MetricEditor({
         </p>
       )}
       {document.metrics.map((metric, index) => (
-        <div className="definition-card" key={index}>
+        <div
+          className="definition-card"
+          key={index}
+          data-metric-name={metric.name}
+        >
           <div className="definition-header">
             <h3>Chỉ số {index + 1}</h3>
             <Button
@@ -785,8 +929,14 @@ function StructuredQuery({
   onRun: (selection: SemanticSelection) => Promise<void>;
 }) {
   const auth = useAuth();
+  const [searchParams] = useSearchParams();
+  const initialMetric = searchParams.get("metric");
   const [selection, setSelection] = useState<SemanticSelection>({
-    metrics: [],
+    metrics:
+      initialMetric &&
+      document.metrics.some((metric) => metric.name === initialMetric)
+        ? [initialMetric]
+        : [],
     dimensions: [],
     filters: [],
     limit: 100,

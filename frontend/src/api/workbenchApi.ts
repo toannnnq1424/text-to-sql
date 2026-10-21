@@ -13,6 +13,8 @@ import {
   SemanticDocumentSchema,
   SemanticSelectionSchema,
   SemanticValidationSchema,
+  SemanticAssistInputSchema,
+  SemanticAssistSchema,
   type PipelineInput,
   type SemanticDocument,
   type SemanticSelection,
@@ -21,6 +23,12 @@ import {
 const datasetPath = (id: string) => `/datasets/${encodeId(id)}`;
 const pipelinePath = (id: string) => `/pipelines/${encodeId(id)}`;
 export const semanticApi = {
+  assist: (id: string, instruction: string) =>
+    request(`${datasetPath(id)}/semantic-assist`, SemanticAssistSchema, {
+      method: "POST",
+      body: SemanticAssistInputSchema.parse({ instruction }),
+      timeoutMs: 180000,
+    }),
   get: (id: string, signal?: AbortSignal) =>
     request(`${datasetPath(id)}/semantic-model`, SemanticDocumentSchema, {
       signal,

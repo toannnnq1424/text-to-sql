@@ -2,10 +2,10 @@
 """Run the local product smoke against provisioned databases without logging secrets."""
 
 import json
+import time
 import urllib.request
 import uuid
 from pathlib import Path
-
 
 ROOT = Path(__file__).resolve().parents[2]
 CONFIG = dict(
@@ -102,6 +102,12 @@ def main():
                 "mode": "DETERMINISTIC",
             },
         )
+        deadline = time.monotonic() + 180
+        while evaluation["status"] in {"PENDING", "RUNNING"}:
+            if time.monotonic() > deadline:
+                raise AssertionError("Evaluation exceeded smoke deadline")
+            time.sleep(0.25)
+            evaluation = call("/evaluation/runs/" + evaluation["runId"])
         report["engines"][engine] = {
             "catalogTables": catalog["tableCount"],
             "queryId": query["queryId"],

@@ -1,48 +1,29 @@
-# Đánh giá mức hoàn thiện — 2026-10-20
+# Đánh giá mức hoàn thiện — 2026-10-21
 
-Đây là ước lượng kỹ thuật theo phạm vi và bằng chứng acceptance, không phải phần trăm dòng code, số file hoặc số test. Dùng điểm tròn để phản ánh độ bất định; merge vào `main` không tự đồng nghĩa sản phẩm đã nghiệm thu. Cấu hình LLM API key được chủ dự án chủ động để lại tới khi có key.
+Đây là ước lượng kỹ thuật theo target/acceptance, không phải phần trăm dòng code hoặc số test. Các mốc bàn giao trước chưa phản ánh đủ vấn đề UI và nội dung cố định mà người dùng phát hiện. Đánh giá này giữ các phần chưa nghiệm thu là INCOMPLETE; merge vào main không tự đồng nghĩa sản phẩm đạt100%.
 
-## Trường hợp 1: target gốc, không tính việc tận dụng hai bộ nguồn Downloads
-
-**Ước lượng khoảng 80%**, với trọng số FE 25%, BE 35%, Data 20%, AI 20%.
-
-| Phần | Ước lượng | Đã có bằng chứng | Phần còn thiếu để nghiệm thu target |
+| Module | Ước lượng | Khả năng hiện có | Còn thiếu để nghiệm thu đầy đủ |
 |---|---:|---|---|
-| FE | 85% | Các routes dùng API Java; query/result/catalog/history, registry, import, ingestion, evaluation, monitoring/settings; regression unit/browser; query thật qua ba engines | Đối chiếu thị giác toàn bộ màn/state theo ảnh gốc, kiểm tra live đầy đủ mọi route/filter/large-result và accessibility; không tuyên bố pixel-perfect |
-| BE | 85% | Ba adapters thực, guard/query/persistence; OIDC roles/resource checks; immutable import plan và async run; generic source registry và bốn lớp pipeline; native metadata | Mở rộng security/failure/timeout/recovery corpus qua caller thật; tải đồng thời và vận hành dài hạn; deployment HTTPS/IdP thực tế của môi trường đích |
-| Data | 80% | Chinook có provenance/checksum/grants ba engines; typed four-layer provisioning; application ingestion có API thật; import matrix chín cặp; domain support độc lập đã chạy qua Java và ba databases | Kiểm thử datasets lớn và nhiều schema/type/constraint thực tế ngoài corpus đã chạy; data-quality/recovery/operational coverage rộng hơn. Chinook không phải star-schema warehouse |
-| AI | 65% | Provider API path có implementation, structured output và controlled errors; deterministic ba dialects/hai domain; context/few-shot/request-byte checks | Provider smoke/evaluation thật chưa chạy; chưa có số liệu chất lượng câu hỏi mới, typo/ambiguity, token billing và latency thực; budget hiện đếm bytes, chưa đếm tokens theo model. Deterministic chỉ khớp examples đã khai báo |
+| FE | 82% | Routes dùng Java API; OIDC; query/result/history/catalog; metric editor/query, knowledge, pipelines, registry/import/file ingestion, evaluation/monitoring/settings. Gợi ý theo dataset có origin; KPI/bảng gọn, chart trục/series theo cột thật; metric actions và reviewed AI draft. | Đối chiếu thị giác toàn bộ route/state với mock gốc, kiểm accessibility và datasets lớn trên nhiều viewport. Các màn mới đã tốt hơn nhưng chưa pixel-perfect; không dùng số unit tests để kết luận đẹp/dễ dùng hoàn toàn. |
+| BE | 88% | Ba adapters thật, validation/lineage/read-only executor, OIDC/resource roles, persistence/audit/history; registry/discovery, immutable import/file plans, ingestion/transformation jobs. Suggestions theo metadata, merged semantic draft validation, async evaluation có progress/restart recovery. | Security/failure corpus rộng hơn, tải đồng thời và vận hành dài hạn, interruption/network commit-ack fault injection, deployment HTTPS/IdP của môi trường đích. |
+| Data | 83% | Chinook có provenance trên ba engine; import SQL subset đã validate/preview, upload13 extension và bốn lớp, generic source registry, pipeline độc lập với domain; nạp dataset khác qua app không cần thêm data/<database>. | Nhiều warehouse thực cỡ lớn/type/constraint/schema phức tạp, data-quality/operational recovery rộng hơn; cloud connectors chưa được chứng minh bằng tài khoản thật. Chinook là sample transactional, không thay benchmark analytical warehouse lớn. |
+| AI service | 75% | Local Ollama inference và embeddings; API client, context/retrieval/memory, strict candidates, native planner + compaction, business/transform compiler, semantic draft assistance và kiểm tra aggregate grain có tối đa một correction. | Đo chất lượng câu hỏi tự do/typo/ambiguity trên corpus mở và dữ liệu chưa thấy; độ ổn định model local, token billing/latency/load; model online chưa thử theo yêu cầu. Validator chặn nhiều lỗi nhưng không chứng minh câu SQL luôn đúng ý nghiệp vụ. |
 
-Tổng điểm theo các trọng số trên là 80%; phạm vi chưa nghiệm thu vẫn thuộc target, không được chuyển thành “future work” để gọi 100%. Local training là tùy chọn nên không tính là phần bắt buộc còn thiếu.
+Nếu cần một điểm tổng, trọng số FE25%/BE35%/Data20%/AI20% cho khoảng **83%**. Độ bất định vài điểm; không diễn giải như số đo tự động. Local training là tùy chọn, không tính vào phần bắt buộc còn thiếu. Ba database hiện tại, login, import trong app và pipeline vẫn là target hiện tại, không được chuyển thành future work.
 
-## Trường hợp2: tính thêm hai bộ nguồn — cập nhật tích hợp
+## Hai bộ source đã tận dụng đến đâu
 
-Ước lượng70% / reuse25–30% trước đây đã cũ: khi ấy chỉ có context index và native metadata. Hiện đã đưa native semantic core/CTE rewrite và native executor dùng driver/pool/cursor của bộ thứ hai vào luồng mặc định. Không đổi số phần trăm theo số dòng mã; trạng thái dưới đây thể hiện capability đã chạy và giới hạn thật.
+Hai snapshot417.117 dòng trong vendor không phải417.117 dòng tính năng runtime. Không cộng phần trăm vì đã copy source. [Bản đồ caller](integrations/full-source-adoption.md) và [patch hashes](integrations/full-source-patches.json) là nguồn kiểm tra:
 
-| Nguồn | Runtime đã nối | Bằng chứng tích hợp |
-|---|---|---|
-| Semantic engine | Core native0.4.0, ManifestExtractor, SessionContext transform, upstream CTE/dialect rewrite, phân giải projection/CTE/physical lineage; Java kiểm tra AST và nguồn lần nữa | Query API/browser DB3;108 ca support song ngữ so với SQLite độc lập;58 Python PASS/1 provider SKIP; native quoted-case/qualifier/CTE regression |
-| Data tool runtime | Native PG/pgx, MySQL và SQLServer drivers, bounded connection pools/leases/rotation, cancellation, canonical decimal/BIGINT/UUID/bool/time, private Java transport | Native Go race/DB3 tests; Java→Go→DB3; query API/browser; giữ reader grants/time/row/byte bounds |
-| Local file dispatch | Arrow format conversion và upload parser riêng13 extension, automatic full-file inference, preview/mapping, batch4layers, Dataset registration |39 format/engine pairs plus active100k-row cancellation DB3, exact persistence/cleanup; real OIDC browser upload/catalog DB3 |
+- Semantic SDK cài trực tiếp từ source fork: manifest/session/native plan, physical rewrite/lineage, compaction AST; specialization business metric và transformation compiler.
+- MemoryStore/schema indexer thực từ kit: LanceDB persistent, local embeddings, retrieval chọn context và ví dụ được duyệt.
+- Source factories/drivers/pools PostgreSQL/MySQL/SQL Server của kit Go: Java→private executor thật cho query/preview/run, với typed results và giới hạn của app.
+- Semantic assistance mới gọi model client của dự án rồi dùng compiler của fork để kiểm proposal; không giả rằng engine snapshot chứa toàn bộ AI Service gốc.
 
-Không claim cả sản phẩm upstream hoặc mọi cloud connector đã chạy. Native metric-measure compiler của upstream, vector retrieval/cloud IAM/connectors ngoài DB3 và vận hành production/load dài hạn chưa được nghiệm thu. LLM provider thật vẫn chưa chạy theo lựa chọn của người dùng để key cấu hình sau; core SQL planner không tự thay thế model sinh câu hỏi tự do. [Chi tiết nguồn/mapping](platform-reuse.md), [file contract](contracts/file-ingestion.md), [work log](work-log.md).
+Chưa kích hoạt mọi server/CLI/MCP tool/cloud connector, native cube/calculated aggregate không đáp ứng probe, Rust core hiện dùng wheel đã pin. Vì vậy nếu “tính hai repo” nghĩa là toàn bộ khả năng của cả hai sản phẩm gốc thì **chưa có mẫu số scope/acceptance để đưa phần trăm có ý nghĩa**. Không lấy điểm83% của target hiện tại làm claim đã tận dụng83% mọi feature upstream. Các connector mở rộng ở future-connectors là hướng phát triển, không phải runtime support.
 
-## Bằng chứng baseline trước đợt tích hợp này và giới hạn
+## Kiểm chứng và giới hạn cách đọc
 
-- Frontend tích hợp: 118 unit tests, 23 mocked browser cases, build và format PASS; live import/ingestion DB3 có kiểm tra persistence độc lập. Python: 44 PASS, 1 provider smoke SKIP; infra/data: 31 PASS.
-- Backend sau khi tích hợp metadata: 65 tests, không failure/error/skip, có Docker/Testcontainers và ba database thật.
-- SQL Import qua Java: chín cặp source→target, preview/digest/idempotency/persistence, rows/NULL/decimal kiểm tra trực tiếp DB; PASS.
-- Domain support: 108 Vietnamese/English case-engine runs qua Java→Python→database, so với expected độc lập bằng SQLite; PASS trong deterministic mode.
-- Docker: đã build ba app images, healthchecks và query API/browser qua ba engines; OIDC bốn roles, 401/403, renewal/expiry/logout đã PASS. Lần chạy cuối dùng app source `57ddbcf`, có cả hai phần reuse; query UI/API, import9, support108 và OIDC đều PASS. Work log ghi lệnh và giới hạn.
-- Unit/mock provider tests chỉ chứng minh request/response/error handling, không chứng minh model thật sinh SQL chính xác. Mức giảm payload trong corpus kiểm thử không suy ra mức giảm billing/latency của provider.
-- Chưa có clean-machine run với volumes hoàn toàn mới, CI pipeline bắt buộc hoặc audit production/performance toàn diện; không suy ra các mục đó từ build PASS.
+Đợt analytics sửa trực tiếp phản hồi ngày2026-10-21: dùng ba kết nối đăng ký mới và dataset từ file CSV tổng hợp qua application upload (namespace cô lập trong các database local hiện có, một kết nối cho mỗi engine), định nghĩa ngữ nghĩa được lưu qua API thật, rồi query/visualize/evaluate trên database thật. Fixtures là input kiểm thử có identity riêng và được dọn; không có fallback giả trong sản phẩm. SQL oracle được thực thi độc lập; corpus packaged và schema-derived COUNT không được báo như accuracy mọi câu hỏi.
 
-Lệnh, branch/commit, kết quả FE/AI cuối và trạng thái PR/main được ghi tại [work-log.md](work-log.md). Tài liệu này là điểm dừng bàn giao theo yêu cầu người dùng, không phát sinh task triển khai mới.
-
-## Acceptance mới của đợt tích hợp source/file
-
-Backend79 tests PASS/no skip trên Docker/Testcontainers và DB3; frontend124 unit PASS, build/25 mocked browser PASS; parser18 PASS; native planner58 PASS/1 provider SKIP. Packaged Compose có đủ5 app services healthy. Upload13extension×3engine39 pairs và3active cancellation PASS. Browser OIDC thật query và file upload/catalog DB3 PASS, các bảng kiểm thử đã được kiểm tra/dọn theo manifest. Các thay đổi nhỏ về quoted-case/qualifier/source identity và packaging evaluation được kiểm tra lại khi đóng đợt; work log là nguồn evidence cuối, không suy PASS provider từ tests offline.
-
-## Source adoption — cập nhật2026-10-21
-
-Hai bộ source đã được nhập trong repo với417.117 dòng code theo inventory. Python cài/gọi SDK semantic trực tiếp từ source; Go gọi native source factories trực tiếp từ source qua local module replace. [Bản đồ caller và giới hạn](integrations/full-source-adoption.md) ghi chính xác phần đang chạy. Không cộng phần trăm chỉ từ lượng code nhập. Engine source không bao gồm toàn bộ Wren AI Service; [Ollama/API](llm-provider.md) có hướng dẫn cấu hình nhưng inference thật vẫn NOT RUN.
+Lệnh, số ca cuối, model/engine, reports/screenshots, lỗi phát hiện/sửa và phần NOT RUN được ghi trong [work-log.md](work-log.md). [Current review](current-review.md) ghi nguyên nhân và tiêu chí UI/data cụ thể. Provider online giữ nguyên cấu hình, không gọi; không suy PASS online từ Ollama hoặc mocked tests. Không có claim production/load/cloud/pixel-perfect100%.

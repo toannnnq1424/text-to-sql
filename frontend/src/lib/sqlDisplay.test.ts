@@ -29,4 +29,20 @@ describe("formatSqlForDisplay", () => {
       "SELECT DISTINCT\n    region\nFROM sales",
     );
   });
+  it("formats nested CTE projections and the final query without changing quoted names or literals", () => {
+    const sql =
+      "WITH [source] AS (SELECT t.[EmployeeId] AS [id], t.[Name] AS [label] FROM [dbo].[Employee] t), totals AS (SELECT COUNT(*) AS n FROM [source]) SELECT n FROM totals";
+    const display = formatSqlForDisplay(sql);
+    expect(display).toContain(
+      "WITH [source] AS (\n    SELECT\n        t.[EmployeeId] AS [id],\n        t.[Name] AS [label]",
+    );
+    expect(display).toContain("\n    FROM [dbo].[Employee] t\n)");
+    expect(display).toContain("\nSELECT\n    n\nFROM totals");
+    expect(display.split("\n").length).toBeGreaterThan(12);
+  });
+  it("keeps Unicode identifiers intact", () => {
+    expect(
+      formatSqlForDisplay("SELECT doanh_thu, khu_vực FROM dữ_liệu"),
+    ).toContain("khu_vực\nFROM dữ_liệu");
+  });
 });

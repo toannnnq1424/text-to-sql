@@ -63,13 +63,19 @@ export function QueryPage() {
     enabled: c.enabled && c.dataset?.status === "ACTIVE",
   });
   const examples = useQuery({
-    queryKey: ["examples", c.datasetId, search, category, page],
+    queryKey: ["question-suggestions", c.datasetId, search, category, page],
     queryFn: ({ signal }) =>
-      catalogApi.examples(
+      catalogApi.suggestions(
         c.datasetId,
         { page, pageSize: 10, search, category },
         signal,
       ),
+    enabled: c.enabled && c.dataset?.status === "ACTIVE",
+  });
+  const suggestionCategories = useQuery({
+    queryKey: ["suggestion-categories", c.datasetId],
+    queryFn: ({ signal }) =>
+      catalogApi.suggestions(c.datasetId, { page: 1, pageSize: 100 }, signal),
     enabled: c.enabled && c.dataset?.status === "ACTIVE",
   });
   const settings = useQuery({
@@ -299,7 +305,7 @@ export function QueryPage() {
           ) : null}
           <div id="sample-questions">
             <Card
-              title={`Câu hỏi mẫu${c.dataset ? " cho " + c.dataset.name : ""}`}
+              title={`Gợi ý phân tích${c.dataset ? " cho " + c.dataset.name : ""}`}
               icon={<Lightbulb size={24} />}
               actions={
                 <input
@@ -314,6 +320,11 @@ export function QueryPage() {
                 />
               }
             >
+              <p className="suggestion-provenance">
+                Gợi ý được tạo từ schema hiện tại, định nghĩa nghiệp vụ hoặc ví
+                dụ đã duyệt. Bấm để điền câu hỏi; kết quả chỉ xuất hiện sau khi
+                bạn gửi câu hỏi. Chế độ Tự động / API gọi model được cấu hình.
+              </p>
               <div className="category-tabs">
                 <button
                   className={!category ? "active" : ""}
@@ -324,16 +335,22 @@ export function QueryPage() {
                 >
                   Tất cả
                 </button>
-                {catalog.data?.exampleCategories.map((cat) => (
+                {Array.from(
+                  new Set(
+                    suggestionCategories.data?.items.map(
+                      (item) => item.category,
+                    ) || [],
+                  ),
+                ).map((name) => (
                   <button
-                    key={cat.name}
-                    className={category === cat.name ? "active" : ""}
+                    key={name}
+                    className={category === name ? "active" : ""}
                     onClick={() => {
-                      setCategory(cat.name);
+                      setCategory(name);
                       setPage(1);
                     }}
                   >
-                    {cat.name}
+                    {name}
                   </button>
                 ))}
               </div>
@@ -364,6 +381,15 @@ export function QueryPage() {
                                     "Câu hỏi gợi ý"}
                                 </strong>
                                 <small>{ex.question}</small>
+                                <span className="suggestion-origin">
+                                  {
+                                    {
+                                      PHYSICAL_SCHEMA: "Từ schema thực",
+                                      SEMANTIC_MODEL: "Từ định nghĩa nghiệp vụ",
+                                      CURATED: "Ví dụ được duyệt",
+                                    }[ex.origin]
+                                  }
+                                </span>
                               </span>
                               <Chevron />
                             </button>
@@ -372,7 +398,7 @@ export function QueryPage() {
                       ) : (
                         <Empty
                           title="Chưa có câu hỏi mẫu"
-                          description="Câu hỏi mẫu được lấy từ semantic model của dataset."
+                          description="Chưa có gợi ý phù hợp với schema hoặc bộ lọc hiện tại. Bạn vẫn có thể nhập câu hỏi trực tiếp."
                         />
                       )}
                       <Pagination {...list} onChange={(p) => setPage(p)} />
@@ -382,7 +408,7 @@ export function QueryPage() {
               ) : (
                 <Empty
                   title="Câu hỏi mẫu theo dataset"
-                  description="Chọn một dataset hoạt động để tải gợi ý từ semantic model."
+                  description="Chọn dataset hoạt động để tải gợi ý từ schema và ngữ nghĩa của chính dataset đó."
                 />
               )}
             </Card>
