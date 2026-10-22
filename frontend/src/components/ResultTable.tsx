@@ -2,9 +2,35 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Copy, Download, Search } from "lucide-react";
 import { queryApi } from "../api/queryApi";
-import type { QueryResult } from "../api/schema";
+import type { Column, QueryResult } from "../api/schema";
 import { copyText, formatValue } from "../lib/format";
 import { Button, Empty, ErrorState, Loading, Notice, Pagination } from "./ui";
+
+function resultColumnWidth(column: Column, result: QueryResult) {
+  const labelLength = Array.from(column.label || column.name).length;
+  const labelWidth = labelLength * 8 + 40;
+
+  if (column.dataType === "BOOLEAN") return Math.max(120, labelWidth);
+  if (column.dataType === "DATE") return Math.max(150, labelWidth);
+  if (column.dataType === "TIMESTAMP") return Math.max(210, labelWidth);
+  if (["INTEGER", "BIGINT"].includes(column.dataType))
+    return Math.max(140, labelWidth);
+  if (["DECIMAL", "FLOAT"].includes(column.dataType))
+    return Math.max(160, labelWidth);
+
+  const longestValue = Math.max(
+    0,
+    ...result.rows.map((row) =>
+      row[column.name] == null
+        ? 0
+        : Array.from(String(row[column.name])).length,
+    ),
+  );
+  const contentWidth = Math.min(360, Math.max(170, longestValue * 8 + 40));
+
+  return Math.min(360, Math.max(labelWidth, contentWidth));
+}
+
 export function ResultTable({
   queryId,
   initial,
@@ -38,6 +64,15 @@ export function ResultTable({
     staleTime: unchanged ? 15000 : 0,
   });
   const data = queryId && !readonly ? result.data : initial;
+  const compact = Boolean(data && data.columns.length <= 2);
+  const columnWidths = data
+    ? data.columns.map((column) => resultColumnWidth(column, data))
+    : [];
+  const naturalWidth =
+    56 + columnWidths.reduce((total, width) => total + width, 0) + 56;
+  const tableWidth = compact
+    ? Math.min(720, Math.max(400, naturalWidth))
+    : naturalWidth;
   const copy = (value: string) =>
     void copyText(value)
       .then(() => setNotice("Đã sao chép"))
@@ -110,22 +145,29 @@ export function ResultTable({
             aria-label="Dữ liệu kết quả"
           >
             <table
-              style={
-                data.columns.length <= 2
-                  ? {
-                      width: "auto",
-                      minWidth: Math.min(720, 180 + data.columns.length * 220),
-                      maxWidth: "100%",
-                    }
-                  : undefined
-              }
+              style={{
+                width: `${tableWidth}px`,
+                minWidth: compact ? undefined : "100%",
+                tableLayout: "fixed",
+              }}
             >
+              <colgroup>
+                <col style={{ width: "56px" }} />
+                {columnWidths.map((width, index) => (
+                  <col
+                    key={data.columns[index].name}
+                    style={{ width: `${width}px` }}
+                  />
+                ))}
+                <col style={{ width: "56px" }} />
+              </colgroup>
               <thead>
                 <tr>
-                  <th>#</th>
+                  <th scope="col">#</th>
                   {data.columns.map((c) => (
                     <th
                       key={c.name}
+                      scope="col"
                       aria-sort={
                         sort === c.name
                           ? direction === "ASC"
@@ -153,7 +195,9 @@ export function ResultTable({
                       </button>
                     </th>
                   ))}
-                  <th>Sao chép</th>
+                  <th scope="col">
+                    <span className="sr-only">Sao chép dòng</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -163,7 +207,15 @@ export function ResultTable({
                     {data.columns.map((c) => (
                       <td
                         key={c.name}
-                        className={c.semanticRole === "METRIC" ? "numeric" : ""}
+                        className={
+                          c.semanticRole === "METRIC" ||
+                          (["INTEGER", "BIGINT", "DECIMAL", "FLOAT"].includes(
+                            c.dataType,
+                          ) &&
+                            !["DIMENSION", "TIME"].includes(c.semanticRole))
+                            ? "numeric"
+                            : ""
+                        }
                       >
                         <button
                           className={`cell-value ${row[c.name] === null ? "null" : ""}`}

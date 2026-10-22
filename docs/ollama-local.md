@@ -42,6 +42,6 @@ ollama list
 curl http://127.0.0.1:11434/api/tags
 ```
 
-Sau khi app chạy, vào **Tri thức AI** để tạo chỉ mục của dataset đang chọn. Trong **Truy vấn**, chọn mode API, hỏi về bảng/cột có thật và kiểm tra model, SQL, bảng nguồn và kết quả. Model local có thể từ chối hoặc sinh SQL không hợp lệ; lỗi phải hiển thị đúng, không chuyển âm thầm sang câu trả lời giả hoặc deterministic. Một model nhỏ không bảo đảm mọi câu hỏi đều chính xác.
+Sau khi app chạy, vào **Tri thức AI** để tạo chỉ mục của dataset đang chọn. Truy vấn chỉ dùng index ở trạng thái READY; nếu index rỗng/cũ hoặc embedding retrieval lỗi, query vẫn gửi context vật lý/ngữ nghĩa đã được cấp quyền tới đúng model Ollama, không tự rebuild index trong request và không chuyển sang deterministic. Trong **Truy vấn**, chọn mode API, hỏi về bảng/cột có thật và kiểm tra model, SQL, bảng nguồn và kết quả. Model local có thể từ chối hoặc sinh SQL không hợp lệ; lỗi phải hiển thị đúng, không chuyển âm thầm sang câu trả lời giả hoặc deterministic. Một model nhỏ không bảo đảm mọi câu hỏi đều chính xác.
 
 Tài liệu nguồn: [Ollama OpenAI compatibility](https://docs.ollama.com/api/openai-compatibility), [qwen3](https://ollama.com/library/qwen3), [embeddinggemma](https://ollama.com/library/embeddinggemma). Bằng chứng kiểm thử dự án nằm trong [work log](work-log.md).

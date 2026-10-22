@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ApiError } from "../api/client";
 import { warehouseApi } from "../api/warehouseApi";
 import { datasetApi } from "../api/datasetApi";
 import type { Warehouse, Dataset } from "../api/schema";
@@ -223,9 +224,14 @@ export function useWarehouse() {
   if (!context) throw new Error("WarehouseProvider is required");
   return context;
 }
+export function retryApiRead(failureCount: number, error: unknown) {
+  return error instanceof ApiError && error.retryable && failureCount < 2;
+}
+
 export const queryClientDefaults = {
   queries: {
-    retry: false as const,
+    retry: retryApiRead,
+    retryDelay: (attempt: number) => Math.min(150 * 2 ** attempt, 600),
     refetchOnWindowFocus: false,
     staleTime: 15000,
   },

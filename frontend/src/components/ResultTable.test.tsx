@@ -103,4 +103,81 @@ describe("bounded result table", () => {
     mount({ ...query.result!, rows: [], returnedRowCount: 0 });
     expect(screen.getByText("Không có dòng dữ liệu")).toBeVisible();
   });
+
+  it("keeps long text inside its own column in wide warehouse results", () => {
+    const composer =
+      "F. Baltes, R.A. Smith-Diesel, S. Kaufman, U. Dirkschneider, W. Hoffmann";
+    mount({
+      ...query.result!,
+      columns: [
+        {
+          name: "TrackId",
+          label: "TrackId",
+          dataType: "INTEGER",
+          semanticRole: "DIMENSION",
+        },
+        {
+          name: "AlbumId",
+          label: "AlbumId",
+          dataType: "INTEGER",
+          semanticRole: "DIMENSION",
+        },
+        {
+          name: "Composer",
+          label: "Composer",
+          dataType: "STRING",
+          semanticRole: "DIMENSION",
+        },
+        {
+          name: "Milliseconds",
+          label: "Milliseconds",
+          dataType: "INTEGER",
+          semanticRole: "METRIC",
+        },
+        {
+          name: "Bytes",
+          label: "Bytes",
+          dataType: "BIGINT",
+          semanticRole: "METRIC",
+        },
+        {
+          name: "UnitPrice",
+          label: "UnitPrice",
+          dataType: "DECIMAL",
+          semanticRole: "METRIC",
+          unit: "USD",
+        },
+      ],
+      rows: [
+        {
+          TrackId: 1,
+          AlbumId: 3,
+          Composer: composer,
+          Milliseconds: 230619,
+          Bytes: "3990994",
+          UnitPrice: "0.99",
+        },
+      ],
+      returnedRowCount: 1,
+    });
+
+    const table = screen.getByRole("table");
+    const columns = Array.from(
+      table.querySelectorAll<HTMLTableColElement>("colgroup col"),
+    );
+    const tableWidth = Number.parseInt(table.style.width, 10);
+
+    expect(table).toHaveStyle({ tableLayout: "fixed" });
+    expect(columns[3].style.width).toBe("360px");
+    expect(
+      columns.reduce(
+        (sum, column) => sum + Number.parseInt(column.style.width),
+        0,
+      ),
+    ).toBe(tableWidth);
+    expect(screen.getByRole("button", { name: composer })).toHaveAttribute(
+      "title",
+      `${composer} · Nhấn để sao chép`,
+    );
+  });
 });

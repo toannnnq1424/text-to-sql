@@ -15,6 +15,7 @@ from app import (
     SemanticContextSelector,
     app,
     normalize,
+    provider_payload,
     serialize_provider_payload,
 )
 from context_index import cached_snapshot_count, clear_schema_index_cache
@@ -315,6 +316,93 @@ def test_provider_api_returns_strict_candidate(client, monkeypatch):
     )
     assert response.status_code == 200, response.text
     assert response.json()["model"] == "configured-test-model"
+
+
+def test_ollama_qwen3_disables_reasoning_by_default(monkeypatch):
+    monkeypatch.delenv("LLM_REASONING_EFFORT", raising=False)
+    request = Input.model_validate(payload())
+    context = request.semanticContext.model_dump(by_alias=True)
+
+    body = provider_payload(
+        request,
+        context,
+        "qwen3:4b",
+        provider_kind="OLLAMA",
+    )
+
+    assert body["reasoning_effort"] == "none"
+
+
+def test_explicit_reasoning_effort_is_preserved_for_ollama_qwen3(monkeypatch):
+    monkeypatch.setenv("LLM_REASONING_EFFORT", "low")
+    request = Input.model_validate(payload())
+    context = request.semanticContext.model_dump(by_alias=True)
+
+    body = provider_payload(
+        request,
+        context,
+        "qwen3:4b",
+        provider_kind="OLLAMA",
+    )
+
+    assert body["reasoning_effort"] == "low"
+
+
+@pytest.mark.parametrize("index_status", ["EMPTY", "STALE"])
+def test_query_does_not_build_knowledge_index_inline(client, monkeypatch, index_status):
+    monkeypatch.setenv("KNOWLEDGE_ENABLED", "true")
+
+    class KnowledgeWithoutReadyIndex:
+        def __init__(self, *_args):
+            pass
+
+        def status(self):
+            return {"status": index_status}
+
+        def index(self):
+            pytest.fail("Query must not synchronously rebuild the dataset index")
+
+        def search(self, _question):
+            pytest.fail("Query must skip retrieval while the dataset index is not ready")
+
+    monkeypatch.setattr("knowledge.DatasetKnowledge", KnowledgeWithoutReadyIndex)
+    enable_provider(monkeypatch)
+
+    response = client.post(
+        "/internal/v1/text-to-sql",
+        json=payload(),
+        headers=headers("API"),
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["model"] == "configured-test-model"
+
+
+def test_query_uses_model_when_optional_knowledge_search_fails(client, monkeypatch):
+    monkeypatch.setenv("KNOWLEDGE_ENABLED", "true")
+
+    class KnowledgeSearchFailure:
+        def __init__(self, *_args):
+            pass
+
+        def status(self):
+            return {"status": "READY"}
+
+        def search(self, _question):
+            raise RuntimeError("private embedding endpoint detail")
+
+    monkeypatch.setattr("knowledge.DatasetKnowledge", KnowledgeSearchFailure)
+    enable_provider(monkeypatch)
+
+    response = client.post(
+        "/internal/v1/text-to-sql",
+        json=payload(),
+        headers=headers("API"),
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["model"] == "configured-test-model"
+    assert "private embedding endpoint detail" not in response.text
 
 
 def test_provider_boundary_compacts_same_snapshot_without_losing_join_context(

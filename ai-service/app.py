@@ -3,6 +3,7 @@
 import asyncio
 import hmac
 import json
+import logging
 import os
 import re
 import unicodedata
@@ -30,6 +31,8 @@ from model_provider import (
     valid_model_name,
 )
 from semantic_planner import PlanningFailure, PlanRequest, PlanResponse, plan_sql
+
+logger = logging.getLogger(__name__)
 
 
 class Dialect(str, Enum):
@@ -305,7 +308,13 @@ def provider_system_message(request: Input) -> str:
     )
 
 
-def provider_payload(request: Input, context: dict[str, Any], model: str) -> dict[str, Any]:
+def provider_payload(
+    request: Input,
+    context: dict[str, Any],
+    model: str,
+    *,
+    provider_kind: str | None = None,
+) -> dict[str, Any]:
     system = provider_system_message(request)
     response_schema = json.dumps(
         Candidate.model_json_schema(),
@@ -336,6 +345,12 @@ def provider_payload(request: Input, context: dict[str, Any], model: str) -> dic
         ],
     }
     effort = os.getenv("LLM_REASONING_EFFORT", "")
+    if (
+        not effort
+        and provider_kind == "OLLAMA"
+        and re.match(r"^qwen3(?:$|[:._-])", model, re.IGNORECASE)
+    ):
+        effort = "none"
     if effort:
         if effort not in {"none", "minimal", "low", "medium", "high"}:
             raise Controlled("PROVIDER_UNAVAILABLE", 503)
@@ -396,9 +411,15 @@ def provider_payload(request: Input, context: dict[str, Any], model: str) -> dic
     return body
 
 
-def serialize_provider_payload(request: Input, context: dict[str, Any], model: str) -> bytes:
+def serialize_provider_payload(
+    request: Input,
+    context: dict[str, Any],
+    model: str,
+    *,
+    provider_kind: str | None = None,
+) -> bytes:
     return json.dumps(
-        provider_payload(request, context, model),
+        provider_payload(request, context, model, provider_kind=provider_kind),
         ensure_ascii=False,
         separators=(",", ":"),
     ).encode("utf-8")
@@ -827,11 +848,15 @@ class SemanticContextSelector:
         return selected_context
 
 
-async def provider_json(payload: dict[str, Any]) -> tuple[dict[str, Any], str]:
-    try:
-        config = effective_provider()
-    except (ValueError, ValidationError):
-        raise Controlled("PROVIDER_UNAVAILABLE", 503) from None
+async def provider_json(
+    payload: dict[str, Any],
+    config: ModelConfig | None = None,
+) -> tuple[dict[str, Any], str]:
+    if config is None:
+        try:
+            config = effective_provider()
+        except (ValueError, ValidationError):
+            raise Controlled("PROVIDER_UNAVAILABLE", 503) from None
     # Pin both the destination and payload model to this request's snapshot.
     # A local no-key profile must never inherit an online environment key.
     body = {**payload, "model": config.model}
@@ -914,11 +939,20 @@ def generation_budget() -> float:
 
 class OpenAICompatibleModelClient:
     async def generate(self, request: Input, context: dict[str, Any]) -> Candidate:
-        payload = provider_payload(request, context, provider_model())
+        try:
+            provider = effective_provider()
+        except (ValueError, ValidationError):
+            raise Controlled("PROVIDER_UNAVAILABLE", 503) from None
+        payload = provider_payload(
+            request,
+            context,
+            provider.model,
+            provider_kind=provider.kind,
+        )
         budget = generation_budget()
 
         async def checked(body):
-            obj, model = await provider_json(body)
+            obj, model = await provider_json(body, provider)
             try:
                 candidate = Candidate.model_validate(obj)
             except ValidationError:
@@ -1108,31 +1142,43 @@ async def generate_with_context(data: Input, execution_mode: str):
                 data.sqlDialect.value,
                 data.semanticContext.model_dump(by_alias=True),
             )
-            if memory.status()["status"] != "READY":
-                memory.index()
+            status = memory.status()["status"]
+            if status != "READY":
+                logger.info(
+                    "Knowledge retrieval skipped because the index is not ready "
+                    "status=%s correlationId=%s",
+                    status,
+                    data.correlationId,
+                )
+                return None
             return memory.search(data.question)
 
         try:
             retrieved = await run_in_threadpool(retrieve)
         except Exception:
-            raise Controlled("KNOWLEDGE_UNAVAILABLE", 503) from None
-        hints = retrieved["hits"]
-        for example in retrieved["examples"]:
-            if not any(
-                item.question == example["question"] and item.sql == example["sql"]
-                for item in data.semanticContext.examples
-            ):
-                candidate = Example.model_validate(
-                    {
-                        "question": example["question"],
-                        "sqlDialect": example["sqlDialect"],
-                        "sql": example["sql"],
-                        "selectedMetrics": [],
-                        "selectedDimensions": [],
-                    }
-                )
-                if recalled_example_is_valid(candidate, data):
-                    data.semanticContext.examples.append(candidate)
+            logger.warning(
+                "Knowledge retrieval skipped; using request schema context correlationId=%s",
+                data.correlationId,
+            )
+            retrieved = None
+        hints = retrieved["hits"] if retrieved is not None else None
+        if retrieved is not None:
+            for example in retrieved["examples"]:
+                if not any(
+                    item.question == example["question"] and item.sql == example["sql"]
+                    for item in data.semanticContext.examples
+                ):
+                    candidate = Example.model_validate(
+                        {
+                            "question": example["question"],
+                            "sqlDialect": example["sqlDialect"],
+                            "sql": example["sql"],
+                            "selectedMetrics": [],
+                            "selectedDimensions": [],
+                        }
+                    )
+                    if recalled_example_is_valid(candidate, data):
+                        data.semanticContext.examples.append(candidate)
     selector = SemanticContextSelector()
     if execution_mode == "DETERMINISTIC":
         context = selector.select(data, offline=True)

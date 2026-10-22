@@ -1699,14 +1699,20 @@ main {
 }
 .result-scroll table {
   width: max-content;
+  table-layout: fixed;
+}
+.result-scroll th,
+.result-scroll td {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: none;
+  overflow: hidden;
 }
 .result-scroll td {
   white-space: nowrap;
   font-size: 12px;
-  min-width: 105px;
 }
 .result-scroll td:first-child {
-  min-width: 38px;
   width: 38px;
 }
 .result-scroll th:last-child,
@@ -1722,11 +1728,21 @@ main {
 .result-scroll .numeric {
   text-align: right;
 }
+.result-scroll .sort-button {
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .cell-value {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
   background: none;
   padding: 0;
   color: inherit;
-  max-width: 400px;
+  min-width: 0;
+  max-width: none;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4149,7 +4165,6 @@ summary {
   font-size: 12px;
 }
 .result-scroll .cell-value {
-  max-width: 380px;
   font-size: 12px;
 }
 .result-table > small {

@@ -36,6 +36,8 @@ Deployment local cho phép exact hosts của các API tương thích phổ biế
 
 Ollama trong Docker Desktop thường dùng `http://host.docker.internal:11434/v1`; Python chạy trên host dùng `http://127.0.0.1:11434/v1`. Dùng đúng model đã tải từ `ollama list`. Key online không tự chuyển sang Ollama; embeddings Tri thức AI vẫn có cấu hình riêng, không thay theo profile sinh SQL.
 
+Profile local được tạo bằng launcher đặt `LLM_REASONING_EFFORT=none` cho Qwen3 để tránh sinh phần suy luận dài không cần cho JSON candidate. Có thể đổi mức effort tường minh; giới hạn thời gian và kiểm tra candidate vẫn giữ nguyên. Tắt reasoning có thể giảm độ trễ nhưng không làm model nhỏ trả lời đúng mọi câu hỏi.
+
 ## Environment fallback và sao lưu
 
 Profile **Environment** phản ánh cấu hình Python đang chạy, chỉ đọc trong UI. Vẫn có thể dùng `.local/compose-app/provider.env` (online) và profile Ollama riêng theo [Ollama local](ollama-local.md). Tạo/sửa profile application không sửa các file này. Profile application mặc định ưu tiên; xóa lựa chọn override dùng environment nếu đã cấu hình.
