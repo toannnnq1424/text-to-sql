@@ -477,6 +477,12 @@ def test_generation_retrieves_actual_memory_and_revalidates_examples(client, mem
 
     app.state.provider_transport = httpx.MockTransport(provider)
     try:
+        indexed = client.post(
+            "/internal/v1/knowledge/index",
+            headers=headers(),
+            json=envelope(),
+        )
+        assert indexed.status_code == 200, indexed.text
         response = client.post(
             "/internal/v1/text-to-sql",
             json={**envelope(), "question": "How many events?"},
@@ -485,7 +491,7 @@ def test_generation_retrieves_actual_memory_and_revalidates_examples(client, mem
         assert response.status_code == 200, response.text
         assert captured and "How many events?" in captured[0]
         assert "analytics" in captured[0]
-        # Generation auto-indexed the exact authorized envelope into actual LanceDB.
+        # The explicitly indexed authorized envelope is retrieved from actual LanceDB.
         status = client.post("/internal/v1/knowledge/status", headers=headers(), json=envelope())
         assert status.json()["status"] == "READY"
     finally:
@@ -508,7 +514,7 @@ def test_deterministic_never_initializes_embeddings(client, monkeypatch):
     assert response.json()["model"] == "deterministic-semantic-examples"
 
 
-def test_generation_knowledge_failure_is_explicit_and_redacted(client, monkeypatch):
+def test_explicit_knowledge_index_failure_is_controlled_and_redacted(client, monkeypatch):
     monkeypatch.setenv("KNOWLEDGE_ENABLED", "true")
 
     def unavailable(self):
@@ -516,9 +522,9 @@ def test_generation_knowledge_failure_is_explicit_and_redacted(client, monkeypat
 
     monkeypatch.setattr(knowledge.DatasetKnowledge, "index", unavailable)
     response = client.post(
-        "/internal/v1/text-to-sql",
-        json={**envelope(), "question": "Count events"},
-        headers={**headers(), "X-Execution-Mode": "API"},
+        "/internal/v1/knowledge/index",
+        json=envelope(),
+        headers=headers(),
     )
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "KNOWLEDGE_UNAVAILABLE"

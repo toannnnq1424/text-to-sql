@@ -80,10 +80,9 @@ Video/report local được giữ ở `.local/compose-app/readiness-browser/`, k
 
 | Phạm vi                       | Kết quả                                                                                     |
 | ----------------------------- | ------------------------------------------------------------------------------------------- |
-| Java                          | 192tests/44suites, failures/errors/skips0; gồm DB3 và admission/interruption/reauth races   |
-| AI                            | 441PASS,1onlineSKIP; runner3PASS riêng                                                      |
-| Infra/data/runner helpers     | 63PASS,8subtestsPASS; gồm ba runner tests ở dòng trên, không cộng đôi                       |
-| FE                            | 217tests/26files PASS, TypeScript/Vite build và Prettier PASS; frontend image mới đã deploy |
+| Java                          | 195tests, failures/errors/skips0; PostgreSQL/MySQL/SQL Server Testcontainers và admission/interruption/reauth races |
+| Python AI/data/infra           | 525passed,1online-providerSKIP,8subtestsPASS; includes dataset and runner tests              |
+| FE                            | 221tests/27files PASS, TypeScript/Vite build và Prettier PASS; frontend image mới đã deploy |
 | Actual HTTP query concurrency | 20callers đồng thời:8SUCCESS,12QUERY_BUSY không tạo resource; request sau đó SUCCESS        |
 | Source inventory/patches      | Hai snapshot và9patch records verify PASS; không chỉnh vendor trong đợt này                 |
 | Secret/config                 | Known-local-secret scan PASS; file provider online giữ SHA, online inference NOT RUN        |

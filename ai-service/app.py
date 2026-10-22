@@ -343,10 +343,11 @@ def provider_payload(
         separators=(",", ":"),
     )
     system_content = system + " Response schema: " + response_schema
-    try:
-        provider_kind = effective_provider().kind
-    except ValueError:
-        provider_kind = None
+    if provider_kind is None:
+        try:
+            provider_kind = effective_provider().kind
+        except (ValueError, ValidationError):
+            provider_kind = None
     if (
         provider_kind == "OLLAMA"
         and re.match(r"^qwen3(?:[-:_.]|$)", model, re.IGNORECASE)
