@@ -115,7 +115,8 @@ class SemanticWorkbenchTest {
             new SqlGuard(),
             ai,
             mock(SemanticPlannerClient.class),
-            mock(ModelProviderService.class));
+            mock(ModelProviderService.class),
+            new QueryAdmission(new org.springframework.mock.env.MockEnvironment()));
     for (Object metrics : List.of("wrong type", List.of(), List.of("sales", "sales"), List.of(7))) {
       assertThrows(
           ApiException.class,

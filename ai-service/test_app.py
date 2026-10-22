@@ -307,6 +307,39 @@ def enable_provider(monkeypatch, response_body=None, status=200):
     app.state.provider_transport = httpx.MockTransport(handler)
 
 
+def test_qwen3_ollama_prompt_adds_no_think_without_changing_user_question(monkeypatch):
+    body = payload()
+    body["question"] = "Tổng YearlyIncome theo DateFirstPurchase?"
+    request = Input.model_validate(body)
+    monkeypatch.setenv("LLM_PROVIDER_KIND", "OLLAMA")
+    monkeypatch.setenv("LLM_BASE_URL", "http://127.0.0.1:11434/v1")
+    monkeypatch.setenv("LLM_MODEL", "qwen3:4b")
+    monkeypatch.setenv("LLM_REASONING_EFFORT", "none")
+
+    generated = provider_payload(
+        request, request.semanticContext.model_dump(by_alias=True), "qwen3:4b"
+    )
+
+    assert generated["messages"][0]["content"].endswith("/no_think")
+    user_content = json.loads(generated["messages"][1]["content"])
+    assert user_content["question"] == body["question"]
+
+
+def test_qwen3_no_think_switch_is_not_added_to_online_provider(monkeypatch):
+    body = payload()
+    request = Input.model_validate(body)
+    monkeypatch.setenv("LLM_PROVIDER_KIND", "ONLINE")
+    monkeypatch.setenv("LLM_BASE_URL", "https://llm.example.test/v1")
+    monkeypatch.setenv("LLM_API_KEY", "provider-test-secret")
+    monkeypatch.setenv("LLM_MODEL", "qwen3:4b")
+
+    generated = provider_payload(
+        request, request.semanticContext.model_dump(by_alias=True), "qwen3:4b"
+    )
+
+    assert not generated["messages"][0]["content"].endswith("/no_think")
+
+
 def test_provider_api_returns_strict_candidate(client, monkeypatch):
     enable_provider(monkeypatch)
     response = client.post(

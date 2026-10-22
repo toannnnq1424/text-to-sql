@@ -112,6 +112,10 @@ public class SemanticPlannerClient {
     } catch (java.net.http.HttpTimeoutException exception) {
       throw new ApiException(
           HttpStatus.GATEWAY_TIMEOUT, "QUERY_TIMEOUT", "Semantic planner hết thời gian xử lý.");
+    } catch (InterruptedException interrupted) {
+      Thread.currentThread().interrupt();
+      throw new ApiException(
+          HttpStatus.GATEWAY_TIMEOUT, "QUERY_TIMEOUT", "Yêu cầu truy vấn đã dừng.");
     } catch (Exception exception) {
       throw unavailable("Không kết nối được semantic planner.");
     }

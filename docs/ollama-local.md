@@ -19,11 +19,13 @@ Daemon mặc định ở `http://127.0.0.1:11434`. Compose chuyển địa chỉ
 ## Cấu hình tách biệt
 
 - `.local/compose-app/provider.env`: cấu hình model online, giữ nguyên khi kiểm thử local.
-- `.local/compose-app/ollama.env`: endpoint/model local, structured output và tắt reasoning cho model đã kiểm thử.
+- `.local/compose-app/ollama.env`: endpoint/model local, provider timeout55s, structured output và tắt reasoning cho model đã kiểm thử. Candidate generation được tối đa50s tổng cộng để chừa thời gian cho các bước Java trong deadline query60s.
 - `.local/compose-app/llm-profile`: `ollama` hoặc `online`.
 - Named volume `app-knowledge`: LanceDB persistence riêng cho Python container; host launcher dùng `.local/knowledge`.
 
 Các file này không đưa vào Git. Chuỗi key `ollama` là giá trị tương thích HTTP API local, không phải online API key. `activate`/`online` không gửi request tới provider. Đổi profile cần chạy lại `configure` và recreate services để môi trường có hiệu lực.
+
+Riêng `qwen3:4b`, adapter Ollama thêm `/no_think` vào system message; cấu hình cũng gửi `reasoning_effort=none`. Ollama tài liệu hóa `none` là yêu cầu không xuất reasoning, còn `/no_think` là soft switch của Qwen3. Một probe trực tiếp tới Ollama với `reasoning_effort=none` trả lời không có trường reasoning. Hai chỉ thị này không sửa câu hỏi, schema hay SQL sau khi sinh. SQL candidate vẫn phải qua validation và thực thi có kiểm soát ở Java. Model khác và provider online không nhận `/no_think`. Tắt reasoning không phải cam kết latency: câu hỏi trend `SUM(YearlyIncome)` theo `DateFirstPurchase` trên AdventureWorks MySQL vẫn hết deadline `QUERY_TIMEOUT` sau 56,184 ms trong lần kiểm thử 2026-10-22; probe JSON ngắn cũng mất khoảng 19 giây trên runtime local trong cùng phiên.
 
 Để quay về cấu hình online đã có:
 

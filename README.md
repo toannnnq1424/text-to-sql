@@ -1,5 +1,11 @@
 # Natural Language Analytics Warehouse
 
+[Tài liệu làm chủ application](docs/application-deep-dive.md) giải thích kiến trúc FE/BE/Python, các chế độ model, core engine/SQL/CTE/top-N/grain, semantic layer, data pipelines, source SDK fork và cách lần theo code.
+
+[Báo cáo kiểm chứng source fork](docs/source-fork-runtime-usage.md) lần theo call site và file cụ thể đang dùng từ hai source snapshot, đồng thời chỉ rõ gợi ý câu hỏi nào không gọi AI/fork.
+
+[Phát triển schema docs và semantic layer](docs/schema-and-semantic-development.md) hướng dẫn xây metadata/ngữ nghĩa cho nguồn mới, validate/activate, phiên bản và tri thức AI.
+
 Nền tảng Text-to-SQL đa warehouse, đa domain: đặt câu hỏi bằng tiếng Việt/Anh, nhận dữ liệu, biểu đồ, SQL, giải thích và thông tin thực thi.
 
 Repository có frontend React, backend Spring Boot, Python AI service, SQL Import có validate/preview, registry ingestion bốn lớp và thực thi PostgreSQL, MySQL, SQL Server. Đăng nhập OIDC local dùng IdP thật; Docker Compose đóng gói frontend, Java, AI planner, native data executor và file parser. Các luồng đã kiểm chứng và phần còn thiếu nằm trong [đánh giá hiện tại](docs/project-status.md), [current review](docs/current-review.md) và [work log](docs/work-log.md). Chưa nghiệm thu toàn bộ target hoặc provider online; Ollama local đã có kiểm chứng inference thật. Import chỉ xử lý subset SQL đã kiểm soát; app không chạy tùy ý file SQL.
@@ -186,21 +192,21 @@ Các test tích hợp cần Docker và database provisioned; test browser live c
 
 ## Tài liệu
 
-| Tài liệu | Nội dung |
-|---|---|
-| [Scope](docs/scope.md) | Yêu cầu hiệu lực và xử lý mâu thuẫn prompt |
-| [Implementation rules](docs/implementation-rules.md) | Không chia version, skeleton hoặc trì hoãn phần bắt buộc |
-| [Architecture](docs/architecture.md) | Ranh giới, module, ownership |
-| [Contracts](docs/contracts/README.md) | Domain, API, errors, Java ↔ Python, semantic model |
-| [UI reference](docs/ui-reference.md) | 14 ảnh, routes và tiêu chí thị giác |
-| [Data sources](docs/data-sources.md) | Nguồn do người dùng cung cấp và cách sử dụng |
-| [Platform reuse](docs/platform-reuse.md) | Khảo sát hai bộ nguồn, phần ưu tiên tái sử dụng, ranh giới bảo mật và provenance |
-| [Future connectors](docs/future-connectors.md) | SQL engines, cloud/object storage và file sources theo định hướng mở rộng |
-| [Security](docs/security.md) | SQL, credential, auth, giới hạn thực thi |
-| [OIDC local](docs/oidc-local.md) | Keycloak, login/logout thật, roles/audience và kiểm thử browser |
-| [Acceptance](docs/acceptance.md) | Bằng chứng kiểm chứng |
-| [Current review gaps](docs/current-review.md) | Login, import, UI, source dữ liệu và acceptance đang mở |
-| [Future extensions](docs/future-extensions.md) | Local AI/training và nâng quy mô ngoài scope hiện tại |
-| [Work log](docs/work-log.md) | Nhật ký commit/push và handoff |
+| Tài liệu                                             | Nội dung                                                                         |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------- |
+| [Scope](docs/scope.md)                               | Yêu cầu hiệu lực và xử lý mâu thuẫn prompt                                       |
+| [Implementation rules](docs/implementation-rules.md) | Không chia version, skeleton hoặc trì hoãn phần bắt buộc                         |
+| [Architecture](docs/architecture.md)                 | Ranh giới, module, ownership                                                     |
+| [Contracts](docs/contracts/README.md)                | Domain, API, errors, Java ↔ Python, semantic model                               |
+| [UI reference](docs/ui-reference.md)                 | 14 ảnh, routes và tiêu chí thị giác                                              |
+| [Data sources](docs/data-sources.md)                 | Nguồn do người dùng cung cấp và cách sử dụng                                     |
+| [Platform reuse](docs/platform-reuse.md)             | Khảo sát hai bộ nguồn, phần ưu tiên tái sử dụng, ranh giới bảo mật và provenance |
+| [Future connectors](docs/future-connectors.md)       | SQL engines, cloud/object storage và file sources theo định hướng mở rộng        |
+| [Security](docs/security.md)                         | SQL, credential, auth, giới hạn thực thi                                         |
+| [OIDC local](docs/oidc-local.md)                     | Keycloak, login/logout thật, roles/audience và kiểm thử browser                  |
+| [Acceptance](docs/acceptance.md)                     | Bằng chứng kiểm chứng                                                            |
+| [Current review gaps](docs/current-review.md)        | Login, import, UI, source dữ liệu và acceptance đang mở                          |
+| [Future extensions](docs/future-extensions.md)       | Local AI/training và nâng quy mô ngoài scope hiện tại                            |
+| [Work log](docs/work-log.md)                         | Nhật ký commit/push và handoff                                                   |
 
 Ảnh gốc được phép đưa lên GitHub lưu tại [images](images/README.md). Mã nguồn tự viết của repository chưa chọn giấy phép phát hành; license của dataset và thành phần bên thứ ba được quản lý riêng. Hai source kits có caller runtime được ghi trong full source adoption; các connector chỉ mới có source chưa được tính là hỗ trợ hiện tại.

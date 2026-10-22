@@ -387,9 +387,12 @@ export function QueryPage() {
               }
             >
               <p className="suggestion-provenance">
-                Gợi ý được tạo từ schema hiện tại, định nghĩa nghiệp vụ hoặc ví
-                dụ đã duyệt. Bấm để điền câu hỏi; kết quả chỉ xuất hiện sau khi
-                bạn gửi câu hỏi. Chế độ Tự động / API gọi model được cấu hình.
+                Gợi ý được suy ra theo quy tắc từ schema và định nghĩa nghiệp vụ
+                đang hoạt động; phần gợi ý này không gọi AI. Ví dụ đã duyệt do
+                quản trị viên cấu hình. Gợi ý chỉ từ schema dùng cột vật lý,
+                chưa tự xác định ý nghĩa nghiệp vụ; câu hỏi có thể cần
+                metric/dimension được cấu hình. Bấm để điền câu hỏi; kết quả chỉ
+                xuất hiện sau khi bạn gửi câu hỏi.
               </p>
               <div className="category-tabs">
                 <button

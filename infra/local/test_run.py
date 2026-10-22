@@ -115,3 +115,12 @@ def test_private_native_workers_are_backend_only(configured, monkeypatch, servic
             assert environment[key] == value
         else:
             assert key not in environment
+
+
+@pytest.mark.parametrize("service", ["ai", "backend", "frontend"])
+def test_optional_sample_reader_credentials_stay_backend_only(configured, service):
+    (configured / "sample-readers.env").write_text(
+        "NLA_SAMPLE_AWDW_PG_PASSWORD=test-sample-reader\n"
+    )
+    result = RUN.service_environment(service, "local")
+    assert ("NLA_SAMPLE_AWDW_PG_PASSWORD" in result) == (service == "backend")

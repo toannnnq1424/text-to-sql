@@ -1,5 +1,7 @@
 # Chạy ứng dụng trong Docker Compose
 
+Giới hạn query đang chạy trên Java dùng `NLA_QUERY_MAX_CONCURRENT` (mặc định8, giá trị1..64). Ví dụ `NLA_QUERY_MAX_CONCURRENT=4 python3 infra/local/compose.py up`; launcher chỉ chuyển cấu hình này tới backend. Hết slot trả429 `QUERY_BUSY`, `retryable=true`, không tạo query/history hoặc gọi model. Đây là giới hạn đồng thời trong một process, không phải quota tài khoản/distributed rate limit. Private Python inference có admission riêng; xem [readiness contract](contracts/readiness.md).
+
 `infra/compose.databases.yml` + `infra/compose.application.yml` chạy PostgreSQL, MySQL, SQL Server, Java backend, Python AI/native semantic core, native Go data executor, file parser và frontend Nginx. IdP local dùng `infra/compose.auth.yml` trên project `nla-auth`. Cả hai được khởi động bằng cùng helper; SQL Server image vẫn yêu cầu host/emulation `linux/amd64` phù hợp.
 
 ## Khởi chạy

@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 
 from llm_profile import knowledge_environment, profile_environment
 from model_admin import encryption_environment, provider_host_environment
+from sample_readers import sample_reader_environment
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -36,6 +37,7 @@ def service_environment(service: str, authentication: str) -> dict[str, str]:
             (
                 "METADATA_",
                 "NLA_CHINOOK_",
+                "NLA_SAMPLE_",
                 "NLA_PIPELINE_",
                 "NLA_IMPORT_",
                 "DATA_TOOL_RUNTIME_",
@@ -51,6 +53,7 @@ def service_environment(service: str, authentication: str) -> dict[str, str]:
             "NLA_MYSQL_RSA_PUBLIC_KEY",
             "LLM_MODEL",
             "NLA_MODEL_MASTER_KEY",
+            "NLA_QUERY_MAX_CONCURRENT",
             "NLA_MODEL_PROVIDER_HOSTS",
             "FILE_UPLOAD_DIRECTORY",
         }
@@ -91,6 +94,7 @@ def service_environment(service: str, authentication: str) -> dict[str, str]:
         env.update(knowledge_environment(ROOT))
         env.update(provider_host_environment())
     elif service == "backend":
+        env.update(sample_reader_environment(ROOT))
         env.update(encryption_environment(ROOT))
         env.update(provider_host_environment())
     if authentication == "oidc":

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { executionLabel, providerSourceLabel } from "../lib/modelProvider";
 import { queryApi } from "../api/queryApi";
+import { datasetApi } from "../api/datasetApi";
+import { warehouseApi } from "../api/warehouseApi";
 import { useWarehouse } from "../app/providers";
 import { useAuth } from "../app/auth";
 import { formatDate, formatDuration, engineLabel } from "../lib/format";
@@ -38,6 +40,8 @@ import {
 import { SqlBlock } from "../components/ui";
 import { ResultTable } from "../components/ResultTable";
 import { Visualization, scalarColumn } from "../components/Visualization";
+import { loadChartSnapshot } from "../lib/chartSnapshot";
+import { PageHeading } from "../components/Shell";
 export function ResultPage({ history = false }: { history?: boolean }) {
   const { id = "", tab = "overview" } = useParams(),
     c = useWarehouse(),
@@ -52,6 +56,16 @@ export function ResultPage({ history = false }: { history?: boolean }) {
     queryFn: ({ signal }) => queryApi.get(id, signal),
     enabled: c.enabled && Boolean(id),
     refetchInterval: (q) => (q.state.data?.status === "RUNNING" ? 2000 : false),
+  });
+  const sourceWarehouse = useQuery({
+    queryKey: ["query-source-warehouse", query.data?.warehouseId],
+    queryFn: ({ signal }) => warehouseApi.get(query.data!.warehouseId, signal),
+    enabled: c.enabled && Boolean(query.data?.warehouseId),
+  });
+  const sourceDataset = useQuery({
+    queryKey: ["query-source-dataset", query.data?.datasetId],
+    queryFn: ({ signal }) => datasetApi.get(query.data!.datasetId, signal),
+    enabled: c.enabled && Boolean(query.data?.datasetId),
   });
   const save = useMutation({
     mutationFn: () => queryApi.save(id, name),
@@ -89,6 +103,12 @@ export function ResultPage({ history = false }: { history?: boolean }) {
   const active = tabs.some((t) => t[0] === tab) ? tab : "overview";
   return (
     <ApiAccess>
+      {!query.data && (
+        <PageHeading
+          title={query.error ? "Không tải được truy vấn" : "Kết quả truy vấn"}
+          description="Dữ liệu và trạng thái được đọc từ truy vấn đã lưu."
+        />
+      )}
       <Resource resource={query}>
         {(q) => (
           <div className="result-page">
@@ -147,6 +167,17 @@ export function ResultPage({ history = false }: { history?: boolean }) {
               <Badge status={q.status} />
             </div>
             <div className="metadata-strip">
+              <div
+                className="query-source-metadata"
+                aria-label="Nguồn truy vấn"
+              >
+                <span>Nguồn dữ liệu truy vấn</span>
+                <strong>{sourceDataset.data?.name ?? q.datasetId}</strong>
+                <small>
+                  {sourceWarehouse.data?.name ?? q.warehouseId} ·{" "}
+                  {engineLabel[q.sqlDialect]}
+                </small>
+              </div>
               <div>
                 <span>Cơ chế xử lý / model</span>
                 <strong>{executionLabel(q)}</strong>
@@ -203,10 +234,11 @@ export function ResultPage({ history = false }: { history?: boolean }) {
                         title="Trực quan hóa kết quả"
                         icon={<BarChart3 size={24} />}
                       >
-                        <Visualization
+                        <SnapshotVisualization
                           key={id}
                           spec={q.chart}
                           result={q.result}
+                          queryId={id}
                           compact
                         />
                       </Card>
@@ -348,7 +380,12 @@ export function ResultPage({ history = false }: { history?: boolean }) {
                 }
               >
                 {q.result ? (
-                  <Visualization key={id} spec={q.chart} result={q.result} />
+                  <SnapshotVisualization
+                    key={id}
+                    spec={q.chart}
+                    result={q.result}
+                    queryId={id}
+                  />
                 ) : (
                   <Empty />
                 )}
@@ -358,10 +395,18 @@ export function ResultPage({ history = false }: { history?: boolean }) {
               <div className="content-grid">
                 <Card title="Truy vấn SQL" icon={<Code2 size={23} />}>
                   <p className="muted">
-                    Đây là SQL logic cuối cùng đã được Java chuẩn hóa, kiểm tra
-                    và chuyển tới bộ thực thi. Sao chép giữ nguyên chuỗi này.
+                    {q.status === "SUCCESS"
+                      ? "Đây là SQL logic đã được Java chuẩn hóa, kiểm tra và chuyển tới bộ thực thi thành công. Sao chép giữ nguyên chuỗi này."
+                      : "Lần truy vấn chưa thành công. SQL hiển thị có thể là kế hoạch trước khi kiểm tra đạt; không xác nhận statement đã thực thi thành công. Xem trạng thái và lỗi của truy vấn."}
                   </p>
-                  <SqlBlock sql={q.generatedSql} label="SQL đã thực thi" />
+                  <SqlBlock
+                    sql={q.generatedSql}
+                    label={
+                      q.status === "SUCCESS"
+                        ? "SQL đã thực thi"
+                        : "SQL của lần truy vấn chưa thành công"
+                    }
+                  />
                   {q.candidateSql && q.candidateSql !== q.generatedSql && (
                     <details className="candidate-sql">
                       <summary>
@@ -525,5 +570,34 @@ export function ResultPage({ history = false }: { history?: boolean }) {
         )}
       </Resource>
     </ApiAccess>
+  );
+}
+
+function SnapshotVisualization({
+  queryId,
+  ...props
+}: ComponentProps<typeof Visualization> & { queryId: string }) {
+  const needsPages =
+    props.result.rows.length < Math.min(props.result.returnedRowCount, 1000);
+  const snapshot = useQuery({
+    queryKey: ["chart-snapshot", queryId],
+    queryFn: ({ signal }) => loadChartSnapshot(queryId, props.result, signal),
+    enabled: needsPages,
+    staleTime: Infinity,
+    retry: false,
+  });
+  if (!needsPages) return <Visualization {...props} />;
+  return (
+    <>
+      {props.result.returnedRowCount > 1000 && (
+        <Notice tone="warning">
+          Biểu đồ hiển thị tối đa 1.000 dòng snapshot. Xem bảng hoặc xuất CSV để
+          đọc các dòng còn lại; không chạy lại model hoặc SQL khi đổi tab.
+        </Notice>
+      )}
+      <Resource resource={snapshot}>
+        {(complete) => <Visualization {...props} result={complete} />}
+      </Resource>
+    </>
   );
 }

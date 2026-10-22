@@ -57,7 +57,15 @@ class QueryRuntimeSecurityTest {
     when(providers.selectDefault())
         .thenReturn(new ModelProviderService.Selection(Json.obj(), null));
     var service =
-        new QueryService(store, catalog, adapters, new SqlGuard(), ai, planner, providers);
+        new QueryService(
+            store,
+            catalog,
+            adapters,
+            new SqlGuard(),
+            ai,
+            planner,
+            providers,
+            new QueryAdmission(new org.springframework.mock.env.MockEnvironment()));
     var result =
         service.run(
             Json.obj(

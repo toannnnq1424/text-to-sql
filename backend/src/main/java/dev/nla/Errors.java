@@ -29,7 +29,7 @@ public class Errors {
         "correlationId",
         correlation(),
         "retryable",
-        false,
+        "QUERY_BUSY".equals(code),
         "details",
         details);
   }

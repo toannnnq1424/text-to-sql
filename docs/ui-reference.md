@@ -4,22 +4,22 @@
 
 ## Mapping ảnh và route
 
-| Ảnh | Route/màn | Cách sử dụng |
-|---|---|---|
-| [01](../images/01-home.png) | `/` | Shell, hero, card density; nội dung đổi sang platform overview API |
-| [02](../images/02-query-workspace.png) | `/query` | Canonical question workspace, suggestions, dataset info, tips |
-| [03](../images/03-query-overview.png) | `/query/:id/overview` | Canonical result overview, summary/table và result tabs |
-| [04](../images/04-catalog-tables.png) | `/catalog/tables` | Catalog filters, categories, table + detail panel |
-| [05](../images/05-evaluation.png) | `/evaluation/*` | Run controls, metrics, case table + SQL comparison |
-| [06](../images/06-query-chart.png) | `/query/:id/visualization` | Chart controls, series panel, preview; không copy mixed-unit axis sai |
-| [07](../images/07-query-sql.png) | `/query/:id/sql` | SQL pane, explanation, assumptions, source/join/security info |
-| [08](../images/08-query-history.png) | `/history/*` | History filters, pagination, selected-row detail |
-| [09](../images/09-query-data.png) | `/query/:id/data` | Large table, truncation banner, CSV, horizontal scroll |
-| [10](../images/10-ingestion.png) | `/ingestion/*` | Pipeline stages, run history, failure panel |
-| [11](../images/11-dataset-selector-alternate.png) | Global dataset selector | Dropdown content only; không lấy alternate sidebar/topbar |
-| [12](../images/12-query-overview-alternate.png) | Result overview | Metadata summary/table density tham khảo, không thêm result flow thứ hai |
-| [13](../images/13-metric-detail.png) | `/catalog/metrics/:name` | Metric detail navigation, units/synonyms/expression |
-| [14](../images/14-catalog-metrics.png) | `/catalog/metrics` | Metric table/filter taxonomy; dùng shell chính |
+| Ảnh                                               | Route/màn                  | Cách sử dụng                                                             |
+| ------------------------------------------------- | -------------------------- | ------------------------------------------------------------------------ |
+| [01](../images/01-home.png)                       | `/`                        | Shell, hero, card density; nội dung đổi sang platform overview API       |
+| [02](../images/02-query-workspace.png)            | `/query`                   | Canonical question workspace, suggestions, dataset info, tips            |
+| [03](../images/03-query-overview.png)             | `/query/:id/overview`      | Canonical result overview, summary/table và result tabs                  |
+| [04](../images/04-catalog-tables.png)             | `/catalog/tables`          | Catalog filters, categories, table + detail panel                        |
+| [05](../images/05-evaluation.png)                 | `/evaluation/*`            | Run controls, metrics, case table + SQL comparison                       |
+| [06](../images/06-query-chart.png)                | `/query/:id/visualization` | Chart controls, series panel, preview; không copy mixed-unit axis sai    |
+| [07](../images/07-query-sql.png)                  | `/query/:id/sql`           | SQL pane, explanation, assumptions, source/join/security info            |
+| [08](../images/08-query-history.png)              | `/history/*`               | History filters, pagination, selected-row detail                         |
+| [09](../images/09-query-data.png)                 | `/query/:id/data`          | Large table, truncation banner, CSV, horizontal scroll                   |
+| [10](../images/10-ingestion.png)                  | `/ingestion/*`             | Pipeline stages, run history, failure panel                              |
+| [11](../images/11-dataset-selector-alternate.png) | Global dataset selector    | Dropdown content only; không lấy alternate sidebar/topbar                |
+| [12](../images/12-query-overview-alternate.png)   | Result overview            | Metadata summary/table density tham khảo, không thêm result flow thứ hai |
+| [13](../images/13-metric-detail.png)              | `/catalog/metrics/:name`   | Metric detail navigation, units/synonyms/expression                      |
+| [14](../images/14-catalog-metrics.png)            | `/catalog/metrics`         | Metric table/filter taxonomy; dùng shell chính                           |
 
 Result tabs chuẩn: Overview, Data, Visualization, SQL, Explanation, Technical (nhãn UI có thể Việt hóa đồng nhất). Catalog có Overview, Tables, Metrics, Dimensions, Relationships, Examples. Không tạo ba bộ tab khác nhau vì ảnh lặp.
 
@@ -53,6 +53,16 @@ Ba route `/semantic`, `/knowledge`, `/pipelines` dùng cùng shell cố định 
 - `/semantic` lấy cách trình bày bảng/metric của ảnh04/14: card cấu hình có phiên bản, các tab chỉ số/chiều/quan hệ/quy tắc/ví dụ, field có nhãn và SQL nhiều dòng. Chỉ ADMIN được chỉnh sửa. Kiểm tra cấu hình trước khi kích hoạt; sửa draft làm mất kết quả validation. Khối phân tích chỉ dùng định nghĩa đã lưu, đưa kết quả vào các result tabs hiện có.
 - `/knowledge` có trạng thái chỉ mục/counts/model từ API, thao tác lập lại chỉ mục, tìm ngữ cảnh và ví dụ có provenance. EMPTY/STALE/ERROR hiển thị riêng; không chèn ví dụ hay kết quả tìm kiếm giả. Chỉ ADMIN được duyệt/xóa ví dụ và xóa chỉ mục.
 - `/pipelines` theo nhịp card và bốn lớp của ảnh10. Trình tạo hướng dẫn chọn nguồn/đích → mapping từng lớp → preview/lưu. Biểu thức mặc định lấy tên cột nguồn thật và quote theo dialect đích; tên output được chuẩn hóa thành identifier duy nhất, người dùng chỉnh được. Preview cho thấy schema/dòng/SQL thực mỗi lớp và cảnh báo giới hạn mẫu. Lần chạy lấy trạng thái, số dòng, bảng đã tạo, partial failure và dataset từ server. ADMIN quản lý cấu hình, ADMIN/OPERATOR chạy, người có quyền đọc xem lịch sử.
+
+## Kiểm chứng UI ngày 22/10/2026
+
+Các lượt QA thật đều quay video. Full-route audit đã đi qua 107 screen/state ở 1440/1024/390 CSS px, gồm forms, menu, result tabs, detail và 404; không page overflow hoặc unhandled browser error, mỗi main có một h1. Hai axe findings còn lại được sửa và kiểm lại qua 5 targeted states: 0 axe violations/0 browser errors. Report FAIL ban đầu được giữ cùng report recheck; đây không phải tuyên bố mọi tổ hợp accessibility đã PASS.
+
+Selector phải phân biệt Dataset trùng tên bằng description thật và resource ID, có Home/End/Escape/focus return. Bảng rộng cuộn ngang bằng bàn phím. Modal xác nhận SQL Import có focus/description và Escape; không dựng dialog giả bằng một card. Upload preview bỏ dở phải được giải phóng, nhưng rời route không hủy run server đã chấp nhận.
+
+Biểu đồ đọc các trang của snapshot thật thay vì coi 20 dòng preview là toàn bộ kết quả. Bound biểu đồ là 1.000 dòng/5 MiB và phải nói rõ khi giới hạn; lỗi tải trang không được âm thầm chuyển thành biểu đồ thiếu. Scalar dùng thẻ số chính xác; bảng ít cột không kéo thành một khối trống toàn chiều ngang. SQL ở Query lỗi không được gắn nhãn đã thực thi thành công. Bộ ảnh mock vẫn là chuẩn style; các kiểm tra này không thay pixel comparison hoặc human usability review đầy đủ.
+
+Demo `feature-demo-snapshot` có actual OIDC login/logout, Ollama local, câu hỏi không dấu/typo, SQL/provenance, 24 nhóm dữ liệu thật trên biểu đồ cột/tròn, Knowledge và quality. Video đăng ký/nạp CSV, JSON, file fact 60.398 dòng, SQL Import và pipeline ba engine được giữ riêng. Xem [báo cáo readiness](readiness-report-2026-10-22.md) để biết đúng phạm vi, runner và đường dẫn evidence; không dùng ảnh/video fixture thay caller API thật.
 
 Các ảnh trên là nguồn style; ba màn mới không có ảnh mock riêng để claim pixel-perfect. Visual review phải dùng screenshot đúng viewport và kiểm tra thêm mobile/keyboard, không lấy test mock API làm evidence backend hoạt động.
 

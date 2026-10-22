@@ -5,6 +5,7 @@ import {
   useId,
   type ReactNode,
   type FormEvent,
+  type KeyboardEvent,
 } from "react";
 import {
   AlertCircle,
@@ -74,6 +75,29 @@ export function Button({
       {children}
     </button>
   );
+}
+
+/** Roving focus and automatic activation for local (non-routing) tab groups. */
+export function activateTabByKeyboard(event: KeyboardEvent<HTMLElement>) {
+  const keys = ["ArrowRight", "ArrowLeft", "Home", "End"];
+  if (!keys.includes(event.key)) return;
+  const tabs = Array.from(
+    event.currentTarget.querySelectorAll<HTMLButtonElement>(
+      '[role="tab"]:not(:disabled)',
+    ),
+  );
+  const index = tabs.findIndex((tab) => tab === event.target);
+  if (index < 0 || !tabs.length) return;
+  event.preventDefault();
+  const next =
+    event.key === "Home"
+      ? 0
+      : event.key === "End"
+        ? tabs.length - 1
+        : (index + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) %
+          tabs.length;
+  tabs[next]?.focus();
+  tabs[next]?.click();
 }
 export function Field({
   label,
@@ -445,10 +469,14 @@ export function Modal({
   title,
   children,
   onClose,
+  role = "dialog",
+  descriptionId,
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
+  role?: "dialog" | "alertdialog";
+  descriptionId?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null),
     titleId = useId();
@@ -464,7 +492,9 @@ export function Modal({
   return (
     <dialog
       ref={ref}
+      role={role}
       aria-labelledby={titleId}
+      aria-describedby={descriptionId}
       className="modal"
       onCancel={(e) => {
         e.preventDefault();
@@ -582,6 +612,7 @@ export function DataGrid<T>({
             {columns.map((c) => (
               <th
                 key={c.key}
+                scope="col"
                 aria-sort={
                   sort === c.key
                     ? direction === "ASC"
@@ -720,6 +751,7 @@ export function AsyncSelect<T>({
   getId,
   getLabel,
   getValueLabel,
+  getOptionDescription,
   disabled = false,
   cacheKey = "",
 }: {
@@ -734,6 +766,7 @@ export function AsyncSelect<T>({
   getId: (item: T) => string;
   getLabel: (item: T) => string;
   getValueLabel?: (item: T) => string;
+  getOptionDescription?: (item: T) => string;
   disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false),
@@ -745,6 +778,16 @@ export function AsyncSelect<T>({
     enabled: open && !disabled,
   });
   const outer = useRef<HTMLDivElement>(null);
+  const listId = useId();
+  const restoreFocus = () =>
+    outer.current
+      ?.querySelector<HTMLButtonElement>(".selector-trigger")
+      ?.focus();
+  useEffect(() => {
+    setOpen(false);
+    setSearch("");
+    setPage(1);
+  }, [cacheKey, disabled]);
   useEffect(() => {
     const close = (e: MouseEvent) => {
       if (!outer.current?.contains(e.target as Node)) setOpen(false);
@@ -756,10 +799,11 @@ export function AsyncSelect<T>({
     <div className="async-select" ref={outer}>
       <span className="selector-label">{label}</span>
       <Button
-        title={value ? getLabel(value) : label}
+        title={value ? `${getLabel(value)} · ID ${getId(value)}` : label}
         className="selector-trigger"
         aria-expanded={open}
         aria-haspopup="listbox"
+        aria-controls={open ? listId : undefined}
         aria-label={label}
         disabled={disabled}
         onClick={() => setOpen(!open)}
@@ -776,12 +820,17 @@ export function AsyncSelect<T>({
           className="select-menu"
           onKeyDown={(e) => {
             if (e.key === "Escape") {
+              e.preventDefault();
+              e.stopPropagation();
               setOpen(false);
-              outer.current
-                ?.querySelector<HTMLButtonElement>(".selector-trigger")
-                ?.focus();
+              restoreFocus();
             }
-            if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+            if (
+              e.key === "ArrowDown" ||
+              e.key === "ArrowUp" ||
+              ((e.key === "Home" || e.key === "End") &&
+                (e.target as HTMLElement).getAttribute("role") === "option")
+            ) {
               e.preventDefault();
               const options = Array.from(
                 outer.current?.querySelectorAll<HTMLButtonElement>(
@@ -793,11 +842,15 @@ export function AsyncSelect<T>({
                 (o) => o === document.activeElement,
               );
               const next =
-                e.key === "ArrowDown"
-                  ? (index + 1) % options.length
-                  : index <= 0
+                e.key === "Home"
+                  ? 0
+                  : e.key === "End"
                     ? options.length - 1
-                    : index - 1;
+                    : e.key === "ArrowDown"
+                      ? (index + 1) % options.length
+                      : index <= 0
+                        ? options.length - 1
+                        : index - 1;
               options[next]?.focus();
             }
           }}
@@ -821,19 +874,34 @@ export function AsyncSelect<T>({
             />
           ) : (
             <>
-              <div role="listbox" aria-label={`Danh sách ${label}`}>
+              <div id={listId} role="listbox" aria-label={`Danh sách ${label}`}>
                 {result.data?.items.map((item) => (
                   <button
                     type="button"
                     role="option"
-                    aria-selected={value && getId(item) === getId(value)}
+                    data-resource-id={getId(item)}
+                    title={`${getLabel(item)} · ID ${getId(item)}`}
+                    aria-label={
+                      getOptionDescription
+                        ? `${getLabel(item)} · ID ${getId(item)}`
+                        : undefined
+                    }
+                    aria-selected={Boolean(
+                      value && getId(item) === getId(value),
+                    )}
                     key={getId(item)}
                     onClick={() => {
                       onSelect(item);
                       setOpen(false);
+                      restoreFocus();
                     }}
                   >
-                    {getLabel(item)}
+                    <span>{getLabel(item)}</span>
+                    {getOptionDescription && (
+                      <small className="selector-option-description">
+                        {getOptionDescription(item)}
+                      </small>
+                    )}
                   </button>
                 ))}
               </div>
@@ -841,11 +909,16 @@ export function AsyncSelect<T>({
                 <p>Không tìm thấy dữ liệu.</p>
               )}
               <div className="inline-actions">
-                <Button disabled={page === 1} onClick={() => setPage(page - 1)}>
+                <Button
+                  aria-label={`Trang trước ${label}`}
+                  disabled={page === 1}
+                  onClick={() => setPage(page - 1)}
+                >
                   <ArrowLeft size={15} />
                 </Button>
                 <span>Trang {page}</span>
                 <Button
+                  aria-label={`Trang sau ${label}`}
                   disabled={!result.data || page >= result.data.totalPages}
                   onClick={() => setPage(page + 1)}
                 >

@@ -8,7 +8,7 @@
   --blue: #0655ff;
   --blue-dark: #0746d9;
   --navy: #102031;
-  --muted: #7382a8;
+  --muted: #586b91;
   --border: #dfebff;
   --surface: #fff;
   --sidebar: 300px;
@@ -77,7 +77,7 @@ textarea {
 }
 input::placeholder,
 textarea::placeholder {
-  color: #8c9ab9;
+  color: var(--muted);
 }
 input:disabled,
 select:disabled,
@@ -263,7 +263,7 @@ legend {
   background: #edf4ff;
 }
 .button.danger {
-  color: #d53d58;
+  color: #be304a;
   background: #fff5f6;
   border-color: #f9dae0;
 }
@@ -469,7 +469,7 @@ legend {
 .selector-label {
   display: block;
   font-size: 11px;
-  color: #8390b2;
+  color: var(--muted);
   margin: 0 0 5px 1px;
 }
 .selector-trigger {
@@ -755,23 +755,23 @@ main {
   line-height: 1.45;
   white-space: nowrap;
   background: #f0f4fa;
-  color: #6b7f9c;
+  color: var(--muted);
 }
 .badge.good {
   background: #e4f9ec;
-  color: #17a35c;
+  color: #087443;
 }
 .badge.bad {
   background: #fff0f3;
-  color: #e44662;
+  color: #bd294a;
 }
 .badge.warning {
   background: #fff4e5;
-  color: #dd8b19;
+  color: #98600d;
 }
 .badge.blue {
   background: #e9f2ff;
-  color: #1673ff;
+  color: #0756c7;
 }
 .dot {
   width: 7px;
@@ -816,7 +816,7 @@ main {
 .notice.warning {
   background: #fffaf0;
   border-color: #ffe2a2;
-  color: #957123;
+  color: #805d15;
 }
 .notice.error {
   background: #fff4f6;
@@ -826,7 +826,7 @@ main {
 .notice.success {
   background: #effbf5;
   border-color: #c7efdc;
-  color: #138a52;
+  color: #087443;
 }
 .notice .inline-actions {
   margin-top: 9px;
@@ -837,7 +837,7 @@ main {
   justify-content: center;
   gap: 12px;
   min-height: 120px;
-  color: #7385a9;
+  color: var(--muted);
   font-size: 13px;
 }
 .spin {
@@ -865,7 +865,7 @@ main {
   margin: 0 0 8px;
 }
 .empty p {
-  color: #8b99b6;
+  color: var(--muted);
   font-size: 12px;
   margin-bottom: 14px;
 }
@@ -904,7 +904,7 @@ main {
   display: block;
   font-size: 11px;
   line-height: 1.7;
-  color: #7786a8;
+  color: var(--muted);
   margin-bottom: 7px;
 }
 .stat strong {
@@ -1030,7 +1030,7 @@ main {
   display: flex;
   justify-content: space-between;
   font-size: 11px;
-  color: #7a8ba7;
+  color: var(--muted);
   border-top: 1px solid #edf2fb;
   padding-top: 10px;
 }
@@ -1103,7 +1103,7 @@ main {
   right: 17px;
   bottom: 13px;
   font-size: 11px;
-  color: #8596b9;
+  color: var(--muted);
   pointer-events: none;
 }
 .query-actions {
@@ -1130,7 +1130,7 @@ main {
 }
 .mode-control > span {
   font-size: 11px;
-  color: #7485a6;
+  color: var(--muted);
 }
 .mode-control select {
   font-size: 11px;
@@ -1142,7 +1142,7 @@ main {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #8a9ab5;
+  color: var(--muted);
   font-size: 10px;
   margin: 13px 0 0;
   flex-wrap: wrap;
@@ -1204,7 +1204,7 @@ main {
   border: 0;
 }
 .detail-list dt {
-  color: #7a89a7;
+  color: var(--muted);
 }
 .detail-list dd {
   margin: 0;
@@ -1236,7 +1236,7 @@ main {
 .tips p {
   font-size: 11px;
   line-height: 1.8;
-  color: #7385aa;
+  color: var(--muted);
   margin: 4px 0 0;
 }
 .tips .icon-tile {
@@ -1296,7 +1296,7 @@ main {
 }
 .category-tabs > button {
   background: transparent;
-  color: #7d8cae;
+  color: var(--muted);
   padding: 11px 3px;
   white-space: nowrap;
   font-size: 12px;
@@ -1327,7 +1327,7 @@ main {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #7b89aa;
+  color: var(--muted);
   font-size: 13px;
   padding: 17px 21px;
   white-space: nowrap;
@@ -1489,7 +1489,7 @@ main {
   gap: 12px;
   margin-top: 17px;
   font-size: 11px;
-  color: #8390ad;
+  color: var(--muted);
   flex-wrap: wrap;
 }
 .pagination > div {
@@ -1608,13 +1608,23 @@ main {
 }
 .metadata-strip span {
   display: block;
-  color: #8693b1;
+  color: var(--muted);
   font-size: 11px;
   margin-bottom: 5px;
 }
 .metadata-strip strong {
   font-size: 12px;
   line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.query-source-metadata {
+  grid-column: span 2;
+}
+.query-source-metadata small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
   overflow-wrap: anywhere;
 }
 .result-overview {
@@ -1662,7 +1672,7 @@ main {
 }
 .three-columns h3 {
   font-size: 12px;
-  color: #7083a7;
+  color: var(--muted);
 }
 .table-toolbar {
   display: flex;
@@ -1806,7 +1816,7 @@ main {
   width: 44px;
   user-select: none;
   text-align: center;
-  color: #9aabc9;
+  color: var(--muted);
   margin-right: 12px;
   font-size: 10px;
 }
@@ -1843,7 +1853,7 @@ main {
   padding-left: 20px;
   font-size: 13px;
   line-height: 2;
-  color: #6d7fa5;
+  color: var(--muted);
 }
 .chart-area {
   width: 100%;
@@ -1855,7 +1865,7 @@ main {
 }
 .chart-caption {
   font-size: 10px;
-  color: #8999b8;
+  color: var(--muted);
   margin: 12px 0 0;
   line-height: 1.7;
 }
@@ -1958,7 +1968,7 @@ main {
 .run-controls > div > span {
   display: block;
   font-size: 12px;
-  color: #8091b0;
+  color: var(--muted);
   margin-top: 4px;
 }
 .run-controls .button.primary {
@@ -2035,7 +2045,7 @@ details {
 summary {
   font-size: 12px;
   font-weight: 500;
-  color: #657fa7;
+  color: var(--muted);
   cursor: pointer;
 }
 .auth-banner {
@@ -2880,7 +2890,7 @@ summary {
   width: 100%;
   padding: 11px 9px;
   background: none;
-  color: #7b8cb0;
+  color: var(--muted);
   border-radius: 7px;
   text-align: left;
   font-size: 12px;
@@ -2888,7 +2898,7 @@ summary {
 .category-row > span {
   margin-left: auto;
   background: #f0f6ff;
-  color: #6898e3;
+  color: #3168b8;
   border: 1px solid #e0ebff;
   border-radius: 15px;
   padding: 1px 7px;
@@ -3478,7 +3488,7 @@ summary {
 .import-step-list li > div span,
 .import-step-list li small {
   overflow-wrap: anywhere;
-  color: #7183a8;
+  color: var(--muted);
 }
 .import-step-list li .notice {
   grid-column: 1 / -1;
@@ -4211,7 +4221,7 @@ summary {
 .suggestion-origin {
   display: block;
   font-size: 10px;
-  color: #7185ab;
+  color: var(--muted);
   margin-top: 5px;
   font-weight: 400;
 }
@@ -4578,4 +4588,17 @@ summary {
     align-items: flex-start;
     gap: 12px;
   }
+}
+
+.source-wizard-help a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.selector-option-description {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
 }

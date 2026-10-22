@@ -4,31 +4,31 @@ JSON dùng camelCase; ID là opaque string ổn định, không parse ý nghĩa 
 
 ## Warehouse
 
-| Field | Kiểu / ý nghĩa |
-|---|---|
-| warehouseId | string |
-| name | string |
-| engine | engine enum; authoritative source cho sqlDialect |
-| status | ACTIVE / UNAVAILABLE / INVALID / DISABLED |
-| host, database, defaultSchema | string; defaultSchema có thể null khi engine không áp dụng |
-| port | integer 1..65535 |
-| username | string; chỉ trả connection config cho admin |
-| credentialReference | string; write-only trong create/update; không trả secret/reference vào public list |
-| capabilities | `{readOnlyQuery:boolean, metadataDiscovery:boolean}` |
-| createdAt, updatedAt | timestamp |
+| Field                         | Kiểu / ý nghĩa                                                                     |
+| ----------------------------- | ---------------------------------------------------------------------------------- |
+| warehouseId                   | string                                                                             |
+| name                          | string                                                                             |
+| engine                        | engine enum; authoritative source cho sqlDialect                                   |
+| status                        | ACTIVE / UNAVAILABLE / INVALID / DISABLED                                          |
+| host, database, defaultSchema | string; defaultSchema có thể null khi engine không áp dụng                         |
+| port                          | integer 1..65535                                                                   |
+| username                      | string; chỉ trả connection config cho admin                                        |
+| credentialReference           | string; write-only trong create/update; không trả secret/reference vào public list |
+| capabilities                  | `{readOnlyQuery:boolean, metadataDiscovery:boolean}`                               |
+| createdAt, updatedAt          | timestamp                                                                          |
 
 List/selector dùng safe summary `{warehouseId,name,engine,status,capabilities}`; admin detail có connection fields trừ credentialReference. Test/discover không trả connection string có password. ACTIVE nghĩa kết nối khả dụng, không thay cho authorization.
 
 ## Dataset
 
-| Field | Kiểu / ý nghĩa |
-|---|---|
-| datasetId, warehouseId, name, description | string |
-| status | ACTIVE / INVALID_SCHEMA / DISABLED |
-| allowedSchemas | string[] |
-| allowedTables | TableRef[]; `{schema:string, name:string}` |
-| semanticVersion, schemaVersion | string, snapshot identifier; không lấy version từ UI |
-| updatedAt | timestamp |
+| Field                                     | Kiểu / ý nghĩa                                       |
+| ----------------------------------------- | ---------------------------------------------------- |
+| datasetId, warehouseId, name, description | string                                               |
+| status                                    | ACTIVE / INVALID_SCHEMA / DISABLED                   |
+| allowedSchemas                            | string[]                                             |
+| allowedTables                             | TableRef[]; `{schema:string, name:string}`           |
+| semanticVersion, schemaVersion            | string, snapshot identifier; không lấy version từ UI |
+| updatedAt                                 | timestamp                                            |
 
 Không dùng tên bảng không qualified làm security allowlist. Với MySQL, `schema` trong canonical TableRef là database/catalog. Metadata normalization/quoting theo adapter; không lowercase mọi identifier bất kể engine/case rules. Status dataset không phản ánh mọi trạng thái warehouse; phải kiểm tra cả hai.
 
@@ -38,27 +38,27 @@ Không dùng tên bảng không qualified làm security allowlist. Với MySQL, 
 
 ## Query (public detail)
 
-| Field | Kiểu / ý nghĩa |
-|---|---|
-| queryId, correlationId, warehouseId, datasetId | string |
-| engine | engine enum |
-| question | string |
-| status | RUNNING / SUCCESS / REJECTED / VALIDATION_ERROR / QUERY_ERROR / TIMEOUT |
-| candidateSql | string hoặc null; output ban đầu của model/compiler, snapshot cũ default null |
-| generatedSql | string hoặc null nếu chưa sinh được; SQL logic cuối sau planning/compaction, được Java SqlGuard normalize/validate và chuyển executor; adapter có thể thêm envelope LIMIT cố định hoặc cursor bounds |
-| sqlDialect | engine enum |
-| model | string hoặc null trước khi xác định; model thực provider báo (fallback requested name nếu provider không trả) |
-| provider | nullable snapshot `{providerId,revision,name,kind,model,source}` theo [model providers](model-providers.md); model trong snapshot là requested model, không chứa key; snapshot cũ/offline/structured default null |
-| executionMode | API / DETERMINISTIC / SEMANTIC (structured metric selection; no LLM call) |
-| semanticVersion, schemaVersion | string, versions snapshot lúc chạy |
-| latencyMs | integer hoặc null khi đang chạy |
-| createdAt, completedAt | timestamp; completedAt nullable |
-| explanation | string hoặc null |
-| assumptions, selectedMetrics, selectedDimensions | string[], default [] |
-| sourceTables | TableRef[] |
-| result | QueryResult hoặc null khi lỗi/chưa xong |
-| chart | ChartSpec hoặc null |
-| error | ErrorBody hoặc null |
+| Field                                            | Kiểu / ý nghĩa                                                                                                                                                                                                                                                               |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| queryId, correlationId, warehouseId, datasetId   | string                                                                                                                                                                                                                                                                       |
+| engine                                           | engine enum                                                                                                                                                                                                                                                                  |
+| question                                         | string                                                                                                                                                                                                                                                                       |
+| status                                           | RUNNING / SUCCESS / REJECTED / VALIDATION_ERROR / QUERY_ERROR / TIMEOUT                                                                                                                                                                                                      |
+| candidateSql                                     | string hoặc null; output ban đầu của model/compiler, snapshot cũ default null                                                                                                                                                                                                |
+| generatedSql                                     | string hoặc null nếu chưa sinh được; khi SUCCESS là SQL logic cuối được guard normalize/validate và chuyển executor; Query lỗi có thể giữ planned SQL trước khi guard đạt, không được gắn nhãn đã thực thi thành công; adapter có thể thêm envelope LIMIT hoặc cursor bounds |
+| sqlDialect                                       | engine enum                                                                                                                                                                                                                                                                  |
+| model                                            | string hoặc null trước khi xác định; model thực provider báo (fallback requested name nếu provider không trả)                                                                                                                                                                |
+| provider                                         | nullable snapshot `{providerId,revision,name,kind,model,source}` theo [model providers](model-providers.md); model trong snapshot là requested model, không chứa key; snapshot cũ/offline/structured default null                                                            |
+| executionMode                                    | API / DETERMINISTIC / SEMANTIC (structured metric selection; no LLM call)                                                                                                                                                                                                    |
+| semanticVersion, schemaVersion                   | string, versions snapshot lúc chạy                                                                                                                                                                                                                                           |
+| latencyMs                                        | integer hoặc null khi đang chạy                                                                                                                                                                                                                                              |
+| createdAt, completedAt                           | timestamp; completedAt nullable                                                                                                                                                                                                                                              |
+| explanation                                      | string hoặc null                                                                                                                                                                                                                                                             |
+| assumptions, selectedMetrics, selectedDimensions | string[], default []                                                                                                                                                                                                                                                         |
+| sourceTables                                     | TableRef[]                                                                                                                                                                                                                                                                   |
+| result                                           | QueryResult hoặc null khi lỗi/chưa xong                                                                                                                                                                                                                                      |
+| chart                                            | ChartSpec hoặc null                                                                                                                                                                                                                                                          |
+| error                                            | ErrorBody hoặc null                                                                                                                                                                                                                                                          |
 
 Terminal Query immutable; “chạy lại” tạo queryId mới, không ghi đè history. Query detail từ history vẫn dùng snapshot cũ; chạy lại kiểm tra context hiện tại. Status phản ánh execution, không chỉ thành công HTTP hay LLM.
 

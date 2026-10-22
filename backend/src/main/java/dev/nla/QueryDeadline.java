@@ -17,7 +17,14 @@ final class QueryDeadline {
     DEADLINE.remove();
   }
 
+  static void check() {
+    seconds(60);
+  }
+
   static int seconds(int configured) {
+    if (Thread.currentThread().isInterrupted())
+      throw new ApiException(
+          HttpStatus.GATEWAY_TIMEOUT, "QUERY_TIMEOUT", "Yêu cầu truy vấn đã dừng.");
     Long deadline = DEADLINE.get();
     if (deadline == null) return configured;
     long remaining = TimeUnit.NANOSECONDS.toSeconds(deadline - System.nanoTime());

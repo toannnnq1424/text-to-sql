@@ -16,6 +16,7 @@ from pathlib import Path
 
 from llm_profile import knowledge_environment, profile_environment
 from model_admin import encryption_environment, provider_host_environment
+from sample_readers import sample_reader_environment
 
 ROOT = Path(__file__).resolve().parents[2]
 LOCAL = ROOT / ".local" / "compose-app"
@@ -192,6 +193,8 @@ def configure() -> None:
     )
     if ai.get("LLM_MODEL"):
         backend["LLM_MODEL"] = ai["LLM_MODEL"]
+    backend.update(sample_reader_environment(ROOT))
+    backend["NLA_QUERY_MAX_CONCURRENT"] = os.getenv("NLA_QUERY_MAX_CONCURRENT", "8")
     backend.update(encryption_environment(ROOT))
     backend.update(provider_host_environment())
     write_environment(LOCAL / "backend.env", backend)

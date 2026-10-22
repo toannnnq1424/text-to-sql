@@ -104,6 +104,7 @@ export function AppRoutes() {
             path="*"
             element={
               <Card>
+                <h1>Không tìm thấy trang</h1>
                 <Empty
                   title="Không tìm thấy trang"
                   description="Đường dẫn không tồn tại hoặc đã thay đổi."

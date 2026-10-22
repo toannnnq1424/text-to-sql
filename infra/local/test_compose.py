@@ -137,3 +137,20 @@ def test_inference_capacity_configuration_only_reaches_python(tmp_path, monkeypa
     for filename in ("backend.env", "public.env", "data-runtime.env", "file-service.env"):
         assert "LLM_MAX_CONCURRENT_REQUESTS" not in COMPOSE.environment(local / filename)
         assert "LLM_ADMISSION_TIMEOUT_MS" not in COMPOSE.environment(local / filename)
+
+
+def test_sample_readers_only_reach_backend(tmp_path, monkeypatch):
+    local = configured_files(tmp_path, monkeypatch)
+    (local.parent / "sample-readers.env").write_text(
+        "NLA_SAMPLE_AWDW_PG_PASSWORD=sample-test-reader\n"
+    )
+    monkeypatch.setenv("NLA_QUERY_MAX_CONCURRENT", "4")
+    COMPOSE.configure()
+    assert (
+        COMPOSE.environment(local / "backend.env")["NLA_SAMPLE_AWDW_PG_PASSWORD"]
+        == "sample-test-reader"
+    )
+    assert COMPOSE.environment(local / "backend.env")["NLA_QUERY_MAX_CONCURRENT"] == "4"
+    for filename in ("ai.env", "public.env", "data-runtime.env", "file-service.env"):
+        assert "NLA_SAMPLE_AWDW_PG_PASSWORD" not in COMPOSE.environment(local / filename)
+        assert "NLA_QUERY_MAX_CONCURRENT" not in COMPOSE.environment(local / filename)

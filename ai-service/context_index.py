@@ -18,6 +18,12 @@ def normalize_text(value: str) -> str:
     normalized = unicodedata.normalize("NFKC", value)
     normalized = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", normalized)
     normalized = re.sub(r"[_\-]+", " ", normalized).casefold()
+    # Accent folding affects retrieval terms only, never physical SQL identifiers.
+    normalized = "".join(
+        char
+        for char in unicodedata.normalize("NFKD", normalized)
+        if not unicodedata.combining(char)
+    ).replace("đ", "d")
     return " ".join(re.findall(r"[\w]+", normalized, flags=re.UNICODE))
 
 
@@ -85,7 +91,20 @@ def _cached_index(fingerprint: str, context_json: str) -> dict[str, Any]:
     context = json.loads(context_json)
 
     def terms(value: Any) -> set[str]:
-        return set(normalize_text(json.dumps(value, ensure_ascii=False)).split())
+        # JSON field names are structural, not business synonyms. Including keys
+        # like name/table/column made ordinary questions select unrelated tables.
+        if isinstance(value, str):
+            return set(normalize_text(value).split())
+        if isinstance(value, dict):
+            return set().union(*(terms(item) for item in value.values()))
+        if isinstance(value, list):
+            return set().union(*(terms(item) for item in value))
+        return set()
+
+    def semantic_terms(item: dict[str, Any]) -> set[str]:
+        return terms(
+            {key: item.get(key) for key in ("name", "description", "synonyms", "category")}
+        )
 
     table_keys = [(table.get("schema"), table.get("name")) for table in context.get("tables", [])]
     table_by_key = {
@@ -110,8 +129,10 @@ def _cached_index(fingerprint: str, context_json: str) -> dict[str, Any]:
             terms(table) | set(normalize_text(describe_schema({"tables": [table]})).split())
             for table in context.get("tables", [])
         ],
-        "metricTerms": [terms(metric) for metric in context.get("metrics", [])],
-        "dimensionTerms": [terms(dimension) for dimension in context.get("dimensions", [])],
+        "metricTerms": [semantic_terms(metric) for metric in context.get("metrics", [])],
+        "dimensionTerms": [
+            semantic_terms(dimension) for dimension in context.get("dimensions", [])
+        ],
         "exampleTerms": [terms(example) for example in context.get("examples", [])],
     }
 

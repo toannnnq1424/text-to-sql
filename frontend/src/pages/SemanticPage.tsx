@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -28,6 +28,7 @@ import type { Dimension, Example, Metric, Relationship } from "../api/schema";
 import { PageHeading } from "../components/Shell";
 import {
   ApiAccess,
+  activateTabByKeyboard,
   Button,
   Card,
   ContextGate,
@@ -81,6 +82,7 @@ export function SemanticPage() {
 }
 
 function SemanticWorkbench({ initial }: { initial: SemanticDocument }) {
+  const panelId = useId();
   const context = useWarehouse();
   const auth = useAuth();
   const providers = useQuery({
@@ -325,12 +327,16 @@ function SemanticWorkbench({ initial }: { initial: SemanticDocument }) {
           className="workbench-tabs"
           role="tablist"
           aria-label="Định nghĩa ngữ nghĩa"
+          onKeyDown={activateTabByKeyboard}
         >
           {sections.map(([key, label]) => (
             <button
               type="button"
               role="tab"
+              id={`${panelId}-${key}`}
+              aria-controls={panelId}
               aria-selected={section === key}
+              tabIndex={section === key ? 0 : -1}
               className={section === key ? "active" : ""}
               key={key}
               onClick={() => setSection(key)}
@@ -340,46 +346,52 @@ function SemanticWorkbench({ initial }: { initial: SemanticDocument }) {
             </button>
           ))}
         </div>
-        <fieldset className="workbench-fieldset" disabled={!editable || busy}>
-          {section === "metrics" && (
-            <MetricEditor
-              document={draft}
-              onChange={(metrics) => update({ metrics })}
-            />
-          )}
-          {section === "dimensions" && (
-            <DimensionEditor
-              document={draft}
-              onChange={(dimensions) => update({ dimensions })}
-            />
-          )}
-          {section === "relationships" && (
-            <RelationshipEditor
-              document={draft}
-              onChange={(relationships) => update({ relationships })}
-            />
-          )}
-          {section === "rules" && (
-            <Field
-              label="Quy tắc nghiệp vụ"
-              hint="Mỗi dòng một quy tắc; được đưa vào ngữ cảnh AI cùng metadata."
-            >
-              <textarea
-                rows={8}
-                value={draft.businessRules.join("\n")}
-                onChange={(e) =>
-                  update({ businessRules: e.target.value.split("\n") })
-                }
+        <div
+          role="tabpanel"
+          id={panelId}
+          aria-labelledby={`${panelId}-${section}`}
+        >
+          <fieldset className="workbench-fieldset" disabled={!editable || busy}>
+            {section === "metrics" && (
+              <MetricEditor
+                document={draft}
+                onChange={(metrics) => update({ metrics })}
               />
-            </Field>
-          )}
-          {section === "examples" && (
-            <ExampleEditor
-              document={draft}
-              onChange={(examples) => update({ examples })}
-            />
-          )}
-        </fieldset>
+            )}
+            {section === "dimensions" && (
+              <DimensionEditor
+                document={draft}
+                onChange={(dimensions) => update({ dimensions })}
+              />
+            )}
+            {section === "relationships" && (
+              <RelationshipEditor
+                document={draft}
+                onChange={(relationships) => update({ relationships })}
+              />
+            )}
+            {section === "rules" && (
+              <Field
+                label="Quy tắc nghiệp vụ"
+                hint="Mỗi dòng một quy tắc; được đưa vào ngữ cảnh AI cùng metadata."
+              >
+                <textarea
+                  rows={8}
+                  value={draft.businessRules.join("\n")}
+                  onChange={(e) =>
+                    update({ businessRules: e.target.value.split("\n") })
+                  }
+                />
+              </Field>
+            )}
+            {section === "examples" && (
+              <ExampleEditor
+                document={draft}
+                onChange={(examples) => update({ examples })}
+              />
+            )}
+          </fieldset>
+        </div>
         <div className="workbench-footer">
           <Button
             disabled={!editable || busy}

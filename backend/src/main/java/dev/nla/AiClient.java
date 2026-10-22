@@ -110,6 +110,10 @@ public class AiClient {
     } catch (java.net.http.HttpTimeoutException exception) {
       throw new ApiException(
           HttpStatus.GATEWAY_TIMEOUT, "QUERY_TIMEOUT", "Xử lý vượt thời gian cho phép.");
+    } catch (InterruptedException interrupted) {
+      Thread.currentThread().interrupt();
+      throw new ApiException(
+          HttpStatus.GATEWAY_TIMEOUT, "QUERY_TIMEOUT", "Yêu cầu truy vấn đã dừng.");
     } catch (Exception exception) {
       throw new ApiException(
           HttpStatus.SERVICE_UNAVAILABLE, "LLM_ERROR", "Không kết nối được dịch vụ xử lý.");
@@ -168,7 +172,7 @@ public class AiClient {
       var response =
           http.send(
               HttpRequest.newBuilder(uri)
-                  .timeout(Duration.ofSeconds(QueryDeadline.seconds(35)))
+                  .timeout(Duration.ofSeconds(QueryDeadline.seconds(55)))
                   .header("Content-Type", "application/json")
                   .header("X-Execution-Mode", mode)
                   .header("Authorization", "Bearer " + token)
@@ -187,10 +191,35 @@ public class AiClient {
           throw new ApiException(
               HttpStatus.UNPROCESSABLE_ENTITY,
               reason,
-              "Câu hỏi không được semantic context hỗ trợ hoặc chưa đủ rõ.");
+              switch (reason) {
+                case "INSUFFICIENT_CONTEXT" ->
+                    "Dataset chưa cung cấp đủ schema hoặc ngữ nghĩa để trả lời câu hỏi này.";
+                case "UNSUPPORTED_QUESTION" ->
+                    "Câu hỏi nằm ngoài dữ liệu hoặc khả năng truy vấn an toàn của dataset hiện"
+                        + " tại.";
+                default ->
+                    "Model chưa tạo được SQL đủ tin cậy sau lần thử có giới hạn. Nếu bảng/cột đã"
+                        + " nêu rõ, có thể đây là giới hạn của model hiện tại; hãy thử model phù"
+                        + " hợp hơn hoặc cấu hình metric/dimension cho ý nghĩa nghiệp vụ.";
+              });
+        if (reason.equals("INVALID_MODEL_RESPONSE"))
+          throw new ApiException(
+              HttpStatus.BAD_GATEWAY,
+              "LLM_ERROR",
+              "Model có phản hồi nhưng SQL hoặc metadata không đạt kiểm tra an toàn. Hãy làm rõ"
+                  + " phép tổng hợp và cột nhóm, hoặc chọn model phù hợp hơn.");
+        if (reason.equals("PROVIDER_UNAVAILABLE"))
+          throw new ApiException(
+              HttpStatus.SERVICE_UNAVAILABLE,
+              "LLM_ERROR",
+              "Không kết nối được model provider đã chọn. Kiểm tra Ollama/model local hoặc cấu hình"
+                  + " provider trong Settings.");
         if (response.statusCode() == 504)
           throw new ApiException(
-              HttpStatus.GATEWAY_TIMEOUT, "QUERY_TIMEOUT", "Dịch vụ AI hết thời gian xử lý.");
+              HttpStatus.GATEWAY_TIMEOUT,
+              "QUERY_TIMEOUT",
+              "Model không trả lời trong thời gian giới hạn. Với Ollama local, thử câu hỏi ngắn hơn"
+                  + " hoặc tăng timeout provider.");
         throw new ApiException(
             HttpStatus.BAD_GATEWAY, "LLM_ERROR", "Dịch vụ AI không xử lý được câu hỏi.");
       }
@@ -201,6 +230,10 @@ public class AiClient {
     } catch (java.net.http.HttpTimeoutException e) {
       throw new ApiException(
           HttpStatus.GATEWAY_TIMEOUT, "QUERY_TIMEOUT", "Dịch vụ AI hết thời gian xử lý.");
+    } catch (InterruptedException interrupted) {
+      Thread.currentThread().interrupt();
+      throw new ApiException(
+          HttpStatus.GATEWAY_TIMEOUT, "QUERY_TIMEOUT", "Yêu cầu truy vấn đã dừng.");
     } catch (Exception e) {
       throw new ApiException(
           HttpStatus.BAD_GATEWAY, "LLM_ERROR", "Không kết nối được Python AI service.");

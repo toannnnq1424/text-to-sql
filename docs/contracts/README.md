@@ -14,7 +14,8 @@
 9. [Analytics experience](analytics-experience.md): dataset-derived suggestions, reviewed semantic assistance, compact executed SQL and result-driven charts.
 10. [Model providers](model-providers.md): admin encrypted keys, selectable model profiles and explicit execution provenance.
 11. [Data quality](data-quality.md): persisted dataset checks, three-engine counts and bounded inference admission.
-12. [Examples](examples/): fixture JSON đủ để FE mock API, BE mock AI, AI mock Java input.
+12. [Readiness](readiness.md): bounded query admission, language evaluation and recorded UI/real warehouse acceptance.
+13. [Examples](examples/): fixture JSON đủ để FE mock API, BE mock AI, AI mock Java input.
 
 `contractVersion=1.0.0` là version tài liệu/fixture, không bắt thêm field vào response Python. `semanticVersion` và `schemaVersion` độc lập, lưu snapshot vào Query. `/api/v1` và `/internal/v1` là namespace API.
 

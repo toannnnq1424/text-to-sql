@@ -142,6 +142,7 @@ export function ResultTable({
           <div
             className="table-scroll result-scroll"
             tabIndex={0}
+            role="region"
             aria-label="Dữ liệu kết quả"
           >
             <table

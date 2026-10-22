@@ -1,15 +1,20 @@
 # Kiến trúc và ownership
 
+[Giải thích cơ chế và lần theo code](application-deep-dive.md), [quy trình schema docs/semantic layer](schema-and-semantic-development.md) và [báo cáo readiness](readiness-report-2026-10-22.md) bổ sung hướng dẫn thực hành và giới hạn đã đo.
+
 ```mermaid
 flowchart TD
   FE[React / TypeScript] -->|REST /api/v1| BE[Java 21 / Spring Boot]
-BE -->|private HTTP /internal/v1/text-to-sql| AI[Python / FastAPI AI]
-AI --> LLM[Configured LLM API]
-BE -->|private manifest plan /internal/v1/semantic-plan| PLAN[Native Wren planner in Python]
-PLAN -->|rewritten SQL + lineage candidate| BE
-  BE --> PG[(PostgreSQL warehouse)]
-  BE --> MY[(MySQL warehouse)]
-  BE --> MS[(SQL Server warehouse)]
+  BE -->|private HTTP /internal/v1/text-to-sql| AI[Python / FastAPI AI]
+  AI --> LLM[Ollama local / configured online model]
+  BE -->|private manifest plan /internal/v1/semantic-plan| PLAN[Source SDK / native planner in Python]
+  PLAN -->|rewritten SQL + lineage candidate| BE
+  BE -->|validated SQL / reader| EXEC[Private Go source pools]
+  EXEC --> PG[(PostgreSQL warehouse)]
+  EXEC --> MY[(MySQL warehouse)]
+  EXEC --> MS[(SQL Server warehouse)]
+  BE -->|upload bytes| FILE[Private Python file parser]
+  FILE -->|canonical NDJSON / metadata| BE
   BE --> META[(Application metadata store)]
   ELT[Controlled Data pipelines] --> PG
   ELT --> MY
@@ -22,15 +27,15 @@ Application metadata store lưu registry, semantic versions, query history, audi
 
 Theo yêu cầu ngày 2026-10-20, ưu tiên phần semantic planner/manifest/metadata/connectors và source/tool runtime đã có trong hai snapshot được khảo sát ở [platform-reuse.md](platform-reuse.md). Python hiện tích hợp native Wren planner/rewrite qua private endpoint sau bước sinh candidate. Java vẫn là nơi duy nhất authorize, kiểm tra SQL sau rewrite, so sánh lineage và quyết định thực thi. Không expose MCP/admin/execute tools trực tiếp cho browser/LLM. Danh mục ngoài ba engine hiện tại ở [future-connectors.md](future-connectors.md) là định hướng do người dùng yêu cầu, cần contract migration/capability model và nghiệm thu riêng khi triển khai.
 
-| Phần | Owner | Trách nhiệm |
-|---|---|---|
-| `frontend/` | React | UX, shell, route, API client, result rendering, MSW, visual checks |
-| `backend/` | Java | API, auth, registry, discovery, semantic validation, AST/security, dialect, execution, persistence, evaluation, monitoring; compiles authorized semantic manifest and calls planner |
-| `ai-service/` | Python | Internal API, context/few-shot selection, structured provider output, native Wren manifest resolution and SQL rewrite, deterministic client |
-| `data/` | AI/Data phối hợp BE | Canonical demo schema, seeds/generator, ELT, semantic fixtures, evaluation corpus |
-| `infra/` | BE phối hợp mọi phần | Compose/network/env/CI; 3 DB engines + 3 application services |
-| `docs/contracts/` | Chung | Một nguồn sự thật cho DTO/API/fixtures; review tác động cả ba vai trò |
-| `images/`, UI reference | FE | Ảnh gốc, mapping, visual acceptance |
+| Phần                    | Owner                | Trách nhiệm                                                                                                                                                                         |
+| ----------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `frontend/`             | React                | UX, shell, route, API client, result rendering, MSW, visual checks                                                                                                                  |
+| `backend/`              | Java                 | API, auth, registry, discovery, semantic validation, AST/security, dialect, execution, persistence, evaluation, monitoring; compiles authorized semantic manifest and calls planner |
+| `ai-service/`           | Python               | Internal API, context/few-shot selection, structured provider output, native Wren manifest resolution and SQL rewrite, deterministic client                                         |
+| `data/`                 | AI/Data phối hợp BE  | Canonical demo schema, seeds/generator, ELT, semantic fixtures, evaluation corpus                                                                                                   |
+| `infra/`                | BE phối hợp mọi phần | Compose/network/env/check runners; 3 DB engines, 5 application services và IdP                                                                                                      |
+| `docs/contracts/`       | Chung                | Một nguồn sự thật cho DTO/API/fixtures; review tác động cả ba vai trò                                                                                                               |
+| `images/`, UI reference | FE                   | Ảnh gốc, mapping, visual acceptance                                                                                                                                                 |
 
 Một warehouse có nhiều dataset; dataset là phạm vi logic có allowlist + semantic layer trên physical metadata, không là một database mới. SQL engine/dialect do warehouse registry xác định; browser không quyết định dialect. Java xác nhận dataset thuộc warehouse và được principal hiện tại phép dùng.
 

@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -10,6 +10,9 @@ import {
   plotRows,
 } from "./Visualization";
 import type { QueryResult } from "../api/schema";
+import { queryApi } from "../api/queryApi";
+
+afterEach(() => vi.restoreAllMocks());
 
 const result: QueryResult = {
   columns: [
@@ -69,6 +72,125 @@ const result: QueryResult = {
   truncated: false,
 };
 describe("result shape and chart controls", () => {
+  it("locally pages a wide fallback snapshot with bounded DOM, exact copy and accessible last-page controls", async () => {
+    const user = userEvent.setup();
+    const copy = vi.spyOn(navigator.clipboard, "writeText");
+    const requestPage = vi.spyOn(queryApi, "result");
+    const runQuery = vi.spyOn(queryApi, "run");
+    const columns: QueryResult["columns"] = Array.from(
+      { length: 200 },
+      (_, index) => ({
+        name: "column_" + index,
+        label: "Column " + index,
+        dataType: index === 1 ? "DECIMAL" : "STRING",
+        semanticRole: index === 1 ? "METRIC" : "DIMENSION",
+      }),
+    );
+    const rows = Array.from({ length: 1000 }, (_, row) =>
+      Object.fromEntries(
+        columns.map((column, index) => [
+          column.name,
+          index === 1
+            ? "9007199254740993.123456789"
+            : `Value ${row + 1}-${index}`,
+        ]),
+      ),
+    );
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <Visualization
+          spec={{
+            type: "bar",
+            title: "Invalid axis",
+            x: "missing",
+            series: [],
+          }}
+          result={{ ...result, columns, rows, returnedRowCount: 1000 }}
+        />
+      </QueryClientProvider>,
+    );
+    const navigation = screen.getByRole("navigation", {
+      name: "Phân trang bảng biểu đồ",
+    });
+    const table = screen.getByRole("table");
+    const renderedRows = () => within(table).getAllByRole("row").slice(1);
+    expect(renderedRows()).toHaveLength(20);
+    expect(table.querySelectorAll("tbody td")).toHaveLength(20 * 202);
+    expect(
+      within(navigation).getByRole("button", { name: "Trang đầu" }),
+    ).toBeDisabled();
+    await user.click(
+      within(navigation).getByRole("button", { name: "Trang sau" }),
+    );
+    const first = within(renderedRows()[0]);
+    expect(first.getAllByRole("cell")[0]).toHaveTextContent("21");
+    expect(first.getByRole("button", { name: "Value 21-0" })).toBeVisible();
+    await user.click(
+      first.getByRole("button", { name: "9.007.199.254.740.993,123456789" }),
+    );
+    expect(copy).toHaveBeenLastCalledWith("9007199254740993.123456789");
+    await user.click(first.getByRole("button", { name: "Sao chép dòng 21" }));
+    expect(copy).toHaveBeenLastCalledWith(JSON.stringify(rows[20]));
+    const last = within(navigation).getByRole("button", { name: "Trang cuối" });
+    last.focus();
+    await user.keyboard("{Enter}");
+    expect(within(renderedRows()[0]).getAllByRole("cell")[0]).toHaveTextContent(
+      "981",
+    );
+    expect(
+      within(renderedRows().at(-1)!).getAllByRole("cell")[0],
+    ).toHaveTextContent("1000");
+    expect(renderedRows()).toHaveLength(20);
+    expect(
+      within(navigation).getByRole("button", { name: "Trang sau" }),
+    ).toBeDisabled();
+    expect(last).toBeDisabled();
+    expect(requestPage).not.toHaveBeenCalled();
+    expect(runQuery).not.toHaveBeenCalled();
+  }, 15000);
+
+  it("pages only available snapshot rows and identifies an unloaded remainder", async () => {
+    const user = userEvent.setup();
+    const rows = Array.from({ length: 35 }, (_, index) => ({
+      station: `Station ${index + 1}`,
+      area: "Area",
+      temperature: "12.50",
+      temperature_max: "18.25",
+      rain: "3.00",
+    }));
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <Visualization
+          spec={{ type: "table", title: "Partial snapshot", series: [] }}
+          result={{ ...result, rows, returnedRowCount: 1500 }}
+        />
+      </QueryClientProvider>,
+    );
+    expect(
+      screen.getByText(/Bảng này có 35 dòng đã tải trong 1\.500 dòng snapshot/),
+    ).toBeVisible();
+    const navigation = screen.getByRole("navigation", {
+      name: "Phân trang bảng biểu đồ",
+    });
+    await user.click(
+      within(navigation).getByRole("button", { name: "Trang cuối" }),
+    );
+    const rowsOnLastPage = within(screen.getByRole("table"))
+      .getAllByRole("row")
+      .slice(1);
+    expect(rowsOnLastPage).toHaveLength(15);
+    expect(within(rowsOnLastPage[0]).getAllByRole("cell")[0]).toHaveTextContent(
+      "21",
+    );
+    expect(
+      within(rowsOnLastPage.at(-1)!).getAllByRole("cell")[0],
+    ).toHaveTextContent("35");
+    expect(
+      within(navigation).getByRole("button", { name: "Trang sau" }),
+    ).toBeDisabled();
+    expect(within(navigation).getByText("2 / 2")).toBeVisible();
+  });
+
   it("presents one count as a compact exact scalar even when the stored chart proposal was table", () => {
     const scalar: QueryResult = {
       ...result,

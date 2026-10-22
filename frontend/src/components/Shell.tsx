@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   BookOpen,
@@ -64,6 +64,8 @@ export function Shell() {
     [authError, setAuthError] = useState(""),
     [localToken, setLocalToken] = useState(""),
     [localBusy, setLocalBusy] = useState(false);
+  const notificationRef = useRef<HTMLDivElement>(null);
+  const notificationId = useId();
   const monitoring = useQuery({
     queryKey: ["header-monitoring", c.warehouseId, c.datasetId],
     queryFn: ({ signal }) =>
@@ -84,7 +86,30 @@ export function Shell() {
   );
   useEffect(() => {
     setOpen(false);
+    setNotifications(false);
   }, [location.pathname]);
+  useEffect(() => {
+    if (!notifications) return;
+    const close = (event: MouseEvent) => {
+      if (!notificationRef.current?.contains(event.target as Node))
+        setNotifications(false);
+    };
+    const keyboard = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setNotifications(false);
+      notificationRef.current
+        ?.querySelector<HTMLButtonElement>("button")
+        ?.focus();
+    };
+    notificationRef.current?.querySelector<HTMLAnchorElement>("a")?.focus();
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", keyboard);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", keyboard);
+    };
+  }, [notifications]);
   useEffect(() => {
     const media = window.matchMedia("(max-width: 1100px)");
     const changed = () => {
@@ -274,6 +299,9 @@ export function Shell() {
                 datasetApi.list({ ...p, warehouseId: c.warehouseId }, s)
               }
               getId={(d) => d.datasetId}
+              getOptionDescription={(d) =>
+                `${d.description?.slice(0, 140) || "Chưa có mô tả"} · ID …${d.datasetId.slice(-8)}`
+              }
               getLabel={(d) =>
                 `${d.name} · ${d.status} · semantic ${d.semanticVersion} / schema ${d.schemaVersion}`
               }
@@ -292,17 +320,23 @@ export function Shell() {
                 <option value="en">English</option>
               </select>
             </label>
-            <div className="notification-wrap">
+            <div className="notification-wrap" ref={notificationRef}>
               <Button
                 variant="ghost"
                 aria-label="Thông báo hệ thống"
                 aria-expanded={notifications}
+                aria-controls={notifications ? notificationId : undefined}
                 onClick={() => setNotifications(!notifications)}
               >
                 <Bell size={22} />
               </Button>
               {notifications && (
-                <div className="notification-menu">
+                <div
+                  className="notification-menu"
+                  id={notificationId}
+                  role="region"
+                  aria-label="Trạng thái dịch vụ"
+                >
                   <strong>Thông báo hệ thống</strong>
                   {!c.enabled ? (
                     <p>Đăng nhập và chọn warehouse để tải trạng thái thật.</p>

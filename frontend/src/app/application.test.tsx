@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse, delay } from "msw";
 import { renderApp, readyDataset } from "../test/render";
@@ -9,6 +9,32 @@ import { server } from "../test/server";
 import * as f from "../test/fixtures";
 const api = "*/api/v1";
 describe("shell and context", () => {
+  it("does not label rejected planned SQL as successfully executed", async () => {
+    server.use(
+      http.get(`${api}/query/:id`, () =>
+        HttpResponse.json({
+          ...f.query,
+          status: "VALIDATION_ERROR",
+          result: null,
+          error: {
+            code: "SQL_VALIDATION_ERROR",
+            message: "Planned statement was rejected",
+            correlationId: "rejected-plan",
+            retryable: false,
+            details: {},
+          },
+        }),
+      ),
+    );
+    renderApp("/query/rejected/sql");
+    await readyDataset();
+    expect(
+      await screen.findByText("SQL của lần truy vấn chưa thành công"),
+    ).toBeVisible();
+    expect(
+      screen.queryByText("SQL đã thực thi", { exact: true }),
+    ).not.toBeInTheDocument();
+  });
   it.each([
     ["/", "Trang chủ"],
     ["/query", "Truy vấn"],
@@ -172,6 +198,25 @@ describe("shell and context", () => {
     expect(
       screen.getByText("Create table imported_tracks"),
     ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Xem lại và xác nhận" }),
+    );
+    const firstDialog = screen.getByRole("alertdialog", {
+      name: "Xác nhận thực thi kế hoạch?",
+    });
+    expect(firstDialog.tagName).toBe("DIALOG");
+    expect(firstDialog).toHaveAttribute(
+      "aria-describedby",
+      "import-confirm-copy",
+    );
+    fireEvent(
+      firstDialog,
+      new Event("cancel", { bubbles: false, cancelable: true }),
+    );
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Xem lại và xác nhận" }),
+    ).toHaveFocus();
     await user.click(
       screen.getByRole("button", { name: "Xem lại và xác nhận" }),
     );
@@ -389,6 +434,22 @@ describe("query workflow", () => {
   });
 });
 describe("results, history, metadata", () => {
+  it("shows the warehouse that produced a result when another warehouse is selected", async () => {
+    const mysqlQuery = {
+      ...f.query,
+      warehouseId: f.warehouses[1].warehouseId,
+      datasetId: f.datasets[1].datasetId,
+      sqlDialect: "MYSQL" as const,
+    };
+    server.use(
+      http.get(`${api}/query/:id`, () => HttpResponse.json(mysqlQuery)),
+    );
+    renderApp("/query/q/overview");
+    const source = await screen.findByLabelText("Nguồn truy vấn");
+    expect(source).toHaveTextContent("Commerce demo");
+    expect(source).toHaveTextContent("Demo MYSQL");
+    expect(source).toHaveTextContent("MySQL");
+  });
   it("renders dialect, SQL and source tables without requiring the current dataset", async () => {
     renderApp("/query/q/sql");
     expect(

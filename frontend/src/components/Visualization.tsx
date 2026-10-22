@@ -179,6 +179,81 @@ export function plotRows(result: QueryResult, spec: ChartSpec) {
     .sort((a, b) => a.instant - b.instant)
     .map(({ row }) => row);
 }
+
+function SnapshotTable({ result }: { result: QueryResult }) {
+  const [requestedPage, setPage] = useState(1);
+  const pageSize = 20;
+  const available = result.rows.length;
+  const totalPages = Math.max(1, Math.ceil(available / pageSize));
+  const page = Math.min(requestedPage, totalPages);
+  const start = (page - 1) * pageSize;
+  const end = Math.min(start + pageSize, available);
+  const localPage = {
+    ...result,
+    page,
+    pageSize,
+    rows: result.rows.slice(start, end),
+  };
+  return (
+    <>
+      {available < result.returnedRowCount && (
+        <Notice tone="warning">
+          Bảng này có {available.toLocaleString("vi-VN")} dòng đã tải trong{" "}
+          {result.returnedRowCount.toLocaleString("vi-VN")} dòng snapshot. Phân
+          trang chỉ áp dụng cho các dòng đã tải; mở tab Dữ liệu hoặc xuất CSV để
+          xem snapshot còn lại.
+        </Notice>
+      )}
+      <ResultTable initial={localPage} readonly />
+      {available > pageSize && (
+        <nav className="pagination" aria-label="Phân trang bảng biểu đồ">
+          <span role="status" aria-live="polite" aria-atomic="true">
+            Hiển thị{" "}
+            <strong>
+              {start + 1}–{end}
+            </strong>{" "}
+            / {available.toLocaleString("vi-VN")} dòng đã tải
+          </span>
+          <div>
+            <span>20 dòng/trang</span>
+            <Button
+              aria-label="Trang đầu"
+              disabled={page === 1}
+              onClick={() => setPage(1)}
+            >
+              Đầu
+            </Button>
+            <Button
+              aria-label="Trang trước"
+              disabled={page === 1}
+              onClick={() => setPage(page - 1)}
+            >
+              Trước
+            </Button>
+            <span className="page-current">
+              {page} / {totalPages}
+            </span>
+            <Button
+              aria-label="Trang sau"
+              disabled={page === totalPages}
+              onClick={() => setPage(page + 1)}
+            >
+              Sau
+            </Button>
+            <Button
+              aria-label="Trang cuối"
+              disabled={page === totalPages}
+              onClick={() => setPage(totalPages)}
+            >
+              Cuối
+            </Button>
+          </div>
+        </nav>
+      )}
+    </>
+  );
+}
+
 export function Visualization({
   spec: input,
   result,
@@ -314,7 +389,7 @@ export function Visualization({
           )}
           {fullscreenError && <Notice>{fullscreenError}</Notice>}
           {spec.type === "table" ? (
-            <ResultTable initial={result} readonly />
+            <SnapshotTable result={result} />
           ) : spec.type === "number" ? (
             <div className="number-chart">
               <small>{spec.series[0].label}</small>

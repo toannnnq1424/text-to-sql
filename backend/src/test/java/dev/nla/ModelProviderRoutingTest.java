@@ -72,7 +72,14 @@ class ModelProviderRoutingTest {
             new SemanticPlannerClient.PlanResult("DROP TABLE private", List.of(), List.of()));
     var service =
         new QueryService(
-            store, catalog, mock(Adapters.class), new SqlGuard(), ai, planner, providers);
+            store,
+            catalog,
+            mock(Adapters.class),
+            new SqlGuard(),
+            ai,
+            planner,
+            providers,
+            new QueryAdmission(new org.springframework.mock.env.MockEnvironment()));
     var request =
         Json.obj(
             "warehouseId",

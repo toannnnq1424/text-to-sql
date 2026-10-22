@@ -28,6 +28,7 @@ import {
   Empty,
   ErrorState,
   Field,
+  Modal,
   Notice,
   Pagination,
   Resource,
@@ -371,34 +372,37 @@ function SqlImportContent() {
       </div>
 
       {confirming && plan && (
-        <div className="import-confirm-overlay" role="presentation">
-          <section
-            className="import-confirm-dialog card"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="import-confirm-title"
-            aria-describedby="import-confirm-copy"
-          >
-            <h2 id="import-confirm-title">Xác nhận thực thi kế hoạch?</h2>
-            <p id="import-confirm-copy">
-              {plan.statementCount} câu lệnh sẽ tác động lên warehouse
-              <strong> {plan.warehouseId}</strong>, schema
-              <strong> {plan.targetSchema}</strong>. Hành động này chỉ chạy
-              những statement đã được server validate.
-            </p>
-            <div className="inline-actions">
-              <Button onClick={() => setConfirming(false)}>Quay lại xem</Button>
-              <Button
-                variant="primary"
-                disabled={start.isPending}
-                onClick={() => start.mutate(plan)}
-              >
-                <Play size={17} />
-                {start.isPending ? "Đang tạo lần import…" : "Xác nhận import"}
-              </Button>
-            </div>
-          </section>
-        </div>
+        <Modal
+          title="Xác nhận thực thi kế hoạch?"
+          role="alertdialog"
+          descriptionId="import-confirm-copy"
+          onClose={() => {
+            if (!start.isPending) setConfirming(false);
+          }}
+        >
+          <p id="import-confirm-copy">
+            {plan.statementCount} câu lệnh sẽ tác động lên warehouse
+            <strong> {plan.warehouseId}</strong>, schema
+            <strong> {plan.targetSchema}</strong>. Hành động này chỉ chạy những
+            statement đã được server validate.
+          </p>
+          <div className="inline-actions">
+            <Button
+              disabled={start.isPending}
+              onClick={() => setConfirming(false)}
+            >
+              Quay lại xem
+            </Button>
+            <Button
+              variant="primary"
+              disabled={start.isPending}
+              onClick={() => start.mutate(plan)}
+            >
+              <Play size={17} />
+              {start.isPending ? "Đang tạo lần import…" : "Xác nhận import"}
+            </Button>
+          </div>
+        </Modal>
       )}
     </>
   );

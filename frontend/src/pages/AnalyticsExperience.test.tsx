@@ -38,6 +38,10 @@ describe("dataset-aware analytics controls", () => {
     expect(
       (await screen.findAllByText("Từ schema thực")).length,
     ).toBeGreaterThan(0);
+    expect(screen.getByText(/phần gợi ý này không gọi AI/)).toBeVisible();
+    expect(
+      screen.getByText(/chưa tự xác định ý nghĩa nghiệp vụ/),
+    ).toBeVisible();
     await user.type(
       screen.getByLabelText("Câu hỏi phân tích"),
       "Old dataset draft",

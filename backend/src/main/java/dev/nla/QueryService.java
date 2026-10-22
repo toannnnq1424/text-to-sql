@@ -16,6 +16,7 @@ public class QueryService {
   private final AiClient ai;
   private final SemanticPlannerClient planner;
   private final ModelProviderService providers;
+  private final QueryAdmission admission;
 
   public QueryService(
       Store s,
@@ -24,7 +25,8 @@ public class QueryService {
       SqlGuard g,
       AiClient ai,
       SemanticPlannerClient planner,
-      ModelProviderService providers) {
+      ModelProviderService providers,
+      QueryAdmission admission) {
     store = s;
     catalog = c;
     adapters = a;
@@ -32,6 +34,7 @@ public class QueryService {
     this.ai = ai;
     this.planner = planner;
     this.providers = providers;
+    this.admission = admission;
   }
 
   public Map<String, Object> run(Map<String, Object> b) {
@@ -98,6 +101,18 @@ public class QueryService {
     if (!Json.str(w, "status").equals("ACTIVE") || !Json.str(d, "status").equals("ACTIVE"))
       throw new ApiException(
           HttpStatus.CONFLICT, "DATASET_UNAVAILABLE", "Warehouse hoặc dataset không hoạt động.");
+    try (var lease = admission.enter()) {
+      return executePrepared(b, selection, w, d, question, mode);
+    }
+  }
+
+  private Map<String, Object> executePrepared(
+      Map<String, Object> b,
+      Map<String, Object> selection,
+      Map<String, Object> w,
+      Map<String, Object> d,
+      String question,
+      String mode) {
     String id = Json.id("qry"), now = Instant.now().toString();
     long start = System.nanoTime();
     var q =
@@ -188,6 +203,7 @@ public class QueryService {
         request.put("selection", selection);
         candidate = ai.invoke("business-plan", request, 20);
       }
+      QueryDeadline.check();
       q.put("model", candidate.get("model"));
       q.put("candidateSql", candidate.get("sql"));
       for (String field : List.of("selectedMetrics", "selectedDimensions")) {
@@ -208,6 +224,7 @@ public class QueryService {
               Json.str(w, "engine"),
               Json.str(candidate, "sql"),
               context);
+      QueryDeadline.check();
       q.put("generatedSql", planned.sql());
       var validated =
           guard.validate(
@@ -227,6 +244,16 @@ public class QueryService {
             "SQL_VALIDATION_ERROR",
             "Nguồn vật lý của SQL candidate không khớp với semantic planner.");
       q.put("sourceTables", validated.sourceTables());
+      // A model/planner call can outlive a grant revocation or registry/schema change.
+      // Reauthorize current resources before using any reader credential or executing SQL.
+      var currentWarehouse = store.warehouse(Json.str(w, "warehouseId"));
+      var currentDataset = store.dataset(Json.str(d, "datasetId"));
+      if (!w.equals(currentWarehouse) || !d.equals(currentDataset))
+        throw new ApiException(
+            HttpStatus.CONFLICT,
+            "SCHEMA_MISMATCH",
+            "Warehouse hoặc cấu hình dataset đã thay đổi; chạy lại với metadata hiện tại.");
+      QueryDeadline.check();
       var limits = Json.map(store.settings().get("limits"));
       var result =
           adapters
@@ -239,6 +266,7 @@ public class QueryService {
                   ((Number) limits.get("maxBytes")).intValue(),
                   QueryDeadline.seconds(
                       Math.max(1, ((Number) limits.get("statementTimeoutMs")).intValue() / 1000)));
+      QueryDeadline.check();
       ResultPresentation.annotate(result, context, candidate);
       q.put("result", result);
       q.put("chart", chart(candidate.get("chartRecommendation"), result));

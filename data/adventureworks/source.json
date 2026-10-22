@@ -1,0 +1,1044 @@
+{
+  "name": "AdventureWorksDW analytical projection",
+  "sourceRepository": "https://github.com/microsoft/sql-server-samples",
+  "sourceCommit": "b47eadc85277f72843647223cde53aa1b85ffcb8",
+  "documentation": "https://github.com/microsoft/sql-server-samples/blob/master/samples/databases/adventure-works/README.md",
+  "url": "https://github.com/microsoft/sql-server-samples/releases/download/adventureworks/AdventureWorksDW-data-warehouse-install-script.zip",
+  "sha256": "73c27309d17cd30bf5351665401106abf649d9f9a9ecb0c770682f6be965aba8",
+  "license": "MIT (Microsoft SQL Server Sample Code)",
+  "database": "nla_adventureworks_dw",
+  "schema": "analytics",
+  "selection": "Twelve-table analytical projection, full source rows for selected columns; excludes photos and customer contact/name/address data. No values synthesized. EmployeeKey retained as source attribute without projecting employee dimension. Not a full copy of all source tables/columns.",
+  "tables": [
+    {
+      "name": "DimDate",
+      "file": "DimDate.csv",
+      "sha256": "1be7b27194b4b5dae6fb3d619d81c34c0757a748be6381e5d765c42c5db132f8",
+      "sourceColumnCount": 19,
+      "rowCount": 3652,
+      "columns": [
+        {
+          "name": "DateKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 0,
+          "type": "INTEGER"
+        },
+        {
+          "name": "FullDateAlternateKey",
+          "sourceType": "date",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 1,
+          "type": "DATE"
+        },
+        {
+          "name": "EnglishMonthName",
+          "sourceType": "nvarchar",
+          "size": "10",
+          "nullable": false,
+          "sourceIndex": 9,
+          "type": "STRING"
+        },
+        {
+          "name": "MonthNumberOfYear",
+          "sourceType": "tinyint",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 12,
+          "type": "INTEGER"
+        },
+        {
+          "name": "CalendarQuarter",
+          "sourceType": "tinyint",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 13,
+          "type": "INTEGER"
+        },
+        {
+          "name": "CalendarYear",
+          "sourceType": "smallint",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 14,
+          "type": "INTEGER"
+        },
+        {
+          "name": "FiscalQuarter",
+          "sourceType": "tinyint",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 16,
+          "type": "INTEGER"
+        },
+        {
+          "name": "FiscalYear",
+          "sourceType": "smallint",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 17,
+          "type": "INTEGER"
+        }
+      ],
+      "primaryKey": [
+        "DateKey"
+      ],
+      "foreignKeys": []
+    },
+    {
+      "name": "DimSalesTerritory",
+      "file": "DimSalesTerritory.csv",
+      "sha256": "24945e074b1eb4d76a3c4e8eb750f12e13eccd20f504ed52951c85dd8e3c1c64",
+      "sourceColumnCount": 6,
+      "rowCount": 11,
+      "columns": [
+        {
+          "name": "SalesTerritoryKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 0,
+          "type": "INTEGER"
+        },
+        {
+          "name": "SalesTerritoryRegion",
+          "sourceType": "nvarchar",
+          "size": "50",
+          "nullable": false,
+          "sourceIndex": 2,
+          "type": "STRING"
+        },
+        {
+          "name": "SalesTerritoryCountry",
+          "sourceType": "nvarchar",
+          "size": "50",
+          "nullable": false,
+          "sourceIndex": 3,
+          "type": "STRING"
+        },
+        {
+          "name": "SalesTerritoryGroup",
+          "sourceType": "nvarchar",
+          "size": "50",
+          "nullable": true,
+          "sourceIndex": 4,
+          "type": "STRING"
+        }
+      ],
+      "primaryKey": [
+        "SalesTerritoryKey"
+      ],
+      "foreignKeys": []
+    },
+    {
+      "name": "DimGeography",
+      "file": "DimGeography.csv",
+      "sha256": "65dc2a96a63619a187215290941c19165b0a62541cd545428e169b805fbad685",
+      "sourceColumnCount": 11,
+      "rowCount": 655,
+      "columns": [
+        {
+          "name": "GeographyKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 0,
+          "type": "INTEGER"
+        },
+        {
+          "name": "City",
+          "sourceType": "nvarchar",
+          "size": "30",
+          "nullable": true,
+          "sourceIndex": 1,
+          "type": "STRING"
+        },
+        {
+          "name": "StateProvinceName",
+          "sourceType": "nvarchar",
+          "size": "50",
+          "nullable": true,
+          "sourceIndex": 3,
+          "type": "STRING"
+        },
+        {
+          "name": "CountryRegionCode",
+          "sourceType": "nvarchar",
+          "size": "3",
+          "nullable": true,
+          "sourceIndex": 4,
+          "type": "STRING"
+        },
+        {
+          "name": "EnglishCountryRegionName",
+          "sourceType": "nvarchar",
+          "size": "50",
+          "nullable": true,
+          "sourceIndex": 5,
+          "type": "STRING"
+        },
+        {
+          "name": "SalesTerritoryKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": true,
+          "sourceIndex": 9,
+          "type": "INTEGER"
+        }
+      ],
+      "primaryKey": [
+        "GeographyKey"
+      ],
+      "foreignKeys": [
+        {
+          "column": "SalesTerritoryKey",
+          "referenceTable": "DimSalesTerritory",
+          "referenceColumn": "SalesTerritoryKey"
+        }
+      ]
+    },
+    {
+      "name": "DimCustomer",
+      "file": "DimCustomer.csv",
+      "sha256": "548dd1ffefc1419952d777c985a6c216ce32624138ffeb2743b17b9c7964b6fc",
+      "sourceColumnCount": 29,
+      "rowCount": 18484,
+      "columns": [
+        {
+          "name": "CustomerKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 0,
+          "type": "INTEGER"
+        },
+        {
+          "name": "GeographyKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": true,
+          "sourceIndex": 1,
+          "type": "INTEGER"
+        },
+        {
+          "name": "Gender",
+          "sourceType": "nvarchar",
+          "size": "1",
+          "nullable": true,
+          "sourceIndex": 11,
+          "type": "STRING"
+        },
+        {
+          "name": "YearlyIncome",
+          "sourceType": "money",
+          "size": null,
+          "nullable": true,
+          "sourceIndex": 13,
+          "type": "DECIMAL"
+        },
+        {
+          "name": "TotalChildren",
+          "sourceType": "tinyint",
+          "size": null,
+          "nullable": true,
+          "sourceIndex": 14,
+          "type": "INTEGER"
+        },
+        {
+          "name": "EnglishEducation",
+          "sourceType": "nvarchar",
+          "size": "40",
+          "nullable": true,
+          "sourceIndex": 16,
+          "type": "STRING"
+        },
+        {
+          "name": "EnglishOccupation",
+          "sourceType": "nvarchar",
+          "size": "100",
+          "nullable": true,
+          "sourceIndex": 19,
+          "type": "STRING"
+        },
+        {
+          "name": "DateFirstPurchase",
+          "sourceType": "date",
+          "size": null,
+          "nullable": true,
+          "sourceIndex": 27,
+          "type": "DATE"
+        },
+        {
+          "name": "CommuteDistance",
+          "sourceType": "nvarchar",
+          "size": "15",
+          "nullable": true,
+          "sourceIndex": 28,
+          "type": "STRING"
+        }
+      ],
+      "primaryKey": [
+        "CustomerKey"
+      ],
+      "foreignKeys": [
+        {
+          "column": "GeographyKey",
+          "referenceTable": "DimGeography",
+          "referenceColumn": "GeographyKey"
+        }
+      ]
+    },
+    {
+      "name": "DimProductCategory",
+      "file": "DimProductCategory.csv",
+      "sha256": "1caaa9b3d7fcc7f238b1216115a502caaad5b9ca9ca035df098db515393c069d",
+      "sourceColumnCount": 5,
+      "rowCount": 4,
+      "columns": [
+        {
+          "name": "ProductCategoryKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 0,
+          "type": "INTEGER"
+        },
+        {
+          "name": "EnglishProductCategoryName",
+          "sourceType": "nvarchar",
+          "size": "50",
+          "nullable": false,
+          "sourceIndex": 2,
+          "type": "STRING"
+        }
+      ],
+      "primaryKey": [
+        "ProductCategoryKey"
+      ],
+      "foreignKeys": []
+    },
+    {
+      "name": "DimProductSubcategory",
+      "file": "DimProductSubcategory.csv",
+      "sha256": "4496a2e75fc0279f80acb8b68a8a4e68f88b24271973f4a457e30e1a96cc1f90",
+      "sourceColumnCount": 6,
+      "rowCount": 37,
+      "columns": [
+        {
+          "name": "ProductSubcategoryKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 0,
+          "type": "INTEGER"
+        },
+        {
+          "name": "EnglishProductSubcategoryName",
+          "sourceType": "nvarchar",
+          "size": "50",
+          "nullable": false,
+          "sourceIndex": 2,
+          "type": "STRING"
+        },
+        {
+          "name": "ProductCategoryKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": true,
+          "sourceIndex": 5,
+          "type": "INTEGER"
+        }
+      ],
+      "primaryKey": [
+        "ProductSubcategoryKey"
+      ],
+      "foreignKeys": [
+        {
+          "column": "ProductCategoryKey",
+          "referenceTable": "DimProductCategory",
+          "referenceColumn": "ProductCategoryKey"
+        }
+      ]
+    },
+    {
+      "name": "DimProduct",
+      "file": "DimProduct.csv",
+      "sha256": "8e06a201098caef67bf6e38a93042738329d9fba5dac0f3dedb3dffbdac5c4f5",
+      "sourceColumnCount": 36,
+      "rowCount": 606,
+      "columns": [
+        {
+          "name": "ProductKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 0,
+          "type": "INTEGER"
+        },
+        {
+          "name": "ProductSubcategoryKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": true,
+          "sourceIndex": 2,
+          "type": "INTEGER"
+        },
+        {
+          "name": "EnglishProductName",
+          "sourceType": "nvarchar",
+          "size": "50",
+          "nullable": false,
+          "sourceIndex": 5,
+          "type": "STRING"
+        },
+        {
+          "name": "StandardCost",
+          "sourceType": "money",
+          "size": null,
+          "nullable": true,
+          "sourceIndex": 8,
+          "type": "DECIMAL"
+        },
+        {
+          "name": "Color",
+          "sourceType": "nvarchar",
+          "size": "15",
+          "nullable": false,
+          "sourceIndex": 10,
+          "type": "STRING"
+        },
+        {
+          "name": "ListPrice",
+          "sourceType": "money",
+          "size": null,
+          "nullable": true,
+          "sourceIndex": 13,
+          "type": "DECIMAL"
+        },
+        {
+          "name": "ProductLine",
+          "sourceType": "nchar",
+          "size": "2",
+          "nullable": true,
+          "sourceIndex": 18,
+          "type": "STRING"
+        },
+        {
+          "name": "ModelName",
+          "sourceType": "nvarchar",
+          "size": "50",
+          "nullable": true,
+          "sourceIndex": 22,
+          "type": "STRING"
+        },
+        {
+          "name": "StartDate",
+          "sourceType": "datetime",
+          "size": null,
+          "nullable": true,
+          "sourceIndex": 33,
+          "type": "TIMESTAMP"
+        },
+        {
+          "name": "EndDate",
+          "sourceType": "datetime",
+          "size": null,
+          "nullable": true,
+          "sourceIndex": 34,
+          "type": "TIMESTAMP"
+        },
+        {
+          "name": "Status",
+          "sourceType": "nvarchar",
+          "size": "7",
+          "nullable": true,
+          "sourceIndex": 35,
+          "type": "STRING"
+        }
+      ],
+      "primaryKey": [
+        "ProductKey"
+      ],
+      "foreignKeys": [
+        {
+          "column": "ProductSubcategoryKey",
+          "referenceTable": "DimProductSubcategory",
+          "referenceColumn": "ProductSubcategoryKey"
+        }
+      ]
+    },
+    {
+      "name": "DimCurrency",
+      "file": "DimCurrency.csv",
+      "sha256": "9ff911e2d0447204806722e736d74e9686faad7c68b9fe896446ed83264239f6",
+      "sourceColumnCount": 3,
+      "rowCount": 105,
+      "columns": [
+        {
+          "name": "CurrencyKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 0,
+          "type": "INTEGER"
+        },
+        {
+          "name": "CurrencyAlternateKey",
+          "sourceType": "nchar",
+          "size": "3",
+          "nullable": false,
+          "sourceIndex": 1,
+          "type": "STRING"
+        },
+        {
+          "name": "CurrencyName",
+          "sourceType": "nvarchar",
+          "size": "50",
+          "nullable": false,
+          "sourceIndex": 2,
+          "type": "STRING"
+        }
+      ],
+      "primaryKey": [
+        "CurrencyKey"
+      ],
+      "foreignKeys": []
+    },
+    {
+      "name": "DimPromotion",
+      "file": "DimPromotion.csv",
+      "sha256": "dc54f4f21557dea85e3cf18e23c23649d71a2b740cdbb12130251a5a361dabec",
+      "sourceColumnCount": 16,
+      "rowCount": 16,
+      "columns": [
+        {
+          "name": "PromotionKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 0,
+          "type": "INTEGER"
+        },
+        {
+          "name": "EnglishPromotionName",
+          "sourceType": "nvarchar",
+          "size": "255",
+          "nullable": true,
+          "sourceIndex": 2,
+          "type": "STRING"
+        },
+        {
+          "name": "DiscountPct",
+          "sourceType": "float",
+          "size": null,
+          "nullable": true,
+          "sourceIndex": 5,
+          "type": "DECIMAL"
+        },
+        {
+          "name": "EnglishPromotionType",
+          "sourceType": "nvarchar",
+          "size": "50",
+          "nullable": true,
+          "sourceIndex": 6,
+          "type": "STRING"
+        },
+        {
+          "name": "StartDate",
+          "sourceType": "datetime",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 12,
+          "type": "TIMESTAMP"
+        },
+        {
+          "name": "EndDate",
+          "sourceType": "datetime",
+          "size": null,
+          "nullable": true,
+          "sourceIndex": 13,
+          "type": "TIMESTAMP"
+        },
+        {
+          "name": "MinQty",
+          "sourceType": "int",
+          "size": null,
+          "nullable": true,
+          "sourceIndex": 14,
+          "type": "INTEGER"
+        },
+        {
+          "name": "MaxQty",
+          "sourceType": "int",
+          "size": null,
+          "nullable": true,
+          "sourceIndex": 15,
+          "type": "INTEGER"
+        }
+      ],
+      "primaryKey": [
+        "PromotionKey"
+      ],
+      "foreignKeys": []
+    },
+    {
+      "name": "DimReseller",
+      "file": "DimReseller.csv",
+      "sha256": "676cb16ab4c6855da557f776ff82b0dbac19fe634b7914663c1146b53a58145a",
+      "sourceColumnCount": 20,
+      "rowCount": 701,
+      "columns": [
+        {
+          "name": "ResellerKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 0,
+          "type": "INTEGER"
+        },
+        {
+          "name": "GeographyKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": true,
+          "sourceIndex": 1,
+          "type": "INTEGER"
+        },
+        {
+          "name": "BusinessType",
+          "sourceType": "varchar",
+          "size": "20",
+          "nullable": false,
+          "sourceIndex": 4,
+          "type": "STRING"
+        },
+        {
+          "name": "ResellerName",
+          "sourceType": "nvarchar",
+          "size": "50",
+          "nullable": false,
+          "sourceIndex": 5,
+          "type": "STRING"
+        },
+        {
+          "name": "NumberEmployees",
+          "sourceType": "int",
+          "size": null,
+          "nullable": true,
+          "sourceIndex": 6,
+          "type": "INTEGER"
+        },
+        {
+          "name": "YearOpened",
+          "sourceType": "int",
+          "size": null,
+          "nullable": true,
+          "sourceIndex": 19,
+          "type": "INTEGER"
+        }
+      ],
+      "primaryKey": [
+        "ResellerKey"
+      ],
+      "foreignKeys": [
+        {
+          "column": "GeographyKey",
+          "referenceTable": "DimGeography",
+          "referenceColumn": "GeographyKey"
+        }
+      ]
+    },
+    {
+      "name": "FactInternetSales",
+      "file": "FactInternetSales.csv",
+      "sha256": "0f87171a41f56a40d7f5f6261286e3dde83c88178fff5d55a36636e6150ed3be",
+      "sourceColumnCount": 26,
+      "rowCount": 60398,
+      "columns": [
+        {
+          "name": "ProductKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 0,
+          "type": "INTEGER"
+        },
+        {
+          "name": "OrderDateKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 1,
+          "type": "INTEGER"
+        },
+        {
+          "name": "DueDateKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 2,
+          "type": "INTEGER"
+        },
+        {
+          "name": "ShipDateKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 3,
+          "type": "INTEGER"
+        },
+        {
+          "name": "CustomerKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 4,
+          "type": "INTEGER"
+        },
+        {
+          "name": "PromotionKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 5,
+          "type": "INTEGER"
+        },
+        {
+          "name": "CurrencyKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 6,
+          "type": "INTEGER"
+        },
+        {
+          "name": "SalesTerritoryKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 7,
+          "type": "INTEGER"
+        },
+        {
+          "name": "SalesOrderNumber",
+          "sourceType": "nvarchar",
+          "size": "20",
+          "nullable": false,
+          "sourceIndex": 8,
+          "type": "STRING"
+        },
+        {
+          "name": "SalesOrderLineNumber",
+          "sourceType": "tinyint",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 9,
+          "type": "INTEGER"
+        },
+        {
+          "name": "OrderQuantity",
+          "sourceType": "smallint",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 11,
+          "type": "INTEGER"
+        },
+        {
+          "name": "UnitPrice",
+          "sourceType": "money",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 12,
+          "type": "DECIMAL"
+        },
+        {
+          "name": "ExtendedAmount",
+          "sourceType": "money",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 13,
+          "type": "DECIMAL"
+        },
+        {
+          "name": "TotalProductCost",
+          "sourceType": "money",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 17,
+          "type": "DECIMAL"
+        },
+        {
+          "name": "SalesAmount",
+          "sourceType": "money",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 18,
+          "type": "DECIMAL"
+        },
+        {
+          "name": "TaxAmt",
+          "sourceType": "money",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 19,
+          "type": "DECIMAL"
+        },
+        {
+          "name": "Freight",
+          "sourceType": "money",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 20,
+          "type": "DECIMAL"
+        }
+      ],
+      "primaryKey": [
+        "SalesOrderNumber",
+        "SalesOrderLineNumber"
+      ],
+      "foreignKeys": [
+        {
+          "column": "ProductKey",
+          "referenceTable": "DimProduct",
+          "referenceColumn": "ProductKey"
+        },
+        {
+          "column": "OrderDateKey",
+          "referenceTable": "DimDate",
+          "referenceColumn": "DateKey"
+        },
+        {
+          "column": "DueDateKey",
+          "referenceTable": "DimDate",
+          "referenceColumn": "DateKey"
+        },
+        {
+          "column": "ShipDateKey",
+          "referenceTable": "DimDate",
+          "referenceColumn": "DateKey"
+        },
+        {
+          "column": "CustomerKey",
+          "referenceTable": "DimCustomer",
+          "referenceColumn": "CustomerKey"
+        },
+        {
+          "column": "PromotionKey",
+          "referenceTable": "DimPromotion",
+          "referenceColumn": "PromotionKey"
+        },
+        {
+          "column": "CurrencyKey",
+          "referenceTable": "DimCurrency",
+          "referenceColumn": "CurrencyKey"
+        },
+        {
+          "column": "SalesTerritoryKey",
+          "referenceTable": "DimSalesTerritory",
+          "referenceColumn": "SalesTerritoryKey"
+        }
+      ]
+    },
+    {
+      "name": "FactResellerSales",
+      "file": "FactResellerSales.csv",
+      "sha256": "d682b163017d95a7c3a7e026ecfd909a09f21b4c43750a844a5ce3dea4d1e274",
+      "sourceColumnCount": 27,
+      "rowCount": 60855,
+      "columns": [
+        {
+          "name": "ProductKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 0,
+          "type": "INTEGER"
+        },
+        {
+          "name": "OrderDateKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 1,
+          "type": "INTEGER"
+        },
+        {
+          "name": "DueDateKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 2,
+          "type": "INTEGER"
+        },
+        {
+          "name": "ShipDateKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 3,
+          "type": "INTEGER"
+        },
+        {
+          "name": "ResellerKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 4,
+          "type": "INTEGER"
+        },
+        {
+          "name": "EmployeeKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 5,
+          "type": "INTEGER"
+        },
+        {
+          "name": "PromotionKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 6,
+          "type": "INTEGER"
+        },
+        {
+          "name": "CurrencyKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 7,
+          "type": "INTEGER"
+        },
+        {
+          "name": "SalesTerritoryKey",
+          "sourceType": "int",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 8,
+          "type": "INTEGER"
+        },
+        {
+          "name": "SalesOrderNumber",
+          "sourceType": "nvarchar",
+          "size": "20",
+          "nullable": false,
+          "sourceIndex": 9,
+          "type": "STRING"
+        },
+        {
+          "name": "SalesOrderLineNumber",
+          "sourceType": "tinyint",
+          "size": null,
+          "nullable": false,
+          "sourceIndex": 10,
+          "type": "INTEGER"
+        },
+        {
+          "name": "OrderQuantity",
+          "sourceType": "smallint",
+          "size": null,
+          "nullable": true,
+          "sourceIndex": 12,
+          "type": "INTEGER"
+        },
+        {
+          "name": "UnitPrice",
+          "sourceType": "money",
+          "size": null,
+          "nullable": true,
+          "sourceIndex": 13,
+          "type": "DECIMAL"
+        },
+        {
+          "name": "ExtendedAmount",
+          "sourceType": "money",
+          "size": null,
+          "nullable": true,
+          "sourceIndex": 14,
+          "type": "DECIMAL"
+        },
+        {
+          "name": "TotalProductCost",
+          "sourceType": "money",
+          "size": null,
+          "nullable": true,
+          "sourceIndex": 18,
+          "type": "DECIMAL"
+        },
+        {
+          "name": "SalesAmount",
+          "sourceType": "money",
+          "size": null,
+          "nullable": true,
+          "sourceIndex": 19,
+          "type": "DECIMAL"
+        },
+        {
+          "name": "TaxAmt",
+          "sourceType": "money",
+          "size": null,
+          "nullable": true,
+          "sourceIndex": 20,
+          "type": "DECIMAL"
+        },
+        {
+          "name": "Freight",
+          "sourceType": "money",
+          "size": null,
+          "nullable": true,
+          "sourceIndex": 21,
+          "type": "DECIMAL"
+        }
+      ],
+      "primaryKey": [
+        "SalesOrderNumber",
+        "SalesOrderLineNumber"
+      ],
+      "foreignKeys": [
+        {
+          "column": "ProductKey",
+          "referenceTable": "DimProduct",
+          "referenceColumn": "ProductKey"
+        },
+        {
+          "column": "OrderDateKey",
+          "referenceTable": "DimDate",
+          "referenceColumn": "DateKey"
+        },
+        {
+          "column": "DueDateKey",
+          "referenceTable": "DimDate",
+          "referenceColumn": "DateKey"
+        },
+        {
+          "column": "ShipDateKey",
+          "referenceTable": "DimDate",
+          "referenceColumn": "DateKey"
+        },
+        {
+          "column": "ResellerKey",
+          "referenceTable": "DimReseller",
+          "referenceColumn": "ResellerKey"
+        },
+        {
+          "column": "PromotionKey",
+          "referenceTable": "DimPromotion",
+          "referenceColumn": "PromotionKey"
+        },
+        {
+          "column": "CurrencyKey",
+          "referenceTable": "DimCurrency",
+          "referenceColumn": "CurrencyKey"
+        },
+        {
+          "column": "SalesTerritoryKey",
+          "referenceTable": "DimSalesTerritory",
+          "referenceColumn": "SalesTerritoryKey"
+        }
+      ]
+    }
+  ]
+}

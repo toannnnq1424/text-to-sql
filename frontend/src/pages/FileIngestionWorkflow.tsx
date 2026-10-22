@@ -103,6 +103,20 @@ export function FileIngestionWorkflow() {
   );
   const selectedDataset = useRef("");
   const fileInput = useRef<HTMLInputElement>(null);
+  const stagedUpload = useRef<string | undefined>(undefined);
+  const runInFlight = useRef(false);
+  const runCommitted = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      uploadSequence.current += 1;
+      uploadController.current?.abort();
+      if (stagedUpload.current && !runInFlight.current && !runCommitted.current)
+        void ingestionApi.discardFile(stagedUpload.current).catch(() => {});
+    };
+  }, []);
 
   const warehouses = useQuery({
     queryKey: ["warehouses", "file-ingestion-targets"],
@@ -161,6 +175,12 @@ export function FileIngestionWorkflow() {
       selectedRun.data?.status === "SUCCESS" && selectedRun.data.datasetId,
     ),
   });
+  useEffect(() => {
+    if (selectedRun.data)
+      runInFlight.current = ["PENDING", "RUNNING"].includes(
+        selectedRun.data.status,
+      );
+  }, [selectedRun.data]);
 
   useEffect(() => {
     setTargetWarehouseId(context.warehouseId);
@@ -205,7 +225,12 @@ export function FileIngestionWorkflow() {
       }
     },
     onSuccess: (result, input) => {
-      if (input.sequence !== uploadSequence.current) return;
+      if (!mounted.current || input.sequence !== uploadSequence.current) {
+        void ingestionApi.discardFile(result.id).catch(() => {});
+        return;
+      }
+      stagedUpload.current = result.id;
+      runCommitted.current = false;
       setUpload(result);
       setColumns(result.columns);
       setPlan(undefined);
@@ -237,7 +262,7 @@ export function FileIngestionWorkflow() {
     onError: (error) => setFormError(error.message),
   });
   const start = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       if (!plan) throw new Error("Kế hoạch nạp dữ liệu chưa được xác thực.");
       if (Date.parse(plan.expiresAt) <= Date.now()) {
         setPlan(undefined);
@@ -252,13 +277,20 @@ export function FileIngestionWorkflow() {
           key: crypto.randomUUID(),
         };
       }
-      return ingestionApi.runFile({
-        planId: plan.id,
-        digest: plan.digest,
-        idempotencyKey: idempotency.current.key,
-      });
+      runInFlight.current = true;
+      try {
+        return await ingestionApi.runFile({
+          planId: plan.id,
+          digest: plan.digest,
+          idempotencyKey: idempotency.current.key,
+        });
+      } catch (error) {
+        runInFlight.current = false;
+        throw error;
+      }
     },
     onSuccess: (result) => {
+      runCommitted.current = true;
       setRunId(result.id);
       setFormError("");
       void queryClient.invalidateQueries({ queryKey: ["file-ingestion-runs"] });
@@ -281,9 +313,11 @@ export function FileIngestionWorkflow() {
   }
 
   function releaseUpload() {
-    if (upload)
+    const id = stagedUpload.current;
+    stagedUpload.current = undefined;
+    if (id)
       void ingestionApi
-        .discardFile(upload.id)
+        .discardFile(id)
         .catch((error: Error) => setFormError(error.message));
   }
 
@@ -660,7 +694,12 @@ export function FileIngestionWorkflow() {
               title="Xem trước 20 dòng"
               icon={<FileSpreadsheet size={20} />}
             >
-              <div className="file-ingestion-preview-scroll">
+              <div
+                className="file-ingestion-preview-scroll"
+                tabIndex={0}
+                role="region"
+                aria-label="Dữ liệu file xem trước"
+              >
                 <table className="file-ingestion-preview">
                   <thead>
                     <tr>

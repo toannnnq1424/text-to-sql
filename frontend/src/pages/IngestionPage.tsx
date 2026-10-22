@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -32,6 +32,7 @@ import {
 } from "../components/FilterFields";
 import {
   ApiAccess,
+  activateTabByKeyboard,
   AsyncSelect,
   Badge,
   Button,
@@ -51,6 +52,7 @@ import {
 } from "../components/ui";
 export function IngestionPage() {
   const c = useWarehouse();
+  const panelId = useId();
   const { runId } = useParams();
   const [mode, setMode] = useState<"file" | "warehouse">(
     runId ? "warehouse" : "file",
@@ -67,11 +69,15 @@ export function IngestionPage() {
           className="ingestion-modes"
           role="tablist"
           aria-label="Chọn cách nạp dữ liệu"
+          onKeyDown={activateTabByKeyboard}
         >
           <button
             type="button"
             role="tab"
+            id={`${panelId}-file`}
+            aria-controls={panelId}
             aria-selected={mode === "file"}
+            tabIndex={mode === "file" ? 0 : -1}
             className={mode === "file" ? "active" : ""}
             onClick={() => setMode("file")}
           >
@@ -80,18 +86,27 @@ export function IngestionPage() {
           <button
             type="button"
             role="tab"
+            id={`${panelId}-warehouse`}
+            aria-controls={panelId}
             aria-selected={mode === "warehouse"}
+            tabIndex={mode === "warehouse" ? 0 : -1}
             className={mode === "warehouse" ? "active" : ""}
             onClick={() => setMode("warehouse")}
           >
             <Network size={18} /> Nguồn warehouse
           </button>
         </div>
-        {mode === "file" ? (
-          <FileIngestionWorkflow />
-        ) : (
-          <IngestionContent key={`${c.warehouseId}/${c.datasetId}`} />
-        )}
+        <div
+          role="tabpanel"
+          id={panelId}
+          aria-labelledby={`${panelId}-${mode}`}
+        >
+          {mode === "file" ? (
+            <FileIngestionWorkflow />
+          ) : (
+            <IngestionContent key={`${c.warehouseId}/${c.datasetId}`} />
+          )}
+        </div>
       </ApiAccess>
     </>
   );

@@ -815,7 +815,12 @@ function PipelineEditor({
                     {stage.name} · {stage.columns.length} cột · {stage.rowCount}{" "}
                     dòng trong bản xem trước
                   </summary>
-                  <div className="table-scroll">
+                  <div
+                    className="table-scroll"
+                    tabIndex={0}
+                    role="region"
+                    aria-label={`Dữ liệu xem trước lớp ${stage.name}`}
+                  >
                     <table>
                       <thead>
                         <tr>

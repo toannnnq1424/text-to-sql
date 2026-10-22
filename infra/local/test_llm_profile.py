@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from llm_profile import knowledge_environment, profile_environment
+from ollama import configure
 
 
 def directory(tmp_path: Path) -> Path:
@@ -37,6 +38,22 @@ def test_local_activation_maps_host_only_for_container_and_preserves_online(tmp_
     )
     assert "METADATA_PASSWORD" not in profile_environment(tmp_path)
     assert knowledge_environment(tmp_path, container=True)["KNOWLEDGE_ENABLED"] == "true"
+    assert (local / "provider.env").read_bytes() == online
+
+
+def test_local_profile_allows_slow_inference_and_keeps_online_profile(tmp_path):
+    local = directory(tmp_path)
+    online = b"LLM_API_KEY=original-secret\n"
+    (local / "provider.env").write_bytes(online)
+
+    configure("qwen3:4b", tmp_path)
+
+    values = dict(
+        line.split("=", 1)
+        for line in (local / "ollama.env").read_text().splitlines()
+        if line and not line.startswith("#")
+    )
+    assert values["LLM_TIMEOUT_MS"] == "55000"
     assert (local / "provider.env").read_bytes() == online
 
 

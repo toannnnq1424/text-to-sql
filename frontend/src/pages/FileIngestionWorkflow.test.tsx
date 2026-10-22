@@ -101,6 +101,7 @@ describe("file ingestion workflow", () => {
 
   it("analyzes every detected column, validates the plan and shows completed layers", async () => {
     const user = userEvent.setup();
+    const discard = vi.spyOn(ingestionApi, "discardFile").mockResolvedValue();
     vi.spyOn(ingestionApi, "uploadFile").mockResolvedValue(upload);
     server.use(
       http.post(`${api}/warehouse/ingestion/files/:uploadId/validate`, () =>
@@ -119,7 +120,7 @@ describe("file ingestion workflow", () => {
         HttpResponse.json(fixtures.datasets[0]),
       ),
     );
-    renderApp("/ingestion");
+    const { unmount } = renderApp("/ingestion");
     await readyDataset();
     await user.upload(
       screen.getByLabelText("Chọn file dữ liệu"),
@@ -163,6 +164,8 @@ describe("file ingestion workflow", () => {
         2,
       ),
     );
+    unmount();
+    expect(discard).not.toHaveBeenCalled();
   });
 
   it("requires Operator permission before validation or running", async () => {
@@ -177,5 +180,43 @@ describe("file ingestion workflow", () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByText("Đang tải lịch sử…")).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Nguồn warehouse" })).toBeVisible();
+  });
+
+  it("releases its own abandoned temporary upload when leaving the workflow", async () => {
+    const user = userEvent.setup();
+    const discard = vi.spyOn(ingestionApi, "discardFile").mockResolvedValue();
+    vi.spyOn(ingestionApi, "uploadFile").mockResolvedValue(upload);
+    const { unmount } = renderApp("/ingestion");
+    await readyDataset();
+    await user.upload(
+      screen.getByLabelText("Chọn file dữ liệu"),
+      new File(["a\n1"], "abandoned.csv", { type: "text/csv" }),
+    );
+    await screen.findByText("Ánh xạ cột được phát hiện");
+    unmount();
+    await waitFor(() =>
+      expect(discard).toHaveBeenCalledExactlyOnceWith(upload.id),
+    );
+  });
+
+  it("discards only its own late upload response after navigation", async () => {
+    const user = userEvent.setup();
+    const discard = vi.spyOn(ingestionApi, "discardFile").mockResolvedValue();
+    let finish!: (value: FileUpload) => void;
+    const response = new Promise<FileUpload>((resolve) => {
+      finish = resolve;
+    });
+    vi.spyOn(ingestionApi, "uploadFile").mockReturnValue(response);
+    const { unmount } = renderApp("/ingestion");
+    await readyDataset();
+    await user.upload(
+      screen.getByLabelText("Chọn file dữ liệu"),
+      new File(["a\n1"], "late.csv", { type: "text/csv" }),
+    );
+    unmount();
+    finish({ ...upload, id: "late-owned-upload" });
+    await waitFor(() =>
+      expect(discard).toHaveBeenCalledExactlyOnceWith("late-owned-upload"),
+    );
   });
 });

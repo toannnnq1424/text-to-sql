@@ -186,6 +186,10 @@ export const handlers = [
   http.get(`${base}/warehouse/ingestion/files/runs`, () =>
     HttpResponse.json(f.page([])),
   ),
+  http.delete(
+    `${base}/warehouse/ingestion/files/:id`,
+    () => new HttpResponse(null, { status: 204 }),
+  ),
   http.post(`${base}/import/sql/validate`, () =>
     HttpResponse.json({
       planId: "plan-test-001",
